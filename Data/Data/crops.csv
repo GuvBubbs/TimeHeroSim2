@@ -1,0 +1,30 @@
+id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
+carrot,Carrot,,,,,,,6,,,,1,,,,,,,0,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+radish,Radish,,,,,,,5,,,,1,,,,,,,1,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+potato,Potato,tower_reach_3,,,,,,8,,,,2,,,,,,,1,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+cabbage,Cabbage,tower_reach_3,,,,,,10,,,,3,,,,,,,1,,,,,,,,,,,,,,,,Growth Stages 4 + Gain Energy On Harvest
+turnip,Turnip,tower_reach_3,,,,,,7,,,,2,,,,,,,2,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+corn,Corn,tower_reach_4,,,,,,15,,,,5,,,,,,,2,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+tomato,Tomato,tower_reach_4,,,,,,12,,,,4,,,,,,,3,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+strawberry,Strawberry,tower_reach_5,,,,,,20,,,,8,,,,,,,3,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+spinach,Spinach,tower_reach_5,,,,,,10,,,,5,,,,,,,3,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+onion,Onion,tower_reach_5,,,,,,12,,,,6,,,,,,,4,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+garlic,Garlic,tower_reach_6,,,,,,15,,,,8,,,,,,,4,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+cucumber,Cucumber,tower_reach_6,,,,,,25,,,,12,,,,,,,5,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+leek,Leek,tower_reach_7,,,,,,18,,,,10,,,,,,,5,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+wheat,Wheat,tower_reach_7,,,,,,22,,,,12,,,,,,,6,,,,,,,,,,,,,,,,Growth Stages 4 + Gain Energy On Harvest
+asparagus,Asparagus,tower_reach_8,,,,,,30,,,,20,,,,,,,6,,,,,,,,,,,,,,,,Growth Stages 4 + Gain Energy On Harvest
+cauliflower,Cauliflower,tower_reach_8,,,,,,28,,,,18,,,,,,,6,,,,,,,,,,,,,,,,Growth Stages 4 + Gain Energy On Harvest
+caisim,Caisim,tower_reach_8,,,,,,25,,,,15,,,,,,,6,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+pumpkin,Pumpkin,tower_reach_8,,,,,,35,,,,25,,,,,,,7,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+watermelon,Watermelon,tower_reach_9,,,,,,40,,,,35,,,,,,,7,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+honeydew,Honeydew,tower_reach_9,,,,,,38,,,,30,,,,,,,8,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+pineapple,Pineapple,tower_reach_10,,,,,,45,,,,40,,,,,,,8,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+beetroot,Beetroot,tower_reach_10,,,,,,35,,,,35,,,,,,,8,,,,,,,,,,,,,,,,Growth Stages 4 + Gain Energy On Harvest
+eggplant,Eggplant,tower_reach_10,,,,,,30,,,,30,,,,,,,8,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+soybean,Soybean,tower_reach_10,,,,,,42,,,,45,,,,,,,9,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+yam,Yam,tower_reach_11,,,,,,50,,,,50,,,,,,,9,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+bell_pepper_g,Bell Pepper (Green),tower_reach_11,,,,,,48,,,,45,,,,,,,9,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+bell_pepper_r,Bell Pepper (Red),tower_reach_11,,,,,,48,,,,55,,,,,,,9,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+bell_pepper_y,Bell Pepper (Yellow),tower_reach_11,,,,,,48,,,,65,,,,,,,9,,,,,,,,,,,,,,,,Growth Stages 5 + Gain Energy On Harvest
+shallot,Shallot,tower_reach_11,,,,,,40,,,,60,,,,,,,,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest

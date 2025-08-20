@@ -1,0 +1,8 @@
+route,wave_size,enemy_types,total_waves_s_m_l,boss
+Meadow Path,1-Feb,Slimes only,39571,Giant Slime
+Pine Vale,1-Feb,Armored Insects (100%),4/06/2010,Beetle Lord
+Dark Forest,2-Mar,Beasts (60%)- Slimes (40%),4/07/2012,Alpha Wolf
+Mountain Pass,2-Mar,Flying (50%)- Insects (50%),5/08/2014,Sky Serpent
+Crystal Caves,2-Apr,Crawlers (50%)- Plants (50%),5/09/2016,Crystal Spider
+Frozen Tundra,3-Apr,Flying (40%)- Beasts (40%)- Plants (20%),6/10/2018,Frost Wyrm
+Volcano Core,3-May,Random mix of all types,6/11/2020,Lava Titan (rotates weakness)

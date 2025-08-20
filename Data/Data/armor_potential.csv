@@ -1,0 +1,5 @@
+upgrade_potential,forge_bonus,drop_weight
+Poor,+5 defense,40%
+Average,+10 defense,35%
+Good,+15 defense,20%
+Excellent,+20 defense,5%

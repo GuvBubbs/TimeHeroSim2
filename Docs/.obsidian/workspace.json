@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "concise_context.md",
+                "file": "Sim Design/phased-development-plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "concise_context"
+              "title": "phased-development-plan"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "concise_context.md",
+                "file": "Sim Design/phased-development-plan.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for concise_context"
+              "title": "Backlinks for phased-development-plan"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "concise_context.md",
+                "file": "Sim Design/phased-development-plan.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from concise_context"
+              "title": "Outgoing links from phased-development-plan"
             }
           },
           {
@@ -142,13 +142,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "concise_context.md",
+                "file": "Sim Design/phased-development-plan.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of concise_context"
+              "title": "Outline of phased-development-plan"
             }
           }
         ]
@@ -168,13 +168,15 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "9edb0f1900f705be",
+  "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
-    "Sim Design/00-tech-stack-architecture.md",
+    "Prompts/phase-0-build-prompt.md",
+    "Sim Design/phased-development-plan.md",
+    "Prompts",
     "concise_context.md",
+    "Sim Design/00-tech-stack-architecture.md",
     "Sim Design/01-dashboard.md",
     "Sim Design/07-reports.md",
-    "Sim Design/phased-development-plan.md",
     "Sim Design/05-simulation-setup.md",
     "Sim Design/06-live-monitor.md",
     "Sim Design/04-player-personas.md",

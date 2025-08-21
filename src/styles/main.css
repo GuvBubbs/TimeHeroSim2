@@ -1,0 +1,78 @@
+@import '@fortawesome/fontawesome-free/css/all.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Ensure dark mode by default */
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    @apply bg-sim-bg text-sim-text;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-sim-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-sim-border rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-sim-muted;
+  }
+}
+
+@layer components {
+  /* Card component */
+  .card {
+    @apply bg-sim-surface rounded-lg border border-sim-border;
+  }
+
+  .card-header {
+    @apply px-6 py-4 border-b border-sim-border font-semibold;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  /* Button component */
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-sim-accent focus:ring-offset-2;
+    @apply focus:ring-offset-sim-bg;
+  }
+
+  .btn-primary {
+    @apply bg-sim-accent text-white hover:bg-blue-600;
+  }
+
+  .btn-secondary {
+    @apply bg-sim-surface text-sim-text border border-sim-border;
+    @apply hover:bg-sim-border;
+  }
+
+  /* Form inputs */
+  .input {
+    @apply bg-sim-bg border border-sim-border rounded-md px-3 py-2;
+    @apply focus:outline-none focus:ring-2 focus:ring-sim-accent;
+    @apply focus:border-transparent;
+  }
+}
+
+@layer utilities {
+  /* Animation utilities */
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}

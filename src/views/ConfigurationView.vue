@@ -65,8 +65,10 @@
       <!-- Main Content Area -->
       <div class="col-span-2 overflow-hidden">
         <DataTable
-          :items="filteredItems"
+          :items="isSpecializedFile ? specializedItems : filteredItems"
           :title="getTableTitle()"
+          :is-specialized="isSpecializedFile"
+          :specialized-columns="specializedColumns"
         />
       </div>
 
@@ -111,11 +113,37 @@ import type { DataFilter } from '@/types/game-data'
 
 const gameData = useGameDataStore()
 
+// Auto-load specialized data when component mounts
+onMounted(async () => {
+  if (gameData.stats.totalItems === 0 && !gameData.isLoading) {
+    await loadData()
+  }
+  // Load specialized data if not already loaded
+  await gameData.loadSpecializedData()
+})
+
 // State
 const selectedGameFeature = ref<string | null>(null)
 const selectedFile = ref<string | null>(null)
 const searchQuery = ref('')
 const additionalFilters = ref<any>({})
+
+// Specialized data handling
+const isSpecializedFile = computed(() => {
+  if (!selectedFile.value) return false
+  const fileMetadata = CSV_FILE_LIST.find(f => f.filename === selectedFile.value)
+  return fileMetadata ? !fileMetadata.hasUnifiedSchema : false
+})
+
+const specializedItems = computed(() => {
+  if (!selectedFile.value || !isSpecializedFile.value) return []
+  return gameData.getSpecializedDataByFile(selectedFile.value)
+})
+
+const specializedColumns = computed(() => {
+  if (!selectedFile.value || !isSpecializedFile.value) return []
+  return gameData.getSpecializedDataColumns(selectedFile.value)
+})
 
 // Computed
 const availableFiles = computed(() => 
@@ -211,7 +239,10 @@ const getTableTitle = () => {
     const fileMetadata = CSV_FILE_LIST.find(f => f.filename === selectedFile.value)
     const fileName = fileMetadata?.displayName || selectedFile.value
     const categoryBadge = fileMetadata ? `(${fileMetadata.category})` : ''
-    return `${selectedGameFeature.value} - ${fileName} ${categoryBadge}`
+    const itemCount = isSpecializedFile.value 
+      ? specializedItems.value.length 
+      : filteredItems.value.length
+    return `${selectedGameFeature.value} - ${fileName} ${categoryBadge} (${itemCount} items)`
   }
   if (selectedGameFeature.value) {
     return selectedGameFeature.value
@@ -225,14 +256,11 @@ const getTableTitle = () => {
 // Methods
 const loadData = async () => {
   await gameData.loadGameData()
+  await gameData.loadSpecializedData()
 }
 
 // Auto-load data on mount if not already loaded
-onMounted(() => {
-  if (gameData.stats.totalItems === 0 && !gameData.isLoading) {
-    loadData()
-  }
-})
+// Remove old onMounted since we added a new one above
 </script>
 
 <style scoped>

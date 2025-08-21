@@ -6,8 +6,8 @@ import type {
   ValidationIssue, 
   DataFilter 
 } from '@/types/game-data'
-import type { CSVLoadProgress } from '@/utils/csvLoader'
-import { loadAllCSVFiles, calculateDataMemoryUsage } from '@/utils/csvLoader'
+import type { CSVLoadProgress, SpecializedCSVResult } from '@/utils/csvLoader'
+import { loadAllCSVFiles, loadAllSpecializedCSVFiles, calculateDataMemoryUsage } from '@/utils/csvLoader'
 import { CSV_FILE_LIST } from '@/types/csv-data'
 
 export const useGameDataStore = defineStore('gameData', () => {
@@ -18,6 +18,11 @@ export const useGameDataStore = defineStore('gameData', () => {
   const loadErrors = ref<string[]>([])
   const validationIssues = ref<ValidationIssue[]>([])
   const lastLoadTime = ref<Date | null>(null)
+
+  // Specialized data for files that don't conform to unified schema
+  const specializedData = ref<Record<string, Record<string, any>[]>>({})
+  const specializedLoadErrors = ref<Record<string, string>>({})
+  const specializedRowCounts = ref<Record<string, number>>({})
 
   // Computed getters
   const stats = computed((): GameDataStats => {
@@ -210,6 +215,39 @@ export const useGameDataStore = defineStore('gameData', () => {
     }
   }
 
+  // Load specialized data - separate action for loading specialized files
+  const loadSpecializedData = async () => {
+    try {
+      console.log('🔄 Loading specialized data files...')
+      const specializedResults = await loadAllSpecializedCSVFiles()
+
+      // Process specialized results
+      const newSpecializedData: Record<string, Record<string, any>[]> = {}
+      const newSpecializedErrors: Record<string, string> = {}
+      const newSpecializedRowCounts: Record<string, number> = {}
+      
+      specializedResults.forEach(result => {
+        if (result.success) {
+          newSpecializedData[result.filename] = result.data
+          newSpecializedRowCounts[result.filename] = result.rowCount
+          console.log(`✅ Loaded specialized file: ${result.filename} (${result.rowCount} rows)`)
+        } else {
+          newSpecializedErrors[result.filename] = result.error || 'Unknown error'
+          console.error(`❌ Failed to load specialized file: ${result.filename}`, result.error)
+        }
+      })
+      
+      // Update specialized data state
+      specializedData.value = newSpecializedData
+      specializedLoadErrors.value = newSpecializedErrors
+      specializedRowCounts.value = newSpecializedRowCounts
+
+      console.log(`✅ Loaded ${Object.keys(newSpecializedData).length} specialized files`)
+    } catch (error) {
+      console.error('❌ Failed to load specialized data:', error)
+    }
+  }
+
   const validateData = async () => {
     const issues: ValidationIssue[] = []
     const itemIds = new Set(items.value.map(item => item.id))
@@ -389,8 +427,18 @@ export const useGameDataStore = defineStore('gameData', () => {
     getItemsByIds,
     getFilteredItems,
 
+    // Specialized data getters
+    getSpecializedDataByFile: (filename: string) => specializedData.value[filename] || [],
+    getSpecializedDataColumns: (filename: string) => {
+      const data = specializedData.value[filename]
+      if (!data || data.length === 0) return []
+      return Object.keys(data[0]).filter(key => key.trim() !== '')
+    },
+    getSpecializedRowCount: (filename: string) => specializedRowCounts.value[filename] || 0,
+
     // Actions
     loadGameData,
+    loadSpecializedData,
     validateData,
     clearData,
 

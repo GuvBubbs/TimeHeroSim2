@@ -183,8 +183,14 @@ interface NodeRenderer {
         
         {/* Edit button (hidden until hover) */}
         <g class="edit-button" opacity="0">
-          <circle cx={nodeWidth(node) - 5} cy={5} r={8} fill="#4f46e5"/>
-          <text x={nodeWidth(node) - 5} y={8} text-anchor="middle" fill="white" font-size="10">✎</text>
+          <circle cx={nodeWidth(node) - 15} cy={5} r={8} fill="#4f46e5"/>
+          <text x={nodeWidth(node) - 15} y={8} text-anchor="middle" fill="white" font-size="10">✎</text>
+        </g>
+        
+        {/* Connection button (hidden until hover) */}
+        <g class="connection-button" opacity="0">
+          <circle cx={nodeWidth(node) - 35} cy={5} r={8} fill="#10b981"/>
+          <text x={nodeWidth(node) - 35} y={8} text-anchor="middle" fill="white" font-size="10">◈</text>
         </g>
       </g>
     );
@@ -263,14 +269,26 @@ interface NodeInteraction {
   selectedNode: UpgradeNode | null;
   hoveredNode: UpgradeNode | null;
   focusedChain: Set<string>; // Highlighted prerequisite chain
+  familyTreeMode: boolean; // Whether showing only connected nodes
+  familyTreeRoot: string | null; // Root node ID for family tree view
   
   onNodeClick(node: UpgradeNode) {
     if (this.selectedNode === node) {
-      this.showEditModal(node);
+      this.showNodeDetails(node);
     } else {
       this.selectedNode = node;
       this.highlightDependencyChain(node);
     }
+  }
+  
+  onEditButtonClick(node: UpgradeNode, event: MouseEvent) {
+    event.stopPropagation();
+    this.showEditModal(node);
+  }
+  
+  onConnectionButtonClick(node: UpgradeNode, event: MouseEvent) {
+    event.stopPropagation();
+    this.toggleFamilyTreeView(node);
   }
   
   onNodeHover(node: UpgradeNode) {
@@ -298,10 +316,153 @@ interface NodeInteraction {
     addPrereqs(node.id);
     addUnlocks(node.id);
   }
+  
+  toggleFamilyTreeView(node: UpgradeNode) {
+    if (this.familyTreeMode && this.familyTreeRoot === node.id) {
+      // Toggle off - show all nodes again
+      this.familyTreeMode = false;
+      this.familyTreeRoot = null;
+      this.focusedChain.clear();
+    } else {
+      // Toggle on - show only connected nodes
+      this.familyTreeMode = true;
+      this.familyTreeRoot = node.id;
+      this.buildFamilyTree(node);
+    }
+  }
+  
+  buildFamilyTree(node: UpgradeNode) {
+    this.focusedChain.clear();
+    
+    // Get all connected nodes (prerequisites and unlocks, recursively)
+    const visited = new Set<string>();
+    
+    const traverse = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      this.focusedChain.add(id);
+      
+      const n = this.nodes.get(id);
+      if (n) {
+        n.prerequisites.forEach(prereq => traverse(prereq));
+        n.unlocks.forEach(unlock => traverse(unlock));
+      }
+    };
+    
+    traverse(node.id);
+  }
 }
 ```
 
-#### 2. Node Edit Modal
+#### 2. Node Details Modal
+
+When clicking the **Edit button** on a node, a comprehensive details modal opens showing all available data about the upgrade.
+
+```typescript
+interface NodeDetailsModal {
+  node: UpgradeNode;
+  mode: 'view' | 'edit';
+  
+  // Displayed data
+  displayData: {
+    // Basic Information
+    id: string;
+    name: string;
+    category: NodeCategory;
+    source: string;
+    tier: number;
+    
+    // Full Cost Breakdown
+    costs: {
+      gold?: number;
+      energy?: number;
+      materials?: Record<string, number>;
+      time?: number;
+    };
+    
+    // Effects & Bonuses
+    effects: {
+      description: string;
+      modifiers?: Record<string, number>;
+      unlocks?: string[];
+    };
+    
+    // Prerequisites
+    prerequisites: {
+      required: string[];
+      met: string[];
+      unmet: string[];
+    };
+    
+    // Progression Analysis
+    analysis: {
+      timeToAfford: number; // minutes at current rate
+      bottlenecks: string[];
+      alternativePaths: string[];
+      importance: 'critical' | 'important' | 'optional';
+    };
+    
+    // Metadata
+    metadata: {
+      addedInVersion?: string;
+      lastModified?: Date;
+      notes?: string;
+      tags?: string[];
+    };
+  };
+  
+  // Edit capabilities (when in edit mode)
+  editableFields?: {
+    name: string;
+    goldCost: number;
+    energyCost: number;
+    materials: { type: string; amount: number; }[];
+    prerequisites: string[];
+    effects: string;
+    tier: number;
+  };
+}
+```
+
+**Modal Layout**:
+```
+┌─────────────────────────────────────────────────┐
+│  [View/Edit Toggle]    Storage Shed II     [X]  │
+├─────────────────────────────────────────────────┤
+│ ┌─────────────┬─────────────────────────────┐   │
+│ │ BASIC INFO  │ COSTS                       │   │
+│ ├─────────────┼─────────────────────────────┤   │
+│ │ ID:         │ Gold:    100                │   │
+│ │ shed_2      │ Energy:  50                 │   │
+│ │             │ Materials:                  │   │
+│ │ Category:   │   Stone x5                  │   │
+│ │ Storage     │   Wood x10                 │   │
+│ │             │                             │   │
+│ │ Source:     │ Time to Afford: 5.2 min    │   │
+│ │ Agronomist  │ (at current rates)          │   │
+│ │             │                             │   │
+│ │ Tier:       ├─────────────────────────────┤   │
+│ │ Early Game  │ EFFECTS & BONUSES           │   │
+│ │             ├─────────────────────────────┤   │
+│ ├─────────────┤ • Energy cap 150→500        │   │
+│ │PREREQUISITES│ • Unlocks: shed_3           │   │
+│ ├─────────────┤ • Enables: Early automation │   │
+│ │ ✓ shed_1    │                             │   │
+│ │ ✓ farm_2    ├─────────────────────────────┤   │
+│ │             │ ANALYSIS                    │   │
+│ ├─────────────┼─────────────────────────────┤   │
+│ │ METADATA    │ Importance: Critical        │   │
+│ ├─────────────┤ Bottlenecks: None           │   │
+│ │ Added: v1.0 │ Alt Paths: None             │   │
+│ │ Modified:   │                             │   │
+│ │ 2024-01-15  │ Part of main progression    │   │
+│ └─────────────┴─────────────────────────────┘   │
+│                                                  │
+│ [Copy ID] [Export JSON] [Cancel] [Save Changes] │
+└─────────────────────────────────────────────────┘
+```
+
+#### 3. Node Edit Modal
 ```typescript
 interface NodeEditModal {
   node: UpgradeNode;
@@ -357,7 +518,89 @@ interface NodeEditModal {
 └─────────────────────────────────────────┘
 ```
 
-#### 3. Pan & Zoom Controls
+#### 4. Connection Filter View
+
+When clicking the **Connection button** on a node, the graph filters to show only nodes in the selected node's family tree.
+
+```typescript
+interface ConnectionFilterView {
+  active: boolean;
+  rootNode: string;
+  connectedNodes: Set<string>;
+  
+  // Visual indicators
+  showBreadcrumb: boolean; // "Showing connections for: [Node Name]"
+  exitButton: boolean; // "Show All Nodes" button
+  
+  // Animation
+  transitionDuration: 300; // ms
+  fadeOutHidden: boolean; // Fade non-connected nodes before hiding
+  
+  methods: {
+    enterConnectionView(node: UpgradeNode) {
+      // Hide all nodes except connected family
+      this.active = true;
+      this.rootNode = node.id;
+      this.connectedNodes = this.getConnectedNodes(node);
+      
+      // Animate transition
+      this.fadeOutUnconnected();
+      setTimeout(() => {
+        this.hideUnconnected();
+        this.recenterGraph();
+      }, this.transitionDuration);
+    }
+    
+    exitConnectionView() {
+      // Show all nodes again
+      this.active = false;
+      this.showAllNodes();
+      this.rootNode = null;
+      this.connectedNodes.clear();
+    }
+    
+    getConnectedNodes(node: UpgradeNode): Set<string> {
+      const connected = new Set<string>();
+      const visited = new Set<string>();
+      
+      // Traverse all connections bidirectionally
+      const traverse = (id: string) => {
+        if (visited.has(id)) return;
+        visited.add(id);
+        connected.add(id);
+        
+        const n = this.nodes.get(id);
+        if (n) {
+          // Add prerequisites
+          n.prerequisites.forEach(prereq => traverse(prereq));
+          // Add unlocks
+          n.unlocks.forEach(unlock => traverse(unlock));
+          // Add nodes that require this one
+          this.nodes.forEach(other => {
+            if (other.prerequisites.includes(id)) {
+              traverse(other.id);
+            }
+          });
+        }
+      };
+      
+      traverse(node.id);
+      return connected;
+    }
+  }
+}
+```
+
+**Connection View UI**:
+```
+┌─────────────────────────────────────────────────────┐
+│ 🔗 Showing connections for: Storage Shed II         │
+│ Connected nodes: 12 | Hidden nodes: 88             │
+│                              [Show All Nodes]       │
+└─────────────────────────────────────────────────────┘
+```
+
+#### 5. Pan & Zoom Controls
 ```typescript
 interface ViewportControls {
   scale: number; // 0.25 to 2.0
@@ -555,7 +798,9 @@ export const useTreeStore = defineStore('upgradeTree', {
     selection: {
       selectedNode: null as UpgradeNode | null,
       focusedChain: new Set<string>(),
-      hoveredNode: null as UpgradeNode | null
+      hoveredNode: null as UpgradeNode | null,
+      familyTreeMode: false,
+      familyTreeRoot: null as string | null
     },
     
     filters: {
@@ -576,10 +821,17 @@ export const useTreeStore = defineStore('upgradeTree', {
         state.filters
       );
       
-      if (state.selection.focusedChain.size > 0) {
+      // Family tree mode takes precedence
+      if (state.selection.familyTreeMode && state.selection.focusedChain.size > 0) {
         return filtered.filter(n => 
           state.selection.focusedChain.has(n.id)
         );
+      }
+      
+      // Regular focused chain highlighting
+      if (!state.selection.familyTreeMode && state.selection.focusedChain.size > 0) {
+        // In non-family-tree mode, we highlight but don't hide
+        return filtered;
       }
       
       return filtered;
@@ -757,13 +1009,6 @@ async function exportAsImage(format: 'png' | 'svg'): Promise<Blob> {
 - Render 500+ nodes at 60fps
 - Smooth zoom from 0.25x to 2x
 - Filter response <100ms
-
-### Future Enhancements
-1. **Auto-Layout**: Force-directed graph layout option
-2. **Diff Mode**: Compare two configurations
-3. **Simulation Integration**: Show live progression through tree
-4. **Recommendations**: AI-suggested balance improvements
-5. **3D Mode**: WebGL-powered 3D graph visualization
 
 ### Conclusion
 The Upgrade Tree visualization transforms complex dependency data into an intuitive, interactive graph that reveals the hidden structure of game progression. Its powerful analysis tools and visual clarity make it indispensable for identifying and resolving balance issues in the upgrade economy.

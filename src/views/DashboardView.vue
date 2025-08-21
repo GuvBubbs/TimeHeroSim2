@@ -294,9 +294,10 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-const loadData = async () => {
-  await gameData.loadGameData()
-}
+  const loadData = async () => {
+    await gameData.loadGameData()
+    await gameData.loadSpecializedData()
+  }
 
 const validateData = async () => {
   await gameData.validateData()

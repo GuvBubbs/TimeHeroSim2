@@ -272,3 +272,83 @@ export function calculateDataMemoryUsage(items: GameDataItem[]): number {
   const jsonStr = JSON.stringify(items)
   return jsonStr.length * 2 // bytes
 }
+
+// Specialized CSV loading for files that don't conform to the unified GameDataItem schema
+export interface SpecializedCSVResult {
+  success: boolean
+  filename: string
+  data: Record<string, any>[]
+  error?: string
+  rowCount: number
+}
+
+export async function loadSpecializedCSVFile(fileMetadata: CSVFileMetadata): Promise<SpecializedCSVResult> {
+  try {
+    // Determine the full path based on category
+    const basePath = '/TimeHeroSim2/Data/'
+    const fullPath = `${basePath}${fileMetadata.category}/${fileMetadata.filename}`
+    
+    // Fetch the CSV file
+    const response = await fetch(fullPath)
+    if (!response.ok) {
+      return {
+        success: false,
+        filename: fileMetadata.filename,
+        data: [],
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        rowCount: 0
+      }
+    }
+    
+    const csvText = await response.text()
+    
+    // Parse CSV with PapaParse
+    const parseResult = Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header: string) => header.trim(),
+      transform: (value: string) => value.trim()
+    })
+    
+    if (parseResult.errors.length > 0) {
+      console.warn(`Parse warnings for ${fileMetadata.filename}:`, parseResult.errors)
+    }
+    
+    const rawData = parseResult.data as Record<string, any>[]
+    
+    // Filter out completely empty rows and clean up data
+    const cleanData = rawData.filter(row => {
+      const hasData = Object.values(row).some(value => 
+        value !== null && value !== undefined && String(value).trim() !== ''
+      )
+      return hasData
+    })
+    
+    return {
+      success: true,
+      filename: fileMetadata.filename,
+      data: cleanData,
+      rowCount: cleanData.length
+    }
+  } catch (error) {
+    return {
+      success: false,
+      filename: fileMetadata.filename,
+      data: [],
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      rowCount: 0
+    }
+  }
+}
+
+export async function loadAllSpecializedCSVFiles(): Promise<SpecializedCSVResult[]> {
+  const specializedFiles = CSV_FILE_LIST.filter(file => !file.hasUnifiedSchema)
+  const results: SpecializedCSVResult[] = []
+  
+  for (const fileMetadata of specializedFiles) {
+    const result = await loadSpecializedCSVFile(fileMetadata)
+    results.push(result)
+  }
+  
+  return results
+}

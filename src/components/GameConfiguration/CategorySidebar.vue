@@ -121,6 +121,7 @@
 import { computed, ref, watch } from 'vue'
 import { CSV_FILE_LIST } from '@/types/csv-data'
 import type { GameDataItem } from '@/types/game-data'
+import { useGameDataStore } from '@/stores/gameData'
 
 interface Props {
   itemsByGameFeature: Record<string, GameDataItem[]>
@@ -138,6 +139,7 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const gameData = useGameDataStore()
 
 // State for expanded features
 const expandedFeatures = ref<string[]>([])
@@ -182,11 +184,17 @@ const getFilesForGameFeature = (gameFeature: string) => {
 }
 
 const getItemCountForFile = (filename: string) => {
-  // Find which game feature this file belongs to
-  const file = CSV_FILE_LIST.find(f => f.filename === filename)
-  if (!file) return 0
+  // Check if this is a specialized file
+  const fileMetadata = CSV_FILE_LIST.find(f => f.filename === filename)
+  if (!fileMetadata) return 0
   
-  const items = props.itemsByGameFeature[file.gameFeature] || []
+  if (!fileMetadata.hasUnifiedSchema) {
+    // For specialized files, get count from store's specialized data
+    return gameData.getSpecializedRowCount(filename)
+  }
+  
+  // For unified files, count items normally
+  const items = props.itemsByGameFeature[fileMetadata.gameFeature] || []
   return items.filter(item => item.sourceFile === filename).length
 }
 

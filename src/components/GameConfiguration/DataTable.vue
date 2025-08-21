@@ -179,15 +179,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, defineComponent, h } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, defineComponent, h } from 'vue'
 import type { GameDataItem } from '@/types/game-data'
 
 interface Props {
-  items: GameDataItem[]
+  items: GameDataItem[] | Record<string, any>[]
   title: string
+  isSpecialized?: boolean
+  specializedColumns?: string[]
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isSpecialized: false,
+  specializedColumns: () => []
+})
 
 // State
 const viewMode = ref<'table' | 'grid'>('table')
@@ -198,26 +203,48 @@ const sortField = ref<string>('')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 // Column configuration
-const availableColumns = [
-  { key: 'id', label: 'ID' },
-  { key: 'name', label: 'Name' },
-  { key: 'type', label: 'Type' },
-  { key: 'level', label: 'Level' },
-  { key: 'goldCost', label: 'Gold Cost' },
-  { key: 'energyCost', label: 'Energy Cost' },
-  { key: 'time', label: 'Time' },
-  { key: 'prerequisites', label: 'Prerequisites' },
-  { key: 'materialsCost', label: 'Materials Cost' },
-  { key: 'damage', label: 'Damage' },
-  { key: 'attackSpeed', label: 'Attack Speed' },
-  { key: 'sourceFile', label: 'Source File' },
-  { key: 'notes', label: 'Notes' }
-]
+const availableColumns = computed(() => {
+  if (props.isSpecialized && props.specializedColumns.length > 0) {
+    // For specialized data, use dynamic columns
+    return props.specializedColumns.map(col => ({
+      key: col,
+      label: col.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    }))
+  }
+  
+  // Standard columns for unified data
+  return [
+    { key: 'id', label: 'ID' },
+    { key: 'name', label: 'Name' },
+    { key: 'type', label: 'Type' },
+    { key: 'level', label: 'Level' },
+    { key: 'goldCost', label: 'Gold Cost' },
+    { key: 'energyCost', label: 'Energy Cost' },
+    { key: 'time', label: 'Time' },
+    { key: 'prerequisites', label: 'Prerequisites' },
+    { key: 'materialsCost', label: 'Materials Cost' },
+    { key: 'damage', label: 'Damage' },
+    { key: 'attackSpeed', label: 'Attack Speed' },
+    { key: 'sourceFile', label: 'Source File' },
+    { key: 'notes', label: 'Notes' }
+  ]
+})
 
-const visibleColumns = ref(['id', 'name', 'type', 'level', 'goldCost', 'energyCost', 'prerequisites'])
+const visibleColumns = ref<string[]>([])
+
+// Initialize visible columns based on data type
+watch(() => [props.isSpecialized, props.specializedColumns], () => {
+  if (props.isSpecialized && props.specializedColumns.length > 0) {
+    // For specialized data, show all available columns initially
+    visibleColumns.value = props.specializedColumns.slice()
+  } else {
+    // For unified data, show default columns
+    visibleColumns.value = ['id', 'name', 'type', 'level', 'goldCost', 'energyCost', 'prerequisites']
+  }
+}, { immediate: true })
 
 const displayColumns = computed(() => 
-  availableColumns.filter(col => visibleColumns.value.includes(col.key))
+  availableColumns.value.filter(col => visibleColumns.value.includes(col.key))
 )
 
 // Sorting and pagination

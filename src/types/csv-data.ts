@@ -75,7 +75,7 @@ export const CSV_FILE_LIST: CSVFileMetadata[] = [
   
   // Combat (9 files)
   { filename: 'weapons.csv', category: 'Data', gameFeature: 'Combat', displayName: 'Weapons', description: 'Combat weapons and stats', hasUnifiedSchema: true },
-  { filename: 'xp_progression.csv', category: 'Data', gameFeature: 'Combat', displayName: 'XP Progression', description: 'Experience and level progression', hasUnifiedSchema: true },
+  { filename: 'xp_progression.csv', category: 'Data', gameFeature: 'Combat', displayName: 'XP Progression', description: 'Experience and level progression', hasUnifiedSchema: false },
   { filename: 'boss_materials.csv', category: 'Data', gameFeature: 'Combat', displayName: 'Boss Materials', description: 'Materials dropped by bosses', hasUnifiedSchema: false },
   { filename: 'armor_base.csv', category: 'Data', gameFeature: 'Combat', displayName: 'Armor Base', description: 'Base armor statistics', hasUnifiedSchema: false },
   { filename: 'armor_potential.csv', category: 'Data', gameFeature: 'Combat', displayName: 'Armor Potential', description: 'Armor upgrade potential', hasUnifiedSchema: false },

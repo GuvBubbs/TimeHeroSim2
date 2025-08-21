@@ -1,5 +1,5 @@
 <template>
-  <nav class="bg-sim-surface/50 border-b border-sim-border sticky top-0 z-40">
+  <nav class="bg-sim-surface border-b border-sim-border sticky top-0 z-40">
     <div class="container mx-auto px-4">
       <div class="flex space-x-1 overflow-x-auto">
         <RouterLink

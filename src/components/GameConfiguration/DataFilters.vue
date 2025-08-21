@@ -1,11 +1,11 @@
 <template>
   <div class="bg-sim-surface rounded-lg p-4">
-    <h3 class="text-lg font-semibold mb-4 text-sim-primary">Filters</h3>
+    <h3 class="text-lg font-semibold mb-4 text-sim-accent">Filters</h3>
     
     <div class="space-y-4">
       <!-- Level Range -->
       <div>
-        <label class="block text-sm font-medium text-sim-foreground mb-2">Level Range</label>
+        <label class="block text-sm font-medium text-sim-text mb-2">Level Range</label>
         <div class="grid grid-cols-2 gap-2">
           <div>
                     <input
@@ -15,7 +15,7 @@
           placeholder="Min"
           min="1"
           max="20"
-          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-background text-sim-foreground focus:outline-none focus:ring-2 focus:ring-sim-primary focus:border-transparent"
+          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-surface text-sim-text focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent"
         />
           </div>
           <div>
@@ -26,7 +26,7 @@
           placeholder="Max"
           min="1"
           max="20"
-          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-background text-sim-foreground focus:outline-none focus:ring-2 focus:ring-sim-primary focus:border-transparent"
+          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-surface text-sim-text focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent"
         />
           </div>
         </div>
@@ -34,7 +34,7 @@
 
       <!-- Cost Range -->
       <div>
-        <label class="block text-sm font-medium text-sim-foreground mb-2">Gold Cost Range</label>
+        <label class="block text-sm font-medium text-sim-text mb-2">Gold Cost Range</label>
         <div class="grid grid-cols-2 gap-2">
           <div>
                     <input
@@ -43,7 +43,7 @@
           type="number"
           placeholder="Min Gold"
           min="0"
-          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-background text-sim-foreground focus:outline-none focus:ring-2 focus:ring-sim-primary focus:border-transparent"
+          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-surface text-sim-text focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent"
         />
           </div>
           <div>
@@ -53,7 +53,7 @@
           type="number"
           placeholder="Max Gold"
           min="0"
-          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-background text-sim-foreground focus:outline-none focus:ring-2 focus:ring-sim-primary focus:border-transparent"
+          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-surface text-sim-text focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent"
         />
           </div>
         </div>
@@ -61,11 +61,11 @@
 
       <!-- Prerequisites -->
       <div>
-        <label class="block text-sm font-medium text-sim-foreground mb-2">Prerequisites</label>
+        <label class="block text-sm font-medium text-sim-text mb-2">Prerequisites</label>
         <select
           :value="localFilters.hasPrerequisites"
           @change="localFilters.hasPrerequisites = ($event.target as HTMLSelectElement).value === 'true' ? true : ($event.target as HTMLSelectElement).value === 'false' ? false : undefined"
-          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-background text-sim-foreground focus:outline-none focus:ring-2 focus:ring-sim-primary focus:border-transparent"
+          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-surface text-sim-text focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent"
         >
           <option :value="undefined">All Items</option>
           <option :value="true">Has Prerequisites</option>
@@ -75,11 +75,11 @@
 
       <!-- Source File -->
       <div v-if="availableFiles.length > 0">
-        <label class="block text-sm font-medium text-sim-foreground mb-2">Source File</label>
+        <label class="block text-sm font-medium text-sim-text mb-2">Source File</label>
         <select
           :value="localFilters.sourceFile"
           @change="localFilters.sourceFile = ($event.target as HTMLSelectElement).value"
-          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-background text-sim-foreground focus:outline-none focus:ring-2 focus:ring-sim-primary focus:border-transparent"
+          class="w-full px-3 py-2 border border-sim-border rounded-md bg-sim-surface text-sim-text focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent"
         >
           <option value="">All Files</option>
           <option v-for="file in availableFiles" :key="file" :value="file">
@@ -90,14 +90,14 @@
 
       <!-- Has Costs -->
       <div>
-        <label class="block text-sm font-medium text-sim-foreground mb-2">Item Properties</label>
+        <label class="block text-sm font-medium text-sim-text mb-2">Item Properties</label>
         <div class="space-y-2">
           <label class="flex items-center text-sm">
             <input
               :checked="localFilters.hasGoldCost"
               @change="localFilters.hasGoldCost = ($event.target as HTMLInputElement).checked"
               type="checkbox"
-              class="mr-2 rounded border-sim-border text-sim-primary focus:ring-sim-primary"
+              class="mr-2 rounded border-sim-border text-sim-accent focus:ring-sim-accent"
             />
             Has Gold Cost
           </label>
@@ -106,7 +106,7 @@
               :checked="localFilters.hasEnergyCost"
               @change="localFilters.hasEnergyCost = ($event.target as HTMLInputElement).checked"
               type="checkbox"
-              class="mr-2 rounded border-sim-border text-sim-primary focus:ring-sim-primary"
+              class="mr-2 rounded border-sim-border text-sim-accent focus:ring-sim-accent"
             />
             Has Energy Cost
           </label>
@@ -115,7 +115,7 @@
               :checked="localFilters.hasMaterialsCost"
               @change="localFilters.hasMaterialsCost = ($event.target as HTMLInputElement).checked"
               type="checkbox"
-              class="mr-2 rounded border-sim-border text-sim-primary focus:ring-sim-primary"
+              class="mr-2 rounded border-sim-border text-sim-accent focus:ring-sim-accent"
             />
             Has Materials Cost
           </label>
@@ -124,7 +124,7 @@
               :checked="localFilters.isRepeatable"
               @change="localFilters.isRepeatable = ($event.target as HTMLInputElement).checked"
               type="checkbox"
-              class="mr-2 rounded border-sim-border text-sim-primary focus:ring-sim-primary"
+              class="mr-2 rounded border-sim-border text-sim-accent focus:ring-sim-accent"
             />
             Is Repeatable
           </label>
@@ -136,14 +136,14 @@
     <div class="mt-6 pt-4 border-t border-sim-border flex space-x-2">
       <button
         @click="applyFilters"
-        class="flex-1 px-4 py-2 bg-sim-primary text-white rounded-md hover:bg-sim-primary-dark transition-colors"
+        class="flex-1 px-4 py-2 bg-sim-accent text-white rounded-md hover:bg-blue-600 transition-colors"
       >
         <i class="fas fa-filter mr-2"></i>
         Apply Filters
       </button>
       <button
         @click="clearFilters"
-        class="px-4 py-2 border border-sim-border rounded-md hover:bg-sim-muted hover:bg-opacity-10 transition-colors"
+        class="px-4 py-2 border border-sim-border rounded-md hover:bg-slate-800 transition-colors"
       >
         <i class="fas fa-times mr-2"></i>
         Clear
@@ -152,7 +152,7 @@
 
     <!-- Active Filters Summary -->
     <div v-if="hasActiveFilters" class="mt-4 pt-4 border-t border-sim-border">
-      <div class="text-sm font-medium text-sim-foreground mb-2">Active Filters:</div>
+      <div class="text-sm font-medium text-sim-text mb-2">Active Filters:</div>
       <div class="space-y-1 text-xs text-sim-muted">
         <div v-if="appliedFilters.minLevel || appliedFilters.maxLevel">
           Level: {{ appliedFilters.minLevel || 'Any' }} - {{ appliedFilters.maxLevel || 'Any' }}

@@ -19,7 +19,7 @@
         </div>
         <div class="card-body">
           <div v-if="gameData.isLoading" class="text-center py-8">
-            <i class="fas fa-spinner fa-spin text-4xl text-sim-primary mb-2"></i>
+            <i class="fas fa-spinner fa-spin text-4xl text-sim-accent mb-2"></i>
             <p class="text-sim-muted">Loading game data...</p>
             <div v-if="gameData.loadProgress" class="mt-2">
               <div class="text-xs text-sim-muted">
@@ -27,7 +27,7 @@
               </div>
               <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
                 <div 
-                  class="bg-sim-primary h-1 rounded-full transition-all duration-300"
+                  class="bg-sim-accent h-1 rounded-full transition-all duration-300"
                   :style="{ width: `${(gameData.loadProgress.loaded / gameData.loadProgress.total) * 100}%` }"
                 ></div>
               </div>
@@ -50,7 +50,7 @@
                 <div class="text-xs text-sim-muted">Items Loaded</div>
               </div>
               <div class="text-center">
-                <div class="text-2xl font-bold text-sim-primary">{{ Object.keys(gameData.stats.itemsByFile).length }}</div>
+                <div class="text-2xl font-bold text-sim-accent">{{ Object.keys(gameData.stats.itemsByFile).length }}</div>
                 <div class="text-xs text-sim-muted">Item Files</div>
               </div>
               <div class="text-center">
@@ -69,7 +69,7 @@
             <p class="text-sim-muted">No data loaded</p>
             <button 
               @click="loadData" 
-              class="mt-2 px-4 py-2 bg-sim-primary text-white rounded hover:bg-sim-primary-dark transition-colors"
+              class="mt-2 px-4 py-2 bg-sim-accent text-white rounded hover:bg-blue-600 transition-colors"
             >
               Load Game Data
             </button>
@@ -88,7 +88,7 @@
             <button 
               @click="loadData"
               :disabled="gameData.isLoading"
-              class="w-full px-3 py-2 bg-sim-primary text-white rounded hover:bg-sim-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="w-full px-3 py-2 bg-sim-accent text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <i class="fas fa-sync mr-2"></i>
               {{ gameData.isLoading ? 'Loading...' : 'Reload Data' }}
@@ -152,10 +152,82 @@
                 <span class="text-sim-warning font-bold">{{ warningCount }}</span>
               </div>
               
+              <!-- Validation Error Details -->
+              <div v-if="totalIssues > 0" class="mt-2 text-xs">
+                <details>
+                  <summary class="cursor-pointer text-sim-muted hover:text-sim-text">
+                    View {{ totalIssues }} validation issue(s)
+                  </summary>
+                  <div class="mt-2 space-y-1">
+                    <div 
+                      v-for="issue in gameData.validationIssues" 
+                      :key="issue.id"
+                      class="p-2 rounded text-xs"
+                      :class="{
+                        'bg-red-800/20 text-red-300 border border-red-600/30': issue.level === 'error',
+                        'bg-amber-800/20 text-amber-300 border border-amber-600/30': issue.level === 'warning',
+                        'bg-blue-800/20 text-blue-300 border border-blue-600/30': issue.level === 'info'
+                      }"
+                    >
+                      <div class="font-medium">{{ issue.level.toUpperCase() }}</div>
+                      <div>{{ issue.message }}</div>
+                      <div v-if="issue.sourceFile" class="text-xs opacity-75 mt-1">
+                        File: {{ issue.sourceFile }}
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+              
               <!-- Unified Schema Files -->
               <div class="flex justify-between items-center text-sm">
                 <span class="text-sim-muted">Item Files</span>
                 <span class="font-bold">{{ Object.keys(gameData.stats.itemsByFile).length }}/{{ expectedFileCount }}</span>
+              </div>
+              
+              <!-- Debug info for file counting -->
+              <div v-if="Object.keys(gameData.stats.itemsByFile).length !== expectedFileCount" class="text-xs text-sim-error mt-1">
+                <details>
+                  <summary>File count mismatch (click to debug)</summary>
+                  <div class="mt-1 text-xs">
+                    <p>Expected: {{ expectedFileCount }}</p>
+                    <p>Actual: {{ Object.keys(gameData.stats.itemsByFile).length }}</p>
+                    
+                    <!-- Show which files should be loaded -->
+                    <div class="mt-2">
+                      <p class="font-medium">Expected unified schema files:</p>
+                      <ul class="ml-2 text-green-400">
+                        <li v-for="expectedFile in expectedUnifiedFiles" :key="expectedFile">{{ expectedFile }}</li>
+                      </ul>
+                    </div>
+
+                    <!-- Show which files are actually loaded -->
+                    <div class="mt-2">
+                      <p class="font-medium">Actually loaded files:</p>
+                      <ul class="ml-2">
+                        <li 
+                          v-for="file in Object.keys(gameData.stats.itemsByFile)" 
+                          :key="file"
+                          :class="{
+                            'text-green-400': expectedUnifiedFiles.includes(file),
+                            'text-red-400 font-bold': !expectedUnifiedFiles.includes(file)
+                          }"
+                        >
+                          {{ file }} 
+                          <span v-if="!expectedUnifiedFiles.includes(file)" class="text-red-300">← EXTRA FILE</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <!-- Show missing files if any -->
+                    <div v-if="missingFiles.length > 0" class="mt-2">
+                      <p class="font-medium text-red-400">Missing files:</p>
+                      <ul class="ml-2 text-red-400">
+                        <li v-for="missingFile in missingFiles" :key="missingFile">{{ missingFile }}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </details>
               </div>
               
               <div class="w-full bg-gray-200 rounded-full h-2">
@@ -239,6 +311,16 @@ const specializedFilesCount = computed(() => {
   // For specialized files, we just count that they exist (since they always load successfully)
   // In a real implementation, you might want to track their actual loading status
   return totalSpecializedFiles
+})
+
+// Debug helpers for file count mismatch
+const expectedUnifiedFiles = computed(() => {
+  return UNIFIED_SCHEMA_FILES.map(file => file.filename).sort()
+})
+
+const missingFiles = computed(() => {
+  const actualFiles = Object.keys(gameData.stats.itemsByFile)
+  return expectedUnifiedFiles.value.filter(file => !actualFiles.includes(file))
 })
 
 const unifiedSchemaScore = computed(() => {

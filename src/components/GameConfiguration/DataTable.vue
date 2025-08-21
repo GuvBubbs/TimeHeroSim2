@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-sim-background rounded-lg border border-sim-border overflow-hidden flex flex-col h-full">
+  <div class="bg-sim-surface rounded-lg border border-sim-border overflow-hidden flex flex-col h-full">
     <!-- Table Header -->
     <div class="bg-sim-surface px-4 py-3 border-b border-sim-border">
       <div class="flex items-center justify-between">
@@ -15,8 +15,8 @@
               :class="[
                 'px-3 py-1.5 text-sm transition-colors',
                 viewMode === 'table' 
-                  ? 'bg-sim-primary text-white' 
-                  : 'hover:bg-sim-muted hover:bg-opacity-10'
+                  ? 'bg-sim-accent text-white' 
+                  : 'hover:bg-slate-800'
               ]"
             >
               <i class="fas fa-table mr-1"></i>
@@ -27,8 +27,8 @@
               :class="[
                 'px-3 py-1.5 text-sm border-l border-sim-border transition-colors',
                 viewMode === 'grid' 
-                  ? 'bg-sim-primary text-white' 
-                  : 'hover:bg-sim-muted hover:bg-opacity-10'
+                  ? 'bg-sim-accent text-white' 
+                  : 'hover:bg-slate-800'
               ]"
             >
               <i class="fas fa-th-large mr-1"></i>
@@ -40,16 +40,16 @@
           <div class="relative">
             <button
               @click="showColumnSelector = !showColumnSelector"
-              class="px-3 py-1.5 text-sm border border-sim-border rounded-md hover:bg-sim-muted hover:bg-opacity-10 transition-colors"
+              class="px-3 py-1.5 text-sm border border-sim-border rounded-md hover:bg-slate-800 transition-colors"
             >
               <i class="fas fa-columns mr-1"></i>
               Columns
             </button>
             <div v-if="showColumnSelector" class="absolute right-0 top-full mt-1 bg-sim-surface border border-sim-border rounded-lg shadow-lg z-10 w-64">
               <div class="p-3">
-                <h4 class="font-medium mb-2 text-sim-foreground">Show Columns</h4>
+                <h4 class="font-medium mb-2 text-sim-text">Show Columns</h4>
                 <div class="space-y-1 max-h-64 overflow-y-auto">
-                  <label v-for="column in availableColumns" :key="column.key" class="flex items-center text-sm text-sim-foreground">
+                  <label v-for="column in availableColumns" :key="column.key" class="flex items-center text-sm text-sim-text">
                     <input
                       type="checkbox"
                       :checked="visibleColumns.includes(column.key)"
@@ -75,7 +75,7 @@
               <th
                 v-for="column in displayColumns"
                 :key="column.key"
-                class="px-4 py-3 text-left text-xs font-medium text-sim-muted uppercase tracking-wider cursor-pointer hover:bg-sim-muted hover:bg-opacity-10 transition-colors"
+                class="px-4 py-3 text-left text-xs font-medium text-sim-muted uppercase tracking-wider cursor-pointer hover:bg-slate-800 transition-colors"
                 @click="handleSort(column.key)"
               >
                 <div class="flex items-center space-x-1">
@@ -97,15 +97,17 @@
             <tr
               v-for="item in paginatedItems"
               :key="item.id"
-              class="hover:bg-sim-muted hover:bg-opacity-5 transition-colors"
+              class="table-row-hover"
+              @click="emit('edit-item', item)"
+              title="Click to edit this item"
             >
               <td
                 v-for="column in displayColumns"
                 :key="column.key"
-                class="px-4 py-3 whitespace-nowrap text-sm text-sim-foreground"
+                class="px-4 py-3 whitespace-nowrap text-sm text-sim-text"
               >
                 <component
-                  :is="getCellComponent(column.key)"
+                  :is="getCellDisplayComponent(column.key)"
                   :item="item"
                   :field="column.key"
                   :value="getFieldValue(item, column.key)"
@@ -122,16 +124,18 @@
           <div
             v-for="item in paginatedItems"
             :key="item.id"
-            class="bg-sim-surface border border-sim-border rounded-lg p-4 hover:shadow-md transition-shadow"
+            class="bg-sim-surface border border-sim-border rounded-lg p-4 card-hover"
+            @click="emit('edit-item', item)"
+            title="Click to edit this item"
           >
             <div class="space-y-2">
               <div class="font-medium">{{ item.name }}</div>
               <div class="text-xs text-sim-muted">{{ item.id }}</div>
-              <div v-if="item.type" class="text-xs bg-sim-primary bg-opacity-20 text-sim-primary px-2 py-1 rounded inline-block">
+              <div v-if="item.type" class="text-xs bg-sim-accent bg-opacity-20 text-sim-accent px-2 py-1 rounded inline-block">
                 {{ item.type }}
               </div>
               <div v-if="item.level" class="text-sm">Level {{ item.level }}</div>
-              <div v-if="item.prerequisites.length > 0" class="text-xs text-sim-warning">
+              <div v-if="item.prerequisites && item.prerequisites.length > 0" class="text-xs text-sim-warning">
                 <i class="fas fa-lock mr-1"></i>
                 {{ item.prerequisites.length }} prerequisite{{ item.prerequisites.length > 1 ? 's' : '' }}
               </div>
@@ -158,7 +162,7 @@
           <button
             @click="currentPage = Math.max(1, currentPage - 1)"
             :disabled="currentPage === 1"
-            class="px-3 py-1 text-sm border border-sim-border rounded hover:bg-sim-muted hover:bg-opacity-10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="px-3 py-1 text-sm border border-sim-border rounded hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Previous
           </button>
@@ -168,13 +172,15 @@
           <button
             @click="currentPage = Math.min(totalPages, currentPage + 1)"
             :disabled="currentPage === totalPages"
-            class="px-3 py-1 text-sm border border-sim-border rounded hover:bg-sim-muted hover:bg-opacity-10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="px-3 py-1 text-sm border border-sim-border rounded hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Next
           </button>
         </div>
       </div>
     </div>
+
+
   </div>
 </template>
 
@@ -189,10 +195,16 @@ interface Props {
   specializedColumns?: string[]
 }
 
+interface Emits {
+  (e: 'edit-item', item: GameDataItem | Record<string, any>): void
+}
+
 const props = withDefaults(defineProps<Props>(), {
   isSpecialized: false,
   specializedColumns: () => []
 })
+
+const emit = defineEmits<Emits>()
 
 // State
 const viewMode = ref<'table' | 'grid'>('table')
@@ -289,24 +301,54 @@ const paginatedItems = computed(() => {
 // Helper functions
 const getFieldValue = (item: GameDataItem, field: string): any => {
   if (field === 'prerequisites') {
-    return item.prerequisites.join(', ') || '-'
+    return item.prerequisites || []
   }
   if (field === 'materialsCost' && item.materialsCost) {
     return Object.entries(item.materialsCost)
       .map(([mat, qty]) => `${mat} x${qty}`)
-      .join(', ')
+      .join(';')
   }
-  return (item as any)[field] ?? '-'
+  return (item as any)[field] ?? ''
 }
 
-const getCellComponent = (field: string) => {
-  // Simple cell components for different field types
+const getFieldDataType = (field: string): 'string' | 'number' | 'boolean' | 'array' => {
+  // Numeric fields
+  const numericFields = [
+    'level', 'goldCost', 'goldGain', 'energyCost', 'time', 'damage', 
+    'attackSpeed', 'ratio', 'sellPricePerUnit', 'minQuantity', 'exchangeRate',
+    'windLevel', 'seedLevel', 'length', 'enemyRolls', 'effectPerLevel',
+    'plotsAdded', 'totalPlots'
+  ]
+  
+  // Boolean fields
+  const booleanFields = ['repeatable']
+  
+  // Array fields
+  const arrayFields = ['prerequisites', 'categories']
+  
+  if (numericFields.includes(field)) {
+    return 'number'
+  }
+  
+  if (booleanFields.includes(field)) {
+    return 'boolean'
+  }
+  
+  if (arrayFields.includes(field)) {
+    return 'array'
+  }
+  
+  return 'string'
+}
+
+const getCellDisplayComponent = (field: string) => {
+  // Simple display components for different field types
   if (field === 'prerequisites') {
     return defineComponent({
       props: ['item', 'field', 'value'],
       render() {
         const prereqs = this.item.prerequisites
-        if (prereqs.length === 0) return h('span', { class: 'text-sim-muted' }, '-')
+        if (!prereqs || prereqs.length === 0) return h('span', { class: 'text-sim-muted' }, '-')
         return h('div', { class: 'space-y-1' }, 
           prereqs.slice(0, 3).map((prereq: string) => 
             h('div', { class: 'text-xs bg-sim-warning bg-opacity-20 text-sim-warning px-2 py-1 rounded inline-block mr-1' }, prereq)
@@ -342,7 +384,7 @@ const getCellComponent = (field: string) => {
         const type = this.item.type
         if (!type) return h('span', { class: 'text-sim-muted' }, '-')
         return h('span', { 
-          class: 'px-2 py-1 bg-sim-primary bg-opacity-20 text-sim-primary rounded text-xs font-medium capitalize'
+          class: 'px-2 py-1 bg-sim-accent bg-opacity-20 text-sim-accent rounded text-xs font-medium capitalize'
         }, type)
       }
     })
@@ -356,6 +398,8 @@ const getCellComponent = (field: string) => {
     }
   })
 }
+
+
 
 const handleSort = (field: string) => {
   if (sortField.value === field) {
@@ -378,6 +422,8 @@ const toggleColumn = (columnKey: string) => {
     visibleColumns.value.push(columnKey)
   }
 }
+
+
 
 // Close column selector when clicking outside
 const handleClickOutside = (event: MouseEvent) => {

@@ -1,7 +1,0 @@
-id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-farm_stage_1,Starter Plot,,,,,,,,,,,3,clear_weeds_1;clear_weeds_2,,,,,,,,,,,,,,,,,,,,,,Tutorial area 3>8
-farm_stage_2,Small Hold,clear_weeds_2,,,,,,,,,,8,collect_dead_trees;till_soil_1;clear_rocks_1;till_soil_2,,,,,,,,,,,,,,,,,,,,,,No deed required 8>20
-farm_stage_3,Homestead,till_soil_2;homestead_deed,,,,,,,,,,20,clear_boulders_1;remove_stumps_1;clear_boulders_2;remove_stumps_2;till_new_land,,,,,,,,,,,,,,,,,,,,,,Requires Homestead Deed 20>40
-farm_stage_4,Manor Grounds,till_new_land;manor_grounds_deed,,,,,,,,,,40,excavate_rocks_1;clear_thickets_1;excavate_rocks_2;clear_thickets_2;terraform,,,,,,,,,,,,,,,,,,,,,,Requires Manor Grounds Deed 40>65
-farm_stage_5,Great Estate,terraform;great_estate_deed,,,,,,,,,,65,stone_monoliths_1;ancient_roots_1;stone_monoliths_2;sacred_clearing,,,,,,,,,,,,,,,,,,,,,,Requires Great Estate Deed 65 > 90
-farm_stage_6,Legacy Estate,sacred_clearing,,,,,,,,,,90,Future content,,,,,,,,,,,,,,,,,,,,,,Post-game content 90 >130

@@ -1,81 +1,81 @@
-id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-craft_hoe,Craft Hoe,blueprint_hoe,farm_tool,Hoe,,,20,5,,Stone x5;Wood x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
-craft_hammer,Craft Hammer,blueprint_hammer,farm_tool,Hammer,,,40,8,,Stone x8;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
-craft_axe,Craft Axe,blueprint_axe,farm_tool,Axe,,,100,10,,Iron x5;Wood x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
-craft_shovel,Craft Shovel,blueprint_shovel,farm_tool,Shovel,,,100,10,,Copper x3;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
-craft_pickaxe_1,Craft Pickaxe I,blueprint_pickaxe_1,mining_tool,Pickaxe,,,30,10,,Copper x5;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base pickaxe
-craft_pickaxe_2,Craft Pickaxe II,blueprint_pickaxe_2,mining_tool,Pickaxe,,,150,15,,Iron x5;Stone x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Iron tier
-craft_pickaxe_3,Craft Pickaxe III,blueprint_pickaxe_3;anvil_2,mining_tool,Pickaxe,,,750,25,,Silver x3;Iron x10,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Silver tier
-craft_watering_can_2,Craft Watering Can II,anvil_1,farm_tool,Watering Can,,,50,5,,Copper x5;Wood x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Holds more water
-craft_hoe_plus,Craft Hoe+,blueprint_hoe_plus;anvil_1,farm_tool,Hoe,,,200,15,,Iron x10;Wood x5;Pine Resin x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
-craft_hammer_plus,Craft Hammer+,blueprint_hammer_plus;anvil_1,farm_tool,Hammer,,,300,20,,Iron x8;Stone x10;Shadow Bark x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
-craft_axe_plus,Craft Axe+,blueprint_axe_plus;anvil_2,farm_tool,Axe,,,500,25,,Silver x5;Wood x10;Mountain Stone x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
-craft_shovel_plus,Craft Shovel+,blueprint_shovel_plus;anvil_2,farm_tool,Shovel,,,500,20,,Iron x8;Silver x2;Shadow Bark x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
-craft_crystal_pick,Craft Crystal Pick,blueprint_crystal_pick;mythril_anvil,mining_tool,Pickaxe,,,3000,40,,Crystal x2;Silver x5;Cave Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Crystal tier
-craft_sprinkler_can,Craft Sprinkler Can,watering_can_2;furnace_2,farm_tool,Watering Can,,,400,20,,Silver x3;Copper x10;Pine Resin x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,"Holds more water, Water 2 Plots"
-craft_terra_former,Craft Terra Former,blueprint_terra_former;mythril_anvil,farm_tool,Hoe,,,2000,45,,Crystal x2;Silver x10;Mountain Stone x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master hoe
-craft_stone_breaker,Craft Stone Breaker,blueprint_stone_breaker;mythril_anvil,farm_tool,Hammer,,,3000,50,,Crystal x3;Mythril x1;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master hammer
-craft_world_splitter,Craft World Splitter,blueprint_world_splitter;mythril_anvil,farm_tool,Axe,,,8000,50,,Crystal x3;Enchanted Wood x1;Frozen Heart x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master axe
-craft_earth_mover,Craft Earth Mover,blueprint_earth_mover;crystal_furnace,farm_tool,Shovel,,,5000,45,,Crystal x2;Mythril x1;Cave Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master shovel
-craft_abyss_seeker,Craft Abyss Seeker,blueprint_abyss_seeker;crystal_furnace,mining_tool,Pickaxe,,,15000,60,,Mythril x1;Crystal x3;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master pickaxe
-craft_rain_bringer,Craft Rain Bringer,sprinkler_can;crystal_furnace,farm_tool,Watering Can,,,2000,30,,Crystal x1;Silver x20;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,"Holds more water, Water 4 Plots"
-craft_spear_1,Craft Spear I,blueprint_spear_1,weapon,Spear,,,100,10,,Wood x5;Stone x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
-craft_spear_2,Craft Spear II,blueprint_spear_2,weapon,Spear,,,150,12,,Wood x8;Copper x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
-craft_spear_3,Craft Spear III,blueprint_spear_3,weapon,Spear,,,200,15,,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
-craft_spear_4,Craft Spear IV,blueprint_spear_4;anvil_1,weapon,Spear,,,300,18,,Iron x15;Silver x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
-craft_spear_5,Craft Spear V,blueprint_spear_5,weapon,Spear,,,500,20,,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
-craft_spear_6,Craft Spear VI,blueprint_spear_6;anvil_2,weapon,Spear,,,1000,25,,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
-craft_spear_7,Craft Spear VII,blueprint_spear_7,weapon,Spear,,,2000,30,,Crystal x5;Pine Resin x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
-craft_spear_8,Craft Spear VIII,blueprint_spear_8;mythril_anvil,weapon,Spear,,,5000,35,,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
-craft_spear_9,Craft Spear IX,blueprint_spear_9,weapon,Spear,,,10000,40,,Mythril x3;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
-craft_spear_10,Craft Spear X,blueprint_spear_10,weapon,Spear,,,20000,50,,Obsidian x1;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
-craft_sword_1,Craft Sword I,blueprint_sword_1,weapon,Sword,,,100,10,,Wood x5;Stone x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
-craft_sword_2,Craft Sword II,blueprint_sword_2,weapon,Sword,,,150,12,,Wood x8;Copper x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
-craft_sword_3,Craft Sword III,blueprint_sword_3,weapon,Sword,,,200,15,,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
-craft_sword_4,Craft Sword IV,blueprint_sword_4;anvil_1,weapon,Sword,,,300,18,,Iron x15;Silver x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
-craft_sword_5,Craft Sword V,blueprint_sword_5,weapon,Sword,,,500,20,,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
-craft_sword_6,Craft Sword VI,blueprint_sword_6;anvil_2,weapon,Sword,,,1000,25,,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
-craft_sword_7,Craft Sword VII,blueprint_sword_7,weapon,Sword,,,2000,30,,Crystal x5;Shadow Bark x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
-craft_sword_8,Craft Sword VIII,blueprint_sword_8;mythril_anvil,weapon,Sword,,,5000,35,,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
-craft_sword_9,Craft Sword IX,blueprint_sword_9,weapon,Sword,,,10000,40,,Mythril x3;Mountain Stone x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
-craft_sword_10,Craft Sword X,blueprint_sword_10,weapon,Sword,,,20000,50,,Obsidian x1;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
-craft_bow_1,Craft Bow I,blueprint_bow_1,weapon,Bow,,,100,10,,Wood x8;Stone x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
-craft_bow_2,Craft Bow II,blueprint_bow_2,weapon,Bow,,,150,12,,Wood x12;Copper x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
-craft_bow_3,Craft Bow III,blueprint_bow_3,weapon,Bow,,,200,15,,Iron x10;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
-craft_bow_4,Craft Bow IV,blueprint_bow_4;anvil_1,weapon,Bow,,,300,18,,Iron x15;Silver x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
-craft_bow_5,Craft Bow V,blueprint_bow_5,weapon,Bow,,,500,20,,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
-craft_bow_6,Craft Bow VI,blueprint_bow_6;anvil_2,weapon,Bow,,,1000,25,,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
-craft_bow_7,Craft Bow VII,blueprint_bow_7,weapon,Bow,,,2000,30,,Crystal x5;Cave Crystal x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
-craft_bow_8,Craft Bow VIII,blueprint_bow_8;mythril_anvil,weapon,Bow,,,5000,35,,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
-craft_bow_9,Craft Bow IX,blueprint_bow_9,weapon,Bow,,,10000,40,,Mythril x3;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
-craft_bow_10,Craft Bow X,blueprint_bow_10,weapon,Bow,,,20000,50,,Obsidian x1;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
-craft_crossbow_1,Craft Crossbow I,blueprint_crossbow_1,weapon,Crossbow,,,150,12,,Wood x10;Stone x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
-craft_crossbow_2,Craft Crossbow II,blueprint_crossbow_2,weapon,Crossbow,,,200,15,,Wood x15;Copper x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
-craft_crossbow_3,Craft Crossbow III,blueprint_crossbow_3,weapon,Crossbow,,,300,18,,Iron x12;Wood x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
-craft_crossbow_4,Craft Crossbow IV,blueprint_crossbow_4;anvil_1,weapon,Crossbow,,,450,22,,Iron x18;Silver x6,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
-craft_crossbow_5,Craft Crossbow V,blueprint_crossbow_5,weapon,Crossbow,,,750,25,,Silver x10,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
-craft_crossbow_6,Craft Crossbow VI,blueprint_crossbow_6;anvil_2,weapon,Crossbow,,,1500,30,,Crystal x4,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
-craft_crossbow_7,Craft Crossbow VII,blueprint_crossbow_7,weapon,Crossbow,,,3000,35,,Crystal x6;Mountain Stone x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
-craft_crossbow_8,Craft Crossbow VIII,blueprint_crossbow_8;mythril_anvil,weapon,Crossbow,,,7500,40,,Mythril x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
-craft_crossbow_9,Craft Crossbow IX,blueprint_crossbow_9,weapon,Crossbow,,,15000,45,,Mythril x4;Cave Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
-craft_crossbow_10,Craft Crossbow X,blueprint_crossbow_10,weapon,Crossbow,,,30000,60,,Obsidian x2;Molten Core x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
-craft_wand_1,Craft Wand I,blueprint_wand_1,weapon,Wand,,,100,8,,Wood x5;Copper x1,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
-craft_wand_2,Craft Wand II,blueprint_wand_2,weapon,Wand,,,200,10,,Wood x8;Copper x3,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
-craft_wand_3,Craft Wand III,blueprint_wand_3,weapon,Wand,,,400,12,,Iron x5;Silver x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
-craft_wand_4,Craft Wand IV,blueprint_wand_4;anvil_1,weapon,Wand,,,600,15,,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
-craft_wand_5,Craft Wand V,blueprint_wand_5,weapon,Wand,,,1000,18,,Silver x12,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
-craft_wand_6,Craft Wand VI,blueprint_wand_6;anvil_2,weapon,Wand,,,2000,22,,Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
-craft_wand_7,Craft Wand VII,blueprint_wand_7,weapon,Wand,,,4000,25,,Crystal x4;Pine Resin x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
-craft_wand_8,Craft Wand VIII,blueprint_wand_8;mythril_anvil,weapon,Wand,,,10000,30,,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
-craft_wand_9,Craft Wand IX,blueprint_wand_9,weapon,Wand,,,20000,35,,Mythril x3;Shadow Bark x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
-craft_wand_10,Craft Wand X,blueprint_wand_10,weapon,Wand,,,40000,45,,Obsidian x1;Frozen Heart x2,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
-refine_stone,Refine Stone,,,Refinement,,,10,2,Raw Stone,Stone,,,,1:1,,,,,,,,,,,,,,,,,,,,TRUE,Basic metal
-refine_copper,Refine Copper,depth_2,,Refinement,,,20,3,Raw Copper,Copper,,,,1:1,,,,,,,,,,,,,,,,,,,,TRUE,Common metal
-refine_iron,Refine Iron,depth_3,,Refinement,,,50,5,Raw Iron,Iron,,,,1:1,,,,,,,,,,,,,,,,,,,,TRUE,Precious metal
-refine_silver,Refine Silver,depth_5,,Refinement,,,100,8,Raw Silver,Silver,,,,1:1,,,,,,,,,,,,,,,,,,,,TRUE,Rare material
-refine_crystal,Refine Crystal,depth_7,,Refinement,,,250,12,Raw Crystal,Crystal,,,,1:1,,,,,,,,,,,,,,,,,,,,TRUE,Epic material
-refine_mythril,Refine Mythril,depth_9,,Refinement,,,500,20,Raw Mythril,Mythril,,,,1:1,,,,,,,,,,,,,,,,,,,,TRUE,Legendary material
-refine_obsidian,Refine Obsidian,depth_10,,Refinement,,,1000,30,Raw Obsidian,Obsidian,,,,1:1,,,,,,,,,,,,,,,,,,,,FALSE,
+﻿id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
+craft_hoe,Craft Hoe,blueprint_hoe,farm_tool,Hoe,,,20,5,Stone x5;Wood x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
+craft_hammer,Craft Hammer,blueprint_hammer,farm_tool,Hammer,,,40,8,Stone x8;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
+craft_axe,Craft Axe,blueprint_axe,farm_tool,Axe,,,100,10,Iron x5;Wood x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
+craft_shovel,Craft Shovel,blueprint_shovel,farm_tool,Shovel,,,100,10,Copper x3;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base tool
+craft_pickaxe_1,Craft Pickaxe I,blueprint_pickaxe_1,mining_tool,Pickaxe,,,30,10,Copper x5;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Base pickaxe
+craft_pickaxe_2,Craft Pickaxe II,blueprint_pickaxe_2,mining_tool,Pickaxe,,,150,15,Iron x5;Stone x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Iron tier
+craft_pickaxe_3,Craft Pickaxe III,blueprint_pickaxe_3;anvil_2,mining_tool,Pickaxe,,,750,25,Silver x3;Iron x10,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Silver tier
+craft_watering_can_2,Craft Watering Can II,anvil_1,farm_tool,Watering Can,,,50,5,Copper x5;Wood x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Holds more water
+craft_hoe_plus,Craft Hoe+,blueprint_hoe_plus;anvil_1,farm_tool,Hoe,,,200,15,Iron x10;Wood x5;Pine Resin x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
+craft_hammer_plus,Craft Hammer+,blueprint_hammer_plus;anvil_1,farm_tool,Hammer,,,300,20,Iron x8;Stone x10;Shadow Bark x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
+craft_axe_plus,Craft Axe+,blueprint_axe_plus;anvil_2,farm_tool,Axe,,,500,25,Silver x5;Wood x10;Mountain Stone x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
+craft_shovel_plus,Craft Shovel+,blueprint_shovel_plus;anvil_2,farm_tool,Shovel,,,500,20,Iron x8;Silver x2;Shadow Bark x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Plus tier
+craft_crystal_pick,Craft Crystal Pick,blueprint_crystal_pick;mythril_anvil,mining_tool,Pickaxe,,,3000,40,Crystal x2;Silver x5;Cave Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Crystal tier
+craft_sprinkler_can,Craft Sprinkler Can,watering_can_2;furnace_2,farm_tool,Watering Can,,,400,20,Silver x3;Copper x10;Pine Resin x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,"Holds more water, Water 2 Plots"
+craft_terra_former,Craft Terra Former,blueprint_terra_former;mythril_anvil,farm_tool,Hoe,,,2000,45,Crystal x2;Silver x10;Mountain Stone x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master hoe
+craft_stone_breaker,Craft Stone Breaker,blueprint_stone_breaker;mythril_anvil,farm_tool,Hammer,,,3000,50,Crystal x3;Mythril x1;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master hammer
+craft_world_splitter,Craft World Splitter,blueprint_world_splitter;mythril_anvil,farm_tool,Axe,,,8000,50,Crystal x3;Enchanted Wood x1;Frozen Heart x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master axe
+craft_earth_mover,Craft Earth Mover,blueprint_earth_mover;crystal_furnace,farm_tool,Shovel,,,5000,45,Crystal x2;Mythril x1;Cave Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master shovel
+craft_abyss_seeker,Craft Abyss Seeker,blueprint_abyss_seeker;crystal_furnace,mining_tool,Pickaxe,,,15000,60,Mythril x1;Crystal x3;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Master pickaxe
+craft_rain_bringer,Craft Rain Bringer,sprinkler_can;crystal_furnace,farm_tool,Watering Can,,,2000,30,Crystal x1;Silver x20;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,"Holds more water, Water 4 Plots"
+craft_spear_1,Craft Spear I,blueprint_spear_1,weapon,Spear,,,100,10,Wood x5;Stone x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
+craft_spear_2,Craft Spear II,blueprint_spear_2,weapon,Spear,,,150,12,Wood x8;Copper x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
+craft_spear_3,Craft Spear III,blueprint_spear_3,weapon,Spear,,,200,15,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
+craft_spear_4,Craft Spear IV,blueprint_spear_4;anvil_1,weapon,Spear,,,300,18,Iron x15;Silver x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
+craft_spear_5,Craft Spear V,blueprint_spear_5,weapon,Spear,,,500,20,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
+craft_spear_6,Craft Spear VI,blueprint_spear_6;anvil_2,weapon,Spear,,,1000,25,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
+craft_spear_7,Craft Spear VII,blueprint_spear_7,weapon,Spear,,,2000,30,Crystal x5;Pine Resin x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
+craft_spear_8,Craft Spear VIII,blueprint_spear_8;mythril_anvil,weapon,Spear,,,5000,35,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
+craft_spear_9,Craft Spear IX,blueprint_spear_9,weapon,Spear,,,10000,40,Mythril x3;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
+craft_spear_10,Craft Spear X,blueprint_spear_10,weapon,Spear,,,20000,50,Obsidian x1;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
+craft_sword_1,Craft Sword I,blueprint_sword_1,weapon,Sword,,,100,10,Wood x5;Stone x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
+craft_sword_2,Craft Sword II,blueprint_sword_2,weapon,Sword,,,150,12,Wood x8;Copper x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
+craft_sword_3,Craft Sword III,blueprint_sword_3,weapon,Sword,,,200,15,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
+craft_sword_4,Craft Sword IV,blueprint_sword_4;anvil_1,weapon,Sword,,,300,18,Iron x15;Silver x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
+craft_sword_5,Craft Sword V,blueprint_sword_5,weapon,Sword,,,500,20,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
+craft_sword_6,Craft Sword VI,blueprint_sword_6;anvil_2,weapon,Sword,,,1000,25,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
+craft_sword_7,Craft Sword VII,blueprint_sword_7,weapon,Sword,,,2000,30,Crystal x5;Shadow Bark x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
+craft_sword_8,Craft Sword VIII,blueprint_sword_8;mythril_anvil,weapon,Sword,,,5000,35,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
+craft_sword_9,Craft Sword IX,blueprint_sword_9,weapon,Sword,,,10000,40,Mythril x3;Mountain Stone x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
+craft_sword_10,Craft Sword X,blueprint_sword_10,weapon,Sword,,,20000,50,Obsidian x1;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
+craft_bow_1,Craft Bow I,blueprint_bow_1,weapon,Bow,,,100,10,Wood x8;Stone x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
+craft_bow_2,Craft Bow II,blueprint_bow_2,weapon,Bow,,,150,12,Wood x12;Copper x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
+craft_bow_3,Craft Bow III,blueprint_bow_3,weapon,Bow,,,200,15,Iron x10;Wood x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
+craft_bow_4,Craft Bow IV,blueprint_bow_4;anvil_1,weapon,Bow,,,300,18,Iron x15;Silver x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
+craft_bow_5,Craft Bow V,blueprint_bow_5,weapon,Bow,,,500,20,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
+craft_bow_6,Craft Bow VI,blueprint_bow_6;anvil_2,weapon,Bow,,,1000,25,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
+craft_bow_7,Craft Bow VII,blueprint_bow_7,weapon,Bow,,,2000,30,Crystal x5;Cave Crystal x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
+craft_bow_8,Craft Bow VIII,blueprint_bow_8;mythril_anvil,weapon,Bow,,,5000,35,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
+craft_bow_9,Craft Bow IX,blueprint_bow_9,weapon,Bow,,,10000,40,Mythril x3;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
+craft_bow_10,Craft Bow X,blueprint_bow_10,weapon,Bow,,,20000,50,Obsidian x1;Molten Core x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
+craft_crossbow_1,Craft Crossbow I,blueprint_crossbow_1,weapon,Crossbow,,,150,12,Wood x10;Stone x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
+craft_crossbow_2,Craft Crossbow II,blueprint_crossbow_2,weapon,Crossbow,,,200,15,Wood x15;Copper x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
+craft_crossbow_3,Craft Crossbow III,blueprint_crossbow_3,weapon,Crossbow,,,300,18,Iron x12;Wood x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
+craft_crossbow_4,Craft Crossbow IV,blueprint_crossbow_4;anvil_1,weapon,Crossbow,,,450,22,Iron x18;Silver x6,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
+craft_crossbow_5,Craft Crossbow V,blueprint_crossbow_5,weapon,Crossbow,,,750,25,Silver x10,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
+craft_crossbow_6,Craft Crossbow VI,blueprint_crossbow_6;anvil_2,weapon,Crossbow,,,1500,30,Crystal x4,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
+craft_crossbow_7,Craft Crossbow VII,blueprint_crossbow_7,weapon,Crossbow,,,3000,35,Crystal x6;Mountain Stone x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
+craft_crossbow_8,Craft Crossbow VIII,blueprint_crossbow_8;mythril_anvil,weapon,Crossbow,,,7500,40,Mythril x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
+craft_crossbow_9,Craft Crossbow IX,blueprint_crossbow_9,weapon,Crossbow,,,15000,45,Mythril x4;Cave Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
+craft_crossbow_10,Craft Crossbow X,blueprint_crossbow_10,weapon,Crossbow,,,30000,60,Obsidian x2;Molten Core x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
+craft_wand_1,Craft Wand I,blueprint_wand_1,weapon,Wand,,,100,8,Wood x5;Copper x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 1
+craft_wand_2,Craft Wand II,blueprint_wand_2,weapon,Wand,,,200,10,Wood x8;Copper x3,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 2
+craft_wand_3,Craft Wand III,blueprint_wand_3,weapon,Wand,,,400,12,Iron x5;Silver x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 3
+craft_wand_4,Craft Wand IV,blueprint_wand_4;anvil_1,weapon,Wand,,,600,15,Silver x8,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 4
+craft_wand_5,Craft Wand V,blueprint_wand_5,weapon,Wand,,,1000,18,Silver x12,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 5
+craft_wand_6,Craft Wand VI,blueprint_wand_6;anvil_2,weapon,Wand,,,2000,22,Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 6
+craft_wand_7,Craft Wand VII,blueprint_wand_7,weapon,Wand,,,4000,25,Crystal x4;Pine Resin x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 7
+craft_wand_8,Craft Wand VIII,blueprint_wand_8;mythril_anvil,weapon,Wand,,,10000,30,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 8
+craft_wand_9,Craft Wand IX,blueprint_wand_9,weapon,Wand,,,20000,35,Mythril x3;Shadow Bark x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 9
+craft_wand_10,Craft Wand X,blueprint_wand_10,weapon,Wand,,,40000,45,Obsidian x1;Frozen Heart x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Level 10
+refine_stone,Refine Stone,,,Refinement,,,10,2,Raw Stone,Stone,,,,1:01,,,,,,,,,,,,,,,,,,,,TRUE,Basic metal
+refine_copper,Refine Copper,depth_2,,Refinement,,,20,3,Raw Copper,Copper,,,,1:01,,,,,,,,,,,,,,,,,,,,TRUE,Common metal
+refine_iron,Refine Iron,depth_3,,Refinement,,,50,5,Raw Iron,Iron,,,,1:01,,,,,,,,,,,,,,,,,,,,TRUE,Precious metal
+refine_silver,Refine Silver,depth_5,,Refinement,,,100,8,Raw Silver,Silver,,,,1:01,,,,,,,,,,,,,,,,,,,,TRUE,Rare material
+refine_crystal,Refine Crystal,depth_7,,Refinement,,,250,12,Raw Crystal,Crystal,,,,1:01,,,,,,,,,,,,,,,,,,,,TRUE,Epic material
+refine_mythril,Refine Mythril,depth_9,,Refinement,,,500,20,Raw Mythril,Mythril,,,,1:01,,,,,,,,,,,,,,,,,,,,TRUE,Legendary material
+refine_obsidian,Refine Obsidian,depth_10,,Refinement,,,1000,30,Raw Obsidian,Obsidian,,,,1:01,,,,,,,,,,,,,,,,,,,,FALSE,
 shortcut_surface_shaft,Build Surface Shaft Shortcut,,,Shortcut,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,
 shortcut_copper_vein,Build Copper Vein Shortcut,,,Shortcut,,,,,,Stone x10,,,,,,,,,,,,,,,,,,,,,,,,FALSE,
 shortcut_iron_seam,Build Iron Seam Shortcut,,,Shortcut,,,,,,Copper x5,,,,,,,,,,,,,,,,,,,,,,,,FALSE,

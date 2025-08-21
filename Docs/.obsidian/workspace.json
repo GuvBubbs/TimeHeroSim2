@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sim Design/03-upgrade-tree.md",
+                "file": "Sim Design/02-game-configuration.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "03-upgrade-tree"
+              "title": "02-game-configuration"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Sim Design/03-upgrade-tree.md",
+                "file": "Sim Design/02-game-configuration.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for 03-upgrade-tree"
+              "title": "Backlinks for 02-game-configuration"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Sim Design/03-upgrade-tree.md",
+                "file": "Sim Design/02-game-configuration.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from 03-upgrade-tree"
+              "title": "Outgoing links from 02-game-configuration"
             }
           },
           {
@@ -142,13 +142,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Sim Design/03-upgrade-tree.md",
+                "file": "Sim Design/02-game-configuration.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 03-upgrade-tree"
+              "title": "Outline of 02-game-configuration"
             }
           }
         ]
@@ -168,8 +168,10 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "c20dc5f44e63d3e5",
+  "active": "9edb0f1900f705be",
   "lastOpenFiles": [
+    "App Build",
+    "Sim Design/03-upgrade-tree.md",
     "Sim Design/02-game-configuration.md",
     "Time Hero Game Design Reference/Time Hero - Combat Mechanics & Balance.md",
     "Sim Design/phased-development-plan.md",
@@ -182,7 +184,6 @@
     "Sim Design/05-simulation-setup.md",
     "Sim Design/06-live-monitor.md",
     "Sim Design/04-player-personas.md",
-    "Sim Design/03-upgrade-tree.md",
     "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
     "Sim Design",
     "untitled folder"

@@ -39,34 +39,148 @@
   }
 
   .card-header {
-    @apply px-6 py-4 border-b border-sim-border font-semibold;
+    @apply px-6 py-4 border-b border-sim-border font-semibold text-sim-text;
   }
 
   .card-body {
     @apply p-6;
   }
 
-  /* Button component */
+  /* Button components */
   .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors;
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
     @apply focus:outline-none focus:ring-2 focus:ring-sim-accent focus:ring-offset-2;
     @apply focus:ring-offset-sim-bg;
   }
 
   .btn-primary {
-    @apply bg-sim-accent text-white hover:bg-blue-600;
+    @apply bg-sim-accent text-white hover:bg-blue-600 active:bg-blue-700;
   }
 
   .btn-secondary {
     @apply bg-sim-surface text-sim-text border border-sim-border;
-    @apply hover:bg-sim-border;
+    @apply hover:bg-slate-700;
+  }
+
+  .btn-success {
+    @apply bg-sim-success text-white hover:bg-emerald-600;
+  }
+
+  .btn-warning {
+    @apply bg-sim-warning text-white hover:bg-amber-600;
+  }
+
+  .btn-error {
+    @apply bg-sim-error text-white hover:bg-red-600;
   }
 
   /* Form inputs */
   .input {
     @apply bg-sim-bg border border-sim-border rounded-md px-3 py-2;
+    @apply text-sim-text placeholder-sim-muted;
     @apply focus:outline-none focus:ring-2 focus:ring-sim-accent;
-    @apply focus:border-transparent;
+    @apply focus:border-sim-accent transition-colors duration-200;
+  }
+
+  .input:disabled {
+    @apply bg-slate-800 cursor-not-allowed opacity-60;
+  }
+
+  .input.error {
+    @apply border-sim-error focus:ring-sim-error;
+  }
+
+  /* Modal components */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
+  }
+
+  .modal {
+    @apply bg-sim-surface rounded-lg shadow-xl border border-sim-border;
+    @apply text-sim-text;
+  }
+
+  .modal-header {
+    @apply sticky top-0 bg-sim-surface border-b border-sim-border px-6 py-3;
+  }
+
+  .modal-body {
+    @apply p-4 overflow-y-auto;
+  }
+
+  .modal-footer {
+    @apply sticky bottom-0 bg-sim-surface border-t border-sim-border px-6 py-3;
+  }
+
+  /* Table components */
+  .table-row-hover {
+    @apply hover:bg-slate-700 cursor-pointer transition-colors duration-200;
+  }
+
+  .table-row-selected {
+    @apply bg-blue-700 border-l-4 border-blue-500;
+  }
+
+  /* Card grid hover states */
+  .card-hover {
+    @apply hover:bg-slate-700 hover:border-slate-500;
+    @apply cursor-pointer transition-all duration-200;
+  }
+
+  .card-selected {
+    @apply bg-blue-700 border-blue-500;
+  }
+
+  /* Form sections */
+  .form-section {
+    @apply mb-6;
+  }
+
+  .form-section-header {
+    @apply text-lg font-medium text-sim-text mb-3 flex items-center;
+  }
+
+  .form-section-icon {
+    @apply mr-2 text-sim-accent;
+  }
+
+  /* Labels and text */
+  .label {
+    @apply block text-sm font-medium text-sim-text mb-2;
+  }
+
+  .label-required::after {
+    @apply text-sim-error ml-1;
+    content: '*';
+  }
+
+  .help-text {
+    @apply text-xs text-sim-muted mt-1;
+  }
+
+  .error-text {
+    @apply text-xs text-sim-error mt-1;
+  }
+
+  /* Status indicators */
+  .status-badge {
+    @apply px-2 py-1 rounded text-xs font-medium;
+  }
+
+  .status-success {
+    @apply bg-emerald-800 text-sim-success;
+  }
+
+  .status-warning {
+    @apply bg-amber-800 text-sim-warning;
+  }
+
+  .status-error {
+    @apply bg-red-800 text-sim-error;
+  }
+
+  .status-info {
+    @apply bg-blue-800 text-sim-accent;
   }
 }
 

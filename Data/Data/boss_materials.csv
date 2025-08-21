@@ -1,9 +1,0 @@
-id,name,dropFrom,dropChance,category,uses,description
-pine_resin,Pine Resin,pine_vale,1,boss,tools;weapons,Sticky resin from Beetle Lord
-shadow_bark,Shadow Bark,dark_forest,1,boss,tools;weapons,Dark bark from Alpha Wolf
-mountain_stone,Mountain Stone,mountain_pass,1,boss,tools;weapons,Sky stone from Sky Serpent
-cave_crystal,Cave Crystal,crystal_caves,1,boss,tools;weapons,Web crystal from Crystal Spider
-frozen_heart,Frozen Heart,frozen_tundra,1,boss,tools;weapons,Ice core from Frost Wyrm
-molten_core,Molten Core,volcano_core,1,boss,tools;weapons,Lava essence from Lava Titan
-enchanted_wood,Enchanted Wood,frozen_tundra,0.05,special,master_tools,Rare magical wood
-temporal_shard,Temporal Shard,time_rift,0.1,special,endgame,Time fragment

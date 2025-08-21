@@ -41,7 +41,7 @@ const isActive = (path: string) => {
 <style scoped>
 .nav-tab {
   @apply px-4 py-3 flex items-center text-sm font-medium transition-colors;
-  @apply text-sim-muted hover:text-sim-text;
+  @apply text-sim-muted hover:text-slate-200;
   @apply border-b-2 border-transparent;
 }
 

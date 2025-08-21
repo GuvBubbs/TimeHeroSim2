@@ -218,10 +218,12 @@ export async function loadAllCSVFiles(
   const allErrors: string[] = []
   let loadedFiles = 0
   
-  const totalFiles = CSV_FILE_LIST.length
+  // Only load unified schema files - specialized files are loaded separately
+  const unifiedSchemaFiles = CSV_FILE_LIST.filter(file => file.hasUnifiedSchema)
+  const totalFiles = unifiedSchemaFiles.length
   
   // Load files sequentially to avoid overwhelming the browser
-  for (const fileMetadata of CSV_FILE_LIST) {
+  for (const fileMetadata of unifiedSchemaFiles) {
     progressCallback?.({
       loaded: loadedFiles,
       total: totalFiles,

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sim Design/07-reports.md",
+                "file": "concise_context.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "07-reports"
+              "title": "concise_context"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Sim Design/07-reports.md",
+                "file": "concise_context.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for 07-reports"
+              "title": "Backlinks for concise_context"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Sim Design/07-reports.md",
+                "file": "concise_context.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from 07-reports"
+              "title": "Outgoing links from concise_context"
             }
           },
           {
@@ -142,13 +142,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Sim Design/07-reports.md",
+                "file": "concise_context.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 07-reports"
+              "title": "Outline of concise_context"
             }
           }
         ]
@@ -168,15 +168,17 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "c20dc5f44e63d3e5",
+  "active": "9edb0f1900f705be",
   "lastOpenFiles": [
-    "Sim Design/05-simulation-setup.md",
-    "Sim Design/07-reports.md",
-    "Sim Design/06-live-monitor.md",
     "Sim Design/00-tech-stack-architecture.md",
+    "concise_context.md",
+    "Sim Design/01-dashboard.md",
+    "Sim Design/07-reports.md",
+    "Sim Design/phased-development-plan.md",
+    "Sim Design/05-simulation-setup.md",
+    "Sim Design/06-live-monitor.md",
     "Sim Design/04-player-personas.md",
     "Sim Design/03-upgrade-tree.md",
-    "Sim Design/01-dashboard.md",
     "Sim Design/02-game-configuration.md",
     "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
     "Sim Design",

@@ -24,11 +24,8 @@ The Dashboard serves as the **command center** for the Time Hero Simulator, prov
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │              Recent Simulations Table                │  │
+│  │                  (Expandable rows)                   │  │
 │  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-│  ┌─────────────────┐  ┌──────────────────────────────────┐│
-│  │ Phase Timeline  │  │    Key Metrics Evolution        ││
-│  └─────────────────┘  └──────────────────────────────────┘│
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -163,47 +160,7 @@ interface SimulationSummary {
 7. Efficiency %
 8. Actions (View, Clone, Delete)
 
-#### 5. Phase Timeline Visualization
-```typescript
-interface PhaseProgression {
-  simulationId: string;
-  phases: {
-    name: string;
-    startDay: number;
-    endDay: number;
-    targetDays: number;
-    status: 'on-track' | 'ahead' | 'behind';
-  }[];
-}
-```
 
-**Visual Design**:
-- Horizontal timeline with phase blocks
-- Target ranges shown as translucent backgrounds
-- Actual progression as solid bars
-- Color coding: Green (ahead), Blue (on-track), Orange (behind)
-- Hover for detailed timing breakdowns
-
-#### 6. Key Metrics Evolution Chart
-```typescript
-interface MetricTrend {
-  metric: 'completion-time' | 'bottleneck-count' | 
-           'resource-efficiency' | 'upgrade-rate';
-  dataPoints: {
-    simulationId: string;
-    value: number;
-    timestamp: Date;
-  }[];
-}
-```
-
-**Chart Configuration**:
-- Multi-line chart with 4 metrics
-- X-axis: Simulation timestamp
-- Y-axis: Metric value (normalized)
-- Interactive legend to toggle lines
-- Hover crosshair with values
-- Zoom and pan controls
 
 ### Interactivity & Workflows
 
@@ -361,7 +318,7 @@ While primarily desktop-focused, the dashboard gracefully handles different view
 - System Status → Game Configuration (for data issues)
 - Quick Actions → Simulation Setup (new simulation)
 - Recent Simulations → Reports (view details)
-- Phase Timeline → Live Monitor (watch simulation)
+- Recent Simulations → Live Monitor (watch simulation in progress)
 
 #### Data Dependencies
 - Requires: CSV data loaded, IndexedDB initialized

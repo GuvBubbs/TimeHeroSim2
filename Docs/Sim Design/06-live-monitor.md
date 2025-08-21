@@ -110,6 +110,14 @@ interface SimulationControls {
     throttled: boolean; // If performance limited
   };
   
+  // Note: Simulations are expected to take several minutes at 1x speed
+  // This allows for careful observation of game mechanics and bottlenecks
+  // Speed settings:
+  // - 1x: Real-time visualization (several minutes for full run)
+  // - 10x: Smooth accelerated view
+  // - 100x: Rapid progression
+  // - Max: As fast as possible (may skip visual frames)
+  
   actions: {
     play(): void;
     pause(): void;

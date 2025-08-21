@@ -16,7 +16,7 @@ The Time Hero Simulator is a professional game balance testing tool designed to 
 #### Success Metrics
 - Accurately predict player progression within ±10% of actual gameplay
 - Identify 100% of hard progression blocks
-- Simulate complete 35-day progression in <10 seconds
+- Provide real-time visual feedback during simulation
 - Support testing of 5+ distinct player archetypes
 - Generate actionable balance recommendations
 
@@ -29,7 +29,8 @@ The Time Hero Simulator is a professional game balance testing tool designed to 
 - **Offline Capability**: Full functionality after initial load
 
 #### Performance Requirements
-- Simulate 35 days of gameplay in <10 seconds
+- Support variable simulation speeds (1x to max speed)
+- Provide smooth visual feedback during simulation
 - Handle 1000+ data points without UI lag
 - Support real-time visualization at 60fps
 - Memory footprint <500MB for complete simulation
@@ -68,11 +69,12 @@ Export Generation: File-saver 2.0+
 #### Visualization & UI
 ```
 UI Framework: Tailwind CSS 3.4+ with custom gaming theme
-Component Library: Headless UI 1.7+
+Component Library: Headless UI 1.7+ (minimal external dependencies)
 Icons: Font Awesome 6 (free tier)
 Charts: Chart.js 4.4+ with vue-chartjs
-Graph Visualization: Cytoscape.js 3.28+ for upgrade tree
-Data Tables: TanStack Table 8.11+
+Graph Visualization: Cytoscape.js 3.28+ (Civ V-style tech tree layout)
+Data Tables: TanStack Table 8.11+ (virtual scrolling for performance)
+Persistence: LocalStorage for simplicity
 ```
 
 #### Performance & Background Processing
@@ -163,6 +165,11 @@ interface DataStrategy {
 5. **Store**: Load into Pinia stores
 6. **Index**: Create lookup maps for O(1) access
 
+#### Simulation Timing
+- **Time Granularity**: 30-second ticks for balance between accuracy and performance
+- **Speed Control**: User adjustable from 1x to max speed
+- **Visual Feedback**: Updates every tick at slower speeds, throttled at higher speeds
+
 ### Security & Privacy
 - **No Backend**: Fully client-side application
 - **No Tracking**: No analytics or telemetry
@@ -191,12 +198,36 @@ pnpm build
 
 #### CI/CD Pipeline
 ```yaml
-# GitHub Actions workflow
-- Lint & Type Check
-- Run Tests
-- Build Production
-- Deploy to GitHub Pages
+# GitHub Actions workflow (.github/workflows/deploy.yml)
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'pnpm'
+      - run: pnpm install
+      - run: pnpm build
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
 ```
+
+**Deployment Configuration**:
+- Base URL configuration for GitHub Pages
+- Asset optimization and compression
+- Service worker for offline functionality
 
 ### Browser Compatibility Strategy
 - **Baseline**: ES2022 features
@@ -240,6 +271,33 @@ Data Validation: Automated CSV testing
 3. **Browser Incompatibility**: Feature detection
 4. **Memory Leaks**: Automatic cleanup
 5. **Lost Work**: Auto-save to IndexedDB
+
+### Technical Decisions
+
+#### Component Library Choice
+**Decision**: Headless UI + Custom Components
+- **Rationale**: Minimal dependencies, full control over styling, better performance
+- **Trade-offs**: More initial development time, but better long-term maintainability
+- **Alternative considered**: PrimeVue (rejected due to bundle size)
+
+#### Graph Visualization
+**Decision**: Cytoscape.js for Upgrade Tree
+- **Rationale**: Best support for directed graphs, Civ V-style layouts possible
+- **Features**: Pan/zoom, node clustering, edge bundling, layout algorithms
+- **Alternative considered**: D3.js (more complex), vis-network (less features)
+
+#### Data Tables
+**Decision**: TanStack Table (formerly React Table)
+- **Rationale**: Framework agnostic, virtual scrolling, excellent performance
+- **Features**: Sorting, filtering, grouping, inline editing
+- **Alternative considered**: ag-Grid (too heavy), custom implementation (time consuming)
+
+#### Export Formats
+**Decision**: JSON (primary) + Markdown (human readable) + CSV (re-import)
+- **JSON**: Complete data with metadata for analysis
+- **Markdown**: Formatted reports for documentation
+- **CSV**: Allow re-export of modified configurations
+- **LLM Export**: Structured JSON with context and documentation
 
 ### Future Considerations
 - **Cloud Sync**: Optional Firebase integration

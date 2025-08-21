@@ -8,6 +8,7 @@ import type {
 } from '@/types/game-data'
 import type { CSVLoadProgress } from '@/utils/csvLoader'
 import { loadAllCSVFiles, calculateDataMemoryUsage } from '@/utils/csvLoader'
+import { CSV_FILE_LIST } from '@/types/csv-data'
 
 export const useGameDataStore = defineStore('gameData', () => {
   // State
@@ -56,6 +57,28 @@ export const useGameDataStore = defineStore('gameData', () => {
       categories[item.category].push(item)
     })
     return categories
+  })
+
+  const itemsByGameFeature = computed(() => {
+    const features: Record<string, GameDataItem[]> = {}
+    
+    // Initialize all game features to ensure they appear in navigation
+    CSV_FILE_LIST.forEach(fileMetadata => {
+      const gameFeature = fileMetadata.gameFeature
+      if (!features[gameFeature]) {
+        features[gameFeature] = []
+      }
+    })
+    
+    // Add items to their respective features
+    items.value.forEach(item => {
+      const fileMetadata = CSV_FILE_LIST.find(f => f.filename === item.sourceFile)
+      if (fileMetadata) {
+        const gameFeature = fileMetadata.gameFeature
+        features[gameFeature].push(item)
+      }
+    })
+    return features
   })
 
   const itemsByType = computed(() => {
@@ -359,6 +382,7 @@ export const useGameDataStore = defineStore('gameData', () => {
     // Computed
     stats,
     itemsByCategory,
+    itemsByGameFeature,
     itemsByType,
     itemsByFile,
     getItemById,

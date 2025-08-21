@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-sim-background rounded-lg border border-sim-border overflow-hidden">
+  <div class="bg-sim-background rounded-lg border border-sim-border overflow-hidden flex flex-col h-full">
     <!-- Table Header -->
     <div class="bg-sim-surface px-4 py-3 border-b border-sim-border">
       <div class="flex items-center justify-between">
@@ -45,7 +45,7 @@
               <i class="fas fa-columns mr-1"></i>
               Columns
             </button>
-            <div v-if="showColumnSelector" class="absolute right-0 top-full mt-1 bg-sim-background border border-sim-border rounded-lg shadow-lg z-10 w-64">
+            <div v-if="showColumnSelector" class="absolute right-0 top-full mt-1 bg-sim-surface border border-sim-border rounded-lg shadow-lg z-10 w-64">
               <div class="p-3">
                 <h4 class="font-medium mb-2 text-sim-foreground">Show Columns</h4>
                 <div class="space-y-1 max-h-64 overflow-y-auto">
@@ -67,10 +67,10 @@
     </div>
 
     <!-- Table Content -->
-    <div class="overflow-x-auto">
-      <div v-if="viewMode === 'table'">
+    <div class="flex-1 overflow-hidden">
+      <div v-if="viewMode === 'table'" class="h-full overflow-auto">
         <table class="w-full">
-          <thead class="bg-sim-muted bg-opacity-20">
+          <thead class="bg-sim-surface sticky top-0 z-10 border-b border-sim-border">
             <tr>
               <th
                 v-for="column in displayColumns"
@@ -87,7 +87,8 @@
                       sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'
                     ]"
                   ></i>
-                  <i v-else class="fas fa-sort text-xs opacity-30"></i>
+                  <i v-else-if="sortField" class="fas fa-sort text-xs opacity-30"></i>
+                  <i v-else class="fas fa-sort text-xs opacity-20"></i>
                 </div>
               </th>
             </tr>
@@ -116,7 +117,7 @@
       </div>
 
       <!-- Grid View -->
-      <div v-else-if="viewMode === 'grid'" class="p-4">
+      <div v-else-if="viewMode === 'grid'" class="h-full overflow-auto p-4">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <div
             v-for="item in paginatedItems"
@@ -193,7 +194,7 @@ const viewMode = ref<'table' | 'grid'>('table')
 const showColumnSelector = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(50)
-const sortField = ref<string>('name')
+const sortField = ref<string>('')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 // Column configuration
@@ -222,6 +223,11 @@ const displayColumns = computed(() =>
 // Sorting and pagination
 const sortedItems = computed(() => {
   const items = [...props.items]
+  
+  // If no sort field is set, return items in original CSV order
+  if (!sortField.value) {
+    return items
+  }
   
   return items.sort((a, b) => {
     const aVal = getFieldValue(a, sortField.value)

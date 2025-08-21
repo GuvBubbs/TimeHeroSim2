@@ -54,10 +54,10 @@
       <!-- Sidebar -->
       <div class="col-span-1">
         <CategorySidebar
-          :items-by-category="gameData.itemsByCategory"
+          :items-by-game-feature="gameData.itemsByGameFeature"
           :total-items="gameData.stats.totalItems"
-          v-model:selected-category="selectedCategory"
-          v-model:selected-type="selectedType"
+          v-model:selected-game-feature="selectedGameFeature"
+          v-model:selected-file="selectedFile"
           v-model:search-query="searchQuery"
         />
       </div>
@@ -103,6 +103,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useGameDataStore } from '@/stores/gameData'
+import { CSV_FILE_LIST } from '@/types/csv-data'
 import CategorySidebar from '@/components/GameConfiguration/CategorySidebar.vue'
 import DataTable from '@/components/GameConfiguration/DataTable.vue'
 import DataFilters from '@/components/GameConfiguration/DataFilters.vue'
@@ -111,8 +112,8 @@ import type { DataFilter } from '@/types/game-data'
 const gameData = useGameDataStore()
 
 // State
-const selectedCategory = ref<string | null>(null)
-const selectedType = ref<string | null>(null)
+const selectedGameFeature = ref<string | null>(null)
+const selectedFile = ref<string | null>(null)
 const searchQuery = ref('')
 const additionalFilters = ref<any>({})
 
@@ -122,8 +123,6 @@ const availableFiles = computed(() =>
 )
 
 const baseFilter = computed((): DataFilter => ({
-  category: selectedCategory.value || undefined,
-  type: selectedType.value || undefined,
   searchText: searchQuery.value || undefined
 }))
 
@@ -133,21 +132,54 @@ const combinedFilters = computed((): DataFilter => ({
 }))
 
 const filteredItems = computed(() => {
-  if (!gameData.getFilteredItems) return []
+  let items = gameData.items
   
-  let items = gameData.getFilteredItems(combinedFilters.value)
+  // Filter by game feature
+  if (selectedGameFeature.value) {
+    items = items.filter(item => {
+      // Find the CSV file metadata to get the game feature
+      const fileMetadata = CSV_FILE_LIST.find(f => f.filename === item.sourceFile)
+      return fileMetadata?.gameFeature === selectedGameFeature.value
+    })
+  }
   
-  // Apply additional custom filters
-  if (additionalFilters.value.minGoldCost !== undefined) {
+  // Filter by specific file
+  if (selectedFile.value) {
+    items = items.filter(item => item.sourceFile === selectedFile.value)
+  }
+  
+  // Filter by search query
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
     items = items.filter(item => 
-      item.goldCost !== undefined && item.goldCost >= additionalFilters.value.minGoldCost
+      item.name.toLowerCase().includes(query) ||
+      item.id.toLowerCase().includes(query) ||
+      (item.effect && item.effect.toLowerCase().includes(query))
     )
   }
   
+  // Apply additional custom filters
+  if (additionalFilters.value.minLevel !== undefined) {
+    items = items.filter(item => (item.level || 0) >= additionalFilters.value.minLevel!)
+  }
+  
+  if (additionalFilters.value.maxLevel !== undefined) {
+    items = items.filter(item => (item.level || 0) <= additionalFilters.value.maxLevel!)
+  }
+  
+  if (additionalFilters.value.minGoldCost !== undefined) {
+    items = items.filter(item => (item.goldCost || 0) >= additionalFilters.value.minGoldCost!)
+  }
+  
   if (additionalFilters.value.maxGoldCost !== undefined) {
-    items = items.filter(item => 
-      item.goldCost !== undefined && item.goldCost <= additionalFilters.value.maxGoldCost
-    )
+    items = items.filter(item => (item.goldCost || 0) <= additionalFilters.value.maxGoldCost!)
+  }
+  
+  if (additionalFilters.value.hasPrerequisites !== undefined) {
+    items = items.filter(item => {
+      const hasPrereqs = item.prerequisites.length > 0
+      return additionalFilters.value.hasPrerequisites ? hasPrereqs : !hasPrereqs
+    })
   }
   
   if (additionalFilters.value.sourceFile) {
@@ -155,15 +187,15 @@ const filteredItems = computed(() => {
   }
   
   if (additionalFilters.value.hasGoldCost) {
-    items = items.filter(item => item.goldCost !== undefined)
+    items = items.filter(item => item.goldCost !== undefined && item.goldCost > 0)
   }
   
   if (additionalFilters.value.hasEnergyCost) {
-    items = items.filter(item => item.energyCost !== undefined)
+    items = items.filter(item => item.energyCost !== undefined && item.energyCost > 0)
   }
   
   if (additionalFilters.value.hasMaterialsCost) {
-    items = items.filter(item => item.materialsCost !== undefined)
+    items = items.filter(item => item.materialsCost && item.materialsCost.length > 0)
   }
   
   if (additionalFilters.value.isRepeatable !== undefined) {
@@ -174,11 +206,15 @@ const filteredItems = computed(() => {
 })
 
 const getTableTitle = () => {
-  if (selectedCategory.value && selectedType.value) {
-    return `${selectedCategory.value} - ${selectedType.value}`
+  if (selectedGameFeature.value && selectedFile.value) {
+    // Find the file metadata to get display name
+    const fileMetadata = CSV_FILE_LIST.find(f => f.filename === selectedFile.value)
+    const fileName = fileMetadata?.displayName || selectedFile.value
+    const categoryBadge = fileMetadata ? `(${fileMetadata.category})` : ''
+    return `${selectedGameFeature.value} - ${fileName} ${categoryBadge}`
   }
-  if (selectedCategory.value) {
-    return selectedCategory.value
+  if (selectedGameFeature.value) {
+    return selectedGameFeature.value
   }
   if (searchQuery.value) {
     return `Search: "${searchQuery.value}"`

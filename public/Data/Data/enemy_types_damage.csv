@@ -1,0 +1,7 @@
+enemy_type,base_damage,attack_speed,hp,weak_to,resistant_to
+Slimes,3,1.0/sec,20,None,None
+Armored Insects,4,0.8/sec,30,Spear,Sword
+Predatory Beasts,6,1.2/sec,25,Sword,Bow
+Flying Predators,5,1.5/sec,20,Bow,Crossbow
+Venomous Crawlers,4,1.0/sec,35,Crossbow,Wand
+Living Plants,3,0.7/sec,40,Wand,Spear

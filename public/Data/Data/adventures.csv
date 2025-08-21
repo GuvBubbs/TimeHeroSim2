@@ -1,0 +1,23 @@
+id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
+meadow_path_short,Meadow Path,,,,,25,10,3,,,,,,,,,,,,,,,,Short,Giant Slime,Copper x2,Wood x5-10,fixed,,,,,,,Slimes only
+meadow_path_medium,Meadow Path,meadow_path_short,,,,75,25,8,,,,,,,,,,,,,,,,Medium,Giant Slime,Copper x2,Wood x5-10,fixed,,,,,,,Slimes only
+meadow_path_long,Meadow Path,meadow_path_medium,,,,150,50,15,,,,,,,,,,,,,,,,Long,Giant Slime,Copper x2,Wood x5-10,fixed,,,,,,,Slimes only
+pine_vale_short,Pine Vale,meadow_path_long,,,,60,20,5,,,,,,,,,,,,,,,,Short,Beetle Lord,Iron x3;Pine Resin x1,Wood x20-30,1,,,,,,,
+pine_vale_medium,Pine Vale,pine_vale_short,,,,150,50,15,,,,,,,,,,,,,,,,Medium,Beetle Lord,Iron x3;Pine Resin x1,Wood x20-30,1,,,,,,,
+pine_vale_long,Pine Vale,pine_vale_medium,,,,300,100,30,,,,,,,,,,,,,,,,Long,Beetle Lord,Iron x3;Pine Resin x1,Wood x20-30,1,,,,,,,
+dark_forest_short,Dark Forest,pine_vale_long,,,,150,40,8,,,,,,,,,,,,,,,,Short,Alpha Wolf,Iron x5;Shadow Bark x1,Wood x40-60,2,,,,,,,
+dark_forest_medium,Dark Forest,dark_forest_short,,,,375,100,20,,,,,,,,,,,,,,,,Medium,Alpha Wolf,Iron x5;Shadow Bark x1,Wood x40-60,2,,,,,,,
+dark_forest_long,Dark Forest,dark_forest_medium,,,,750,200,45,,,,,,,,,,,,,,,,Long,Alpha Wolf,gnome_1;Iron x5;Shadow Bark x1,Wood x40-60,2,,,,,,,
+mountain_pass_short,Mountain Pass,dark_forest_long,,,,400,100,10,,,,,,,,,,,,,,,,Short,Sky Serpent,Silver x3;Mountain Stone x1,Stone x30-50,2,,,,,,,
+mountain_pass_medium,Mountain Pass,mountain_pass_short,,,,1000,250,30,,,,,,,,,,,,,,,,Medium,Sky Serpent,Silver x3;Mountain Stone x1,Stone x30-50,2,,,,,,,
+mountain_pass_long,Mountain Pass,mountain_pass_medium,,,,2000,500,60,,,,,,,,,,,,,,,,Long,Sky Serpent,gnome_2;Silver x3;Mountain Stone x1,Stone x30-50,2,,,,,,,
+crystal_caves_short,Crystal Caves,mountain_pass_long,,,,1000,200,15,,,,,,,,,,,,,,,,Short,Crystal Spider,Crystal x2;Cave Crystal x1,Crystal x1-2,3,,,,,,,
+crystal_caves_medium,Crystal Caves,crystal_caves_short,,,,2500,500,40,,,,,,,,,,,,,,,,Medium,Crystal Spider,Crystal x2;Cave Crystal x1,Crystal x1-2,3,,,,,,,
+crystal_caves_long,Crystal Caves,crystal_caves_medium,,,,5000,1000,90,,,,,,,,,,,,,,,,Long,Crystal Spider,gnome_3;Crystal x2;Cave Crystal x1,Crystal x1-2,3,,,,,,,
+frozen_tundra_short,Frozen Tundra,crystal_caves_long,,,,2500,400,20,,,,,,,,,,,,,,,,Short,Frost Wyrm,Mythril x1;Frozen Heart x1;Enchanted Wood x1,Wood x80-120,3,,,,,,,
+frozen_tundra_medium,Frozen Tundra,frozen_tundra_short,,,,6250,1000,50,,,,,,,,,,,,,,,,Medium,Frost Wyrm,Mythril x1;Frozen Heart x1;Enchanted Wood x1,Wood x80-120,3,,,,,,,
+frozen_tundra_long,Frozen Tundra,frozen_tundra_medium,,,,12500,2000,120,,,,,,,,,,,,,,,,Long,Frost Wyrm,gnome_4;Mythril x1;Frozen Heart x1;Enchanted Wood x1,Wood x80-120,3,,,,,,,
+volcano_core_short,Volcano Core,frozen_tundra_long,,,,6000,800,25,,,,,,,,,,,,,,,,Short,Lava Titan,Obsidian x2;Molten Core x1,Obsidian x1,random,,,,,,,mix all types
+volcano_core_medium,Volcano Core,volcano_core_short,,,,15000,2000,65,,,,,,,,,,,,,,,,Medium,Lava Titan,Obsidian x2;Molten Core x1,Obsidian x1,random,,,,,,,mix all types
+volcano_core_long,Volcano Core,volcano_core_medium,,,,30000,4000,150,,,,,,,,,,,,,,,,Long,Lava Titan,gnome_5;Obsidian x2;Molten Core x1,Obsidian x1,random,,,,,,,mix all types
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,mix all types

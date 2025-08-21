@@ -1,0 +1,22 @@
+id,name,tier,category,prerequisite,effect,,notes
+hands,hands,,farm_tool,,,,Starting tool
+hoe,Hoe,base,farm_tool,,till_soil,,Enables plot creation
+hoe_plus,Hoe+,plus,farm_tool,hoe;anvil_1,till_2x,,2x tilling speed
+terra_former,Terra Former,master,farm_tool,hoe_plus;mythril_anvil,till_4x_area,,4x speed and area
+hammer,Hammer,base,farm_tool,hoe,clear_rocks,,Clear rocks
+hammer_plus,Hammer+,plus,farm_tool,hammer;anvil_1,clear_boulders,,Break boulders
+stone_breaker,Stone Breaker,master,farm_tool,hammer_plus;mythril_anvil,instant_rocks,,Instant clearing
+axe,Axe,base,farm_tool,hammer,remove_stumps,,Clear stumps
+axe_plus,Axe+,plus,farm_tool,axe;anvil_2,stumps_2x,,2x wood yield
+world_splitter,World Splitter,master,farm_tool,axe_plus;mythril_anvil,ancient_roots,,3x yield
+shovel,Shovel,base,farm_tool,axe,excavate,,Dig obstacles
+shovel_plus,Shovel+,plus,farm_tool,shovel;anvil_2,deep_excavate,,Irrigation
+earth_mover,Earth Mover,master,farm_tool,shovel_plus;crystal_furnace,reshape_land,,Area clear
+pickaxe_1,Pickaxe I,base,mining_tool,,mine_depth_10,,Basic mining
+pickaxe_2,Pickaxe II,iron,mining_tool,pickaxe_1,mine_efficient_15,,-15% drain
+pickaxe_3,Pickaxe III,silver,mining_tool,pickaxe_2;anvil_2,mine_efficient_30,,-30% drain
+crystal_pick,Crystal Pick,crystal,mining_tool,pickaxe_3;mythril_anvil,mine_efficient_45,,-45% drain
+abyss_seeker,Abyss Seeker,mythril,mining_tool,crystal_pick;crystal_furnace,mine_efficient_60,,-60% drain
+watering_can_2,Watering Can II,base,farm_tool,anvil_1,water_2_plots,,more water
+sprinkler_can,Sprinkler Can,plus,farm_tool,watering_can_2;furnace_2,water_4_plots,,Water 2 plots
+rain_bringer,Rain Bringer,master,farm_tool,sprinkler_can;crystal_furnace,water_8_plots,,Water 4 plots

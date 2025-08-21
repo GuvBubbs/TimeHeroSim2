@@ -1,0 +1,6 @@
+defense_rating,base_defense_value,drop_weight
+Minimal,5,35%
+Low,10,30%
+Medium,15,20%
+High,20,10%
+Extreme,25,5%

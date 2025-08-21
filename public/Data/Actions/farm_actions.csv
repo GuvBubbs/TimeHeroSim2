@@ -1,0 +1,87 @@
+id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
+storage_shed_1,Storage Shed I,blueprint_storage_shed_1,energy_storage,,,,10,5,Stone x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Energy cap 50->150
+storage_shed_2,Storage Shed II,blueprint_storage_shed_2,energy_storage,,,,50,10,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Energy cap 150->500
+storage_shed_3,Storage Shed III,blueprint_storage_shed_3,energy_storage,,,,200,15,Silver x5,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Energy cap 500->1500
+storage_barn_1,Storage Barn I,blueprint_storage_barn_1,energy_storage,,,,1000,30,Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Energy cap 1500->6000
+storage_barn_2,Storage Barn II,blueprint_storage_barn_2,energy_storage,,,,5000,45,Mythril x1,,,,,,,,,,,,,,,,,,,,,,,,,FALSE,Energy cap 6000->20000
+storage_silo,Storage Silo,blueprint_storage_silo,energy_storage,,,,25000,60,Stone x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Energy cap 20000->100000
+water_tank_1,Water Tank I,blueprint_water_tank_1,water_storage,,,,15,5,Copper x8,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water cap 20->60
+water_tank_2,Water Tank II,blueprint_water_tank_2,water_storage,,,,75,10,Iron x12,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water cap 60->200
+water_tank_3,Water Tank III,blueprint_water_tank_3,water_storage,,,,400,15,Silver x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water cap 200->600
+reservoir,Reservoir,blueprint_reservoir,water_storage,,,,2000,30,Crystal x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water cap 600->2000
+crystal_reservoir,Crystal Reservoir,blueprint_crystal_reservoir,water_storage,,,,10000,45,Stone x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water cap 2000->10000
+well_pump_1,Well Pump I,blueprint_well_pump_1,pump,,,,20,5,Copper x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water/crank 2->4
+well_pump_2,Well Pump II,blueprint_well_pump_2,pump,,,,100,10,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water/crank 4->8
+well_pump_3,Well Pump III,blueprint_well_pump_3,pump,,,,500,15,Silver x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water/crank 8->15
+steam_pump,Steam Pump,blueprint_steam_pump,pump,,,,2500,30,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water/crank 15->30
+crystal_pump,Crystal Pump,blueprint_crystal_pump,pump,,,,12000,45,Stone x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Water/crank 30->60
+seed_storage_1,Seed Storage I,blueprint_seed_storage_1,seed_storage,,,,40,5,Copper x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Seed cap 50->150
+seed_storage_2,Seed Storage II,blueprint_seed_storage_2,seed_storage,,,,200,10,Iron x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Seed cap 150->500
+seed_vault,Seed Vault,blueprint_seed_vault,seed_storage,,,,1000,20,Wood x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Seed cap 500->2000
+material_crate_1,Material Crate I,blueprint_material_crate_1,material_storage,,,,50,5,Wood x20;Iron x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Max 50 per material
+material_crate_2,Material Crate II,blueprint_material_crate_2,material_storage,,,,250,10,Iron x10;Silver x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Max 100 per material
+material_warehouse,Material Warehouse,blueprint_material_warehouse,material_storage,,,,1000,20,Silver x5;Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Max 250 per material
+material_depot,Material Depot,blueprint_material_depot,material_storage,,,,5000,30,Crystal x3;Mythril x1,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Max 500 per material
+material_silo,Material Silo,blueprint_material_silo,material_storage,,,,20000,45,Wood x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Max 1000 per material
+tower_reach_2,Tower Reach 2,blueprint_tower_reach_2,tower,,,,50,10,Wood x15;Copper x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Breeze band (Seed Level 0)
+tower_reach_3,Tower Reach 3,blueprint_tower_reach_3,tower,,,,200,15,Wood x20;Iron x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Gust band (Seed Level 1)
+tower_reach_4,Tower Reach 4,blueprint_tower_reach_4,tower,,,,1000,20,Silver x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Gale band (Seed Level 2)
+tower_reach_5,Tower Reach 5,blueprint_tower_reach_5,tower,,,,5000,30,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Jet Stream band (Seed Level 3)
+tower_reach_6,Tower Reach 6,blueprint_tower_reach_6,tower,,,,20000,45,Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Cloud Layer band (Seed Level 4)
+tower_reach_7,Tower Reach 7,blueprint_tower_reach_7,tower,,,,100000,60,Mythril x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Stratosphere band (Seed Level 5)
+tower_reach_8,Tower Reach 8,blueprint_tower_reach_8,tower,,,,400000,90,Obsidian x1,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Mesosphere band (Seed Level 6)
+tower_reach_9,Tower Reach 9,blueprint_tower_reach_9,tower,,,,1500000,120,Obsidian x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Thermosphere band (Seed Level 7)
+tower_reach_10,Tower Reach 10,blueprint_tower_reach_10,tower,,,,5000000,150,Obsidian x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Exosphere band (Seed Level 8)
+tower_reach_11,Tower Reach 11,blueprint_tower_reach_11,tower,,,,15000000,180,Copper x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Unlock Low Orbit band (Seed Level 9)
+net_1,Net I,blueprint_net_1,tower,,,,60,5,Iron x8,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+20% catch rate (active)
+net_2,Net II,blueprint_net_2,tower,,,,300,10,Silver x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+40% catch rate (active)
+golden_net,Golden Net,blueprint_golden_net,tower,,,,1500,20,Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+60% catch rate (active)
+crystal_net,Crystal Net,blueprint_crystal_net,tower,,,,8000,30,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+80% catch rate (active)
+auto_catcher_1,Auto-Catcher I,blueprint_auto_catcher_1,tower,,,,500,15,Silver x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,1 seed/10 min passive
+auto_catcher_2,Auto-Catcher II,blueprint_auto_catcher_2,tower,,,,2500,30,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,1 seed/5 min passive
+auto_catcher_3,Auto-Catcher III,blueprint_auto_catcher_3,tower,,,,15000,45,Wood x20;Stone x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,1 seed/2 min passive
+gnome_hut,Gnome Hut,blueprint_gnome_hut,gnome_housing,,,,250,15,Wood x50;Iron x20,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,1 gnome capacity
+gnome_house,Gnome House,blueprint_gnome_house,gnome_housing,,,,1000,30,Wood x100;Silver x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,2 gnomes capacity
+gnome_lodge,Gnome Lodge,blueprint_gnome_lodge,gnome_housing,,,,5000,45,Wood x200;Crystal x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,3 gnomes capacity
+gnome_hall,Gnome Hall,blueprint_gnome_hall,gnome_housing,,,,25000,60,Wood x500;Mythril x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,4 gnomes capacity
+gnome_village,Gnome Village,blueprint_gnome_village,gnome_housing,,,,100000,90,Wood x50,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,5 gnomes capacity
+mulch_beds,Mulch Beds,blueprint_mulch_beds,water_retention,,,,150,10,Wood x100;Iron x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Plots retain water 25% longer
+irrigation_channels,Irrigation Channels,blueprint_irrigation_channels,water_retention,,,,750,20,Wood x200;Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Plots retain water 50% longer
+crystal_irrigation,Crystal Irrigation,blueprint_crystal_irrigation,water_retention,,,,4000,30,Copper x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Plots retain water 75% longer
+auto_pump_1,Auto-Pump I,blueprint_auto_pump_1,auto_pump,,,,100,10,Iron x10,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+10% water cap/hour offline
+auto_pump_2,Auto-Pump II,blueprint_auto_pump_2,auto_pump,,,,500,15,Silver x5,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+20% water cap/hour offline
+auto_pump_3,Auto-Pump III,blueprint_auto_pump_3,auto_pump,,,,2500,20,Crystal x3,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+35% water cap/hour offline
+crystal_auto_pump,Crystal Auto-Pump,blueprint_crystal_auto_pump,auto_pump,,,,12000,30,Wood x200;Silver x10;Cave Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+50% water cap/hour offline
+training_grounds,Training Grounds,blueprint_training_grounds,gnome_training,,,,10000,60,Wood x500;Crystal x5;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Reduces training time by 25%
+master_academy,Master Academy,blueprint_master_academy,gnome_training,,,,50000,120,,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Reduces training time by 50%; enables dual-role gnomes
+clear_weeds_1,Clear Weeds #1,,,,,,15,,,,,,,,,,,,,,,,,,,,,,,,2,5,hands,FALSE,
+clear_weeds_2,Clear Weeds #2,clear_weeds_1,,,,,50,,,,,,,,,,,,,,,,,,,,,,,,3,8,hands,FALSE,
+gather_sticks,Gather Sticks,,,,,,5,,,Wood x1,,,,,,,,,,,,,,,,,,,,,0,0,hands,TRUE,
+break_branches,Break Branches,,,,,,10,,,Wood x2,,,,,,,,,,,,,,,,,,,,,0,0,hands,TRUE,
+collect_dead_trees,Collect Dead Trees,farm_stage_2,,,,,60,,,Wood x8,,,,,,,,,,,,,,,,,,,,,2,10,hands,FALSE,
+till_soil_1,Till Soil #1,collect_dead_trees,,,,,60,,,,,,,,,,,,,,,,,,,,,,,,3,13,hoe,FALSE,
+clear_rocks_1,Clear Rocks #1,till_soil_1,,,,,120,,,Stone x8,,,,,,,,,,,,,,,,,,,,,3,16,hands,FALSE,
+till_soil_2,Till Soil #2,clear_rocks_1,,,,,160,,,,,,,,,,,,,,,,,,,,,,,,4,20,hoe,FALSE,
+gather_branches,Gather Branches,farm_stage_2,,,,,15,,,Wood x1,,,,,,,,,,,,,,,,,,,,,0,0,hands,TRUE,
+chop_saplings,Chop Saplings,farm_stage_2,,,,,25,,,Wood x2,,,,,,,,,,,,,,,,,,,,,0,0,hands,TRUE,
+fell_small_tree,Fell Small Tree,blueprint_axe,,,,,50,,,Wood x5,,,,,,,,,,,,,,,,,,,,,0,0,axe,TRUE,
+clear_boulders_1,Clear Boulders #1,homestead_deed,,,,,600,,,Stone x12,,,,,,,,,,,,,,,,,,,,,4,24,hammer_plus,FALSE,
+remove_stumps_1,Remove Stumps #1,clear_boulders_1,,,,,750,,,Wood x20,,,,,,,,,,,,,,,,,,,,,4,28,axe,FALSE,
+clear_boulders_2,Clear Boulders #2,remove_stumps_1,,,,,1200,,,Stone x18,,,,,,,,,,,,,,,,,,,,,4,32,hammer_plus,FALSE,
+remove_stumps_2,Remove Stumps #2,clear_boulders_2,,,,,1500,,,Wood x30,,,,,,,,,,,,,,,,,,,,,4,36,axe,FALSE,
+till_new_land,Till New Land,remove_stumps_2,,,,,1600,,,,,,,,,,,,,,,,,,,,,,,,4,40,hoe_plus,FALSE,
+chop_trees,Chop Trees,blueprint_axe,,,,,100,,,Wood x10,,,,,,,,,,,,,,,,,,,,,0,0,axe,TRUE,
+clear_grove,Clear Grove,blueprint_axe_plus,,,,,200,,,Wood x25,,,,,,,,,,,,,,,,,,,,,0,0,axe_plus,TRUE,
+excavate_rocks_1,Excavate Rocks #1,manor_grounds_deed,,,,,4000,,,Stone x24,,,,,,,,,,,,,,,,,,,,,5,45,shovel,FALSE,
+clear_thickets_1,Clear Thickets #1,excavate_rocks_1,,,,,3600,,,Wood x36,,,,,,,,,,,,,,,,,,,,,5,50,earth_mover,FALSE,
+excavate_rocks_2,Excavate Rocks #2,clear_thickets_1,,,,,6400,,,Stone x32,,,,,,,,,,,,,,,,,,,,,5,55,shovel_plus,FALSE,
+clear_thickets_2,Clear Thickets #2,excavate_rocks_2,,,,,6000,,,Wood x48,,,,,,,,,,,,,,,,,,,,,5,60,earth_mover,FALSE,
+terraform,Terraform,clear_thickets_2;terra_former;stone_breaker;world_splitter;earth_mover,,,,,7500,,,,,,,,,,,,,,,,,,,,,,,,5,65,terra_former;stone_breaker;world_splitter;earth_mover,FALSE,
+harvest_forest,Harvest Forest,blueprint_shovel_plus,,,,,400,,,Wood x40,,,,,,,,,,,,,,,,,,,,,0,0,shovel_plus,TRUE,
+clear_old_growth,Clear Old Growth,blueprint_earth_mover,,,,,800,,,Wood x100,,,,,,,,,,,,,,,,,,,,,0,0,earth_mover,TRUE,
+stone_monoliths_1,Stone Monoliths #1,great_estate_deed,,,,,20000,,,Stone x50,,,,,,,,,,,,,,,,,,,,,5,70,stone_breaker,FALSE,
+ancient_roots_1,Ancient Roots #1,stone_monoliths_1,,,,,20000,,,Wood x100,,,,,,,,,,,,,,,,,,,,,5,75,world_splitter,FALSE,
+stone_monoliths_2,Stone Monoliths #2,ancient_roots_1,,,,,30000,,,Stone x75,,,,,,,,,,,,,,,,,,,,,5,80,stone_breaker,FALSE,
+sacred_clearing,Sacred Clearing,stone_monoliths_2,,,,,50000,,,,,,,,,,,,,,,,,,,,,,,,10,90,world_splitter;stone_breaker,FALSE,
+mystic_grove,Mystic Grove,blueprint_world_splitter,,,,,1500,,,Wood x200,,,,,,,,,,,,,,,,,,,,,0,0,world_splitter,TRUE,
+enchanted_forest,Enchanted Forest,blueprint_world_splitter;blueprint_stone_breaker,,,,,3000,,,Wood x500;Enchanted Wood x1 (5% chance),,,,,,,,,,,,,,,,,,,,,0,0,world_splitter;stone_breaker,TRUE,

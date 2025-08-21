@@ -1,5 +1,4 @@
 id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-id,name,prerequisite,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 blueprint_storage_shed_1,Storage Shed I Blueprint,,town,energy_storage,20,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Energy cap 50->150
 blueprint_storage_shed_2,Storage Shed II Blueprint,storage_shed_1,town,energy_storage,100,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Energy cap 150->500
 blueprint_storage_shed_3,Storage Shed III Blueprint,storage_shed_2;homestead_deed,town,energy_storage,500,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Energy cap 500->1500

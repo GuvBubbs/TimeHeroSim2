@@ -1,0 +1,186 @@
+{
+  "main": {
+    "id": "d38b3e51aec5bfce",
+    "type": "split",
+    "children": [
+      {
+        "id": "db46a6044a079f45",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c20dc5f44e63d3e5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Sim Design/07-reports.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "07-reports"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "81a3f27c30e41ec6",
+    "type": "split",
+    "children": [
+      {
+        "id": "0280d487b2d1f8b7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9edb0f1900f705be",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "07e6e70dca125539",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "7920b904547f218b",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "f7c532a663fb86d4",
+    "type": "split",
+    "children": [
+      {
+        "id": "02b9af6f353cdc7b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "13112c07d69df667",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Sim Design/07-reports.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for 07-reports"
+            }
+          },
+          {
+            "id": "c28c13d0963b65c8",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Sim Design/07-reports.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from 07-reports"
+            }
+          },
+          {
+            "id": "f9d3e6b393b58895",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "740b0c74e43a2885",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Sim Design/07-reports.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of 07-reports"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "c20dc5f44e63d3e5",
+  "lastOpenFiles": [
+    "Sim Design/05-simulation-setup.md",
+    "Sim Design/07-reports.md",
+    "Sim Design/06-live-monitor.md",
+    "Sim Design/00-tech-stack-architecture.md",
+    "Sim Design/04-player-personas.md",
+    "Sim Design/03-upgrade-tree.md",
+    "Sim Design/01-dashboard.md",
+    "Sim Design/02-game-configuration.md",
+    "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
+    "Sim Design",
+    "untitled folder",
+    "Time Hero Game Design Reference/Time Hero - Combat Mechanics & Balance.md"
+  ]
+}

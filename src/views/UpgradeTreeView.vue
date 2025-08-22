@@ -316,7 +316,7 @@ const rebuildGraph = async () => {
   graphStats.value = {
     nodes: nodes.length,
     edges: edges.length,
-    lanes: 8
+    lanes: 14
   }
   
   // Replace elements
@@ -329,11 +329,15 @@ const rebuildGraph = async () => {
   // Re-setup event handlers
   setupEventHandlers()
   
-  // Update container size with new reduced spacing
+  // Update container size using consistent constants
+  const LANE_PADDING = 25  // Match graphBuilder.ts LAYOUT_CONSTANTS.LANE_PADDING
+  const TIER_WIDTH = 180   // Match graphBuilder.ts LAYOUT_CONSTANTS.TIER_WIDTH
+  const LANE_START_X = 200 // Match graphBuilder.ts LAYOUT_CONSTANTS.LANE_START_X
+  
   const totalHeight = Array.from(laneHeights.values()).reduce((sum, h) => sum + h, 0) + 
-                      (8 * 25) + 40  // Updated lane spacing
+                      (14 * LANE_PADDING) + 40  // 14 lanes + extra padding
   const maxTier = Math.max(...nodes.map(n => n.data.tier))
-  const totalWidth = Math.max(window.innerWidth, 200 + ((maxTier + 1) * 180) + 100)  // Using TIER_WIDTH = 180px
+  const totalWidth = Math.max(window.innerWidth, LANE_START_X + ((maxTier + 1) * TIER_WIDTH) + 100)
   
   const container = cyContainer.value!
   container.style.width = `${totalWidth}px`
@@ -372,7 +376,20 @@ const addSwimLaneVisuals = () => {
   if (!cy) return
   
   const SWIM_LANES = [
-    'Farm', 'Tower', 'Adventure', 'Combat', 'Forge', 'Mining', 'Town', 'General'
+    'Farm',              // Row 0
+    'Vendors',           // Row 1 - Town vendors (general)
+    'Blacksmith',        // Row 2 - Town blacksmith items  
+    'Agronomist',        // Row 3 - Town agronomist items
+    'Carpenter',         // Row 4 - Town carpenter items
+    'Land Steward',      // Row 5 - Town land steward items
+    'Material Trader',   // Row 6 - Town material trader items
+    'Skills Trainer',    // Row 7 - Town skills trainer items
+    'Adventure',         // Row 8 - Adventure routes
+    'Combat',            // Row 9 - Combat items
+    'Forge',             // Row 10 - Forge items
+    'Mining',            // Row 11 - Mining items
+    'Tower',             // Row 12 - Tower items
+    'General'            // Row 13 - Catch-all
   ]
   
   // Wait for nodes to be fully rendered before calculating sizes
@@ -484,8 +501,8 @@ const addSwimLaneVisuals = () => {
         return
       }
       
-      // For lanes with nodes: calculate height with generous padding (40px top + 40px bottom = 80px total)
-      const LANE_PADDING = 40 // Generous padding (full node height)
+      // For lanes with nodes: use consistent padding that matches node positioning
+      const LANE_PADDING = 25 // Match graphBuilder.ts LAYOUT_CONSTANTS.LANE_PADDING
       const nodeRange = lane.maxY - lane.minY
       const laneHeight = Math.max(120, nodeRange + (LANE_PADDING * 2)) // +80px total padding
       const laneCenterY = currentTopY + (laneHeight / 2)
@@ -618,7 +635,7 @@ const initializeGraph = async () => {
     graphStats.value = {
       nodes: nodes.length,
       edges: edges.length,
-      lanes: 8 // We have 8 swim lanes
+      lanes: 14 // We have 14 swim lanes (including individual town vendors)
     }
     
     // Initialize Cytoscape
@@ -759,8 +776,7 @@ const initializeGraph = async () => {
             'border-style': 'solid',
             'z-index': -1,  // MUST be negative
             'overlay-opacity': 0,
-            'events': 'no',  // Disable all events
-            'layer': 'background'
+            'events': 'no'  // Disable all events
           }
         },
         
@@ -775,6 +791,7 @@ const initializeGraph = async () => {
             'background-opacity': 0.8,
             'border-width': 2,
             'border-color': '#334155',
+            'label': 'data(label)',  // Display the node's label text
             'text-valign': 'center',
             'text-halign': 'center',
             'font-weight': 'bold',
@@ -822,11 +839,15 @@ const initializeGraph = async () => {
     // Add swim lane visuals
     addSwimLaneVisuals()
     
-    // Calculate and set container size with dynamic heights and new spacing
+    // Calculate and set container size using consistent constants
+    const LANE_PADDING = 25  // Match graphBuilder.ts constants
+    const TIER_WIDTH = 180
+    const LANE_START_X = 200
+    
     const totalHeight = Array.from(laneHeights.values()).reduce((sum, h) => sum + h, 0) + 
-                        (8 * 25) + 40  // Updated lane spacing
+                        (14 * LANE_PADDING) + 40  // 14 lanes + extra padding
     const maxTier = Math.max(...nodes.map(n => n.data.tier))
-    const totalWidth = Math.max(window.innerWidth, 200 + ((maxTier + 1) * 180) + 100)  // Using TIER_WIDTH = 180px
+    const totalWidth = Math.max(window.innerWidth, LANE_START_X + ((maxTier + 1) * TIER_WIDTH) + 100)
     
     const container = cyContainer.value!
     container.style.width = `${totalWidth}px`

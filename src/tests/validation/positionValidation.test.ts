@@ -184,13 +184,16 @@ describe('Position Validation System', () => {
 
     it('should detect performance issues', () => {
       // Mock performance.now to simulate slow execution
-      const originalNow = performance.now
       let callCount = 0
-      vi.mocked(performance.now).mockImplementation(() => {
+      const mockPerformanceNow = vi.fn(() => {
         callCount++
         // First call (start): 0ms, Second call (end): 3000ms (3 seconds)
         return callCount === 1 ? 0 : 3000
       })
+      
+      // Replace performance.now temporarily
+      const originalNow = performance.now
+      performance.now = mockPerformanceNow
       
       const result = runAutomatedPerformanceTests(mockMixedItems)
       
@@ -200,7 +203,7 @@ describe('Position Validation System', () => {
       expect(result.issues[0].message).toContain('exceeds')
       
       // Restore original function
-      vi.mocked(performance.now).mockImplementation(originalNow)
+      performance.now = originalNow
     })
   })
 
@@ -246,6 +249,204 @@ describe('Position Validation System', () => {
       // Should test farm and blacksmith items (Actions/Unlocks) but not adventure items (Data)
       const expectedTestCount = mockFarmItems.length + mockBlacksmithItems.length + 1 // +1 for tower item
       expect(result.metrics?.testedNodes).toBe(expectedTestCount)
+    })
+  })
+
+  describe('Tier-Based Positioning Integration', () => {
+    it('should validate prerequisite positioning correctly', async () => {
+      const { 
+        validatePrerequisitePositioning,
+        validateTierAlignmentAcrossLanes,
+        validatePrerequisiteEdgeConnections,
+        validateTierBasedPositioning
+      } = await import('@/utils/graphBuilder')
+      
+      // Create test items with prerequisite chain
+      const chainItems: GameDataItem[] = [
+        {
+          id: 'tier-0-item',
+          name: 'Tier 0 Item',
+          category: 'Actions',
+          sourceFile: 'farm_actions.csv',
+          goldCost: 100,
+          energyCost: 10,
+          level: 1,
+          prerequisites: [],
+          categories: ['farm'],
+          type: 'action'
+        },
+        {
+          id: 'tier-1-item',
+          name: 'Tier 1 Item',
+          category: 'Actions',
+          sourceFile: 'farm_actions.csv',
+          goldCost: 200,
+          energyCost: 20,
+          level: 2,
+          prerequisites: ['tier-0-item'],
+          categories: ['farm'],
+          type: 'action'
+        }
+      ]
+      
+      // Create positioned nodes with correct tier positioning
+      const positionedNodes = [
+        {
+          item: chainItems[0],
+          position: { x: 270, y: 100 }, // Tier 0: LANE_START_X + NODE_WIDTH/2
+          lane: 'Farm',
+          tier: 0,
+          withinBounds: true
+        },
+        {
+          item: chainItems[1],
+          position: { x: 450, y: 150 }, // Tier 1: LANE_START_X + TIER_WIDTH + NODE_WIDTH/2
+          lane: 'Farm',
+          tier: 1,
+          withinBounds: true
+        }
+      ]
+      
+      const boundaries = new Map([
+        ['Farm', {
+          lane: 'Farm',
+          startY: 50,
+          endY: 250,
+          centerY: 150,
+          height: 200,
+          usableHeight: 160
+        }]
+      ])
+      
+      const result = validatePrerequisitePositioning(chainItems, positionedNodes)
+      
+      expect(result.testName).toBe('Prerequisite Positioning Validation')
+      expect(result.passed).toBe(true)
+      expect(result.metrics?.totalItems).toBe(2)
+      expect(result.metrics?.itemsWithPrerequisites).toBe(1)
+      expect(result.metrics?.prerequisiteViolations).toBe(0)
+    })
+
+    it('should detect prerequisite positioning violations', async () => {
+      const { validatePrerequisitePositioning } = await import('@/utils/graphBuilder')
+      
+      const chainItems: GameDataItem[] = [
+        {
+          id: 'tier-0-item',
+          name: 'Tier 0 Item',
+          category: 'Actions',
+          sourceFile: 'farm_actions.csv',
+          goldCost: 100,
+          energyCost: 10,
+          level: 1,
+          prerequisites: [],
+          categories: ['farm'],
+          type: 'action'
+        },
+        {
+          id: 'tier-1-item',
+          name: 'Tier 1 Item',
+          category: 'Actions',
+          sourceFile: 'farm_actions.csv',
+          goldCost: 200,
+          energyCost: 20,
+          level: 2,
+          prerequisites: ['tier-0-item'],
+          categories: ['farm'],
+          type: 'action'
+        }
+      ]
+      
+      // Create positioned nodes with INCORRECT positioning (prerequisite to the right)
+      const positionedNodes = [
+        {
+          item: chainItems[0],
+          position: { x: 450, y: 100 }, // Tier 0 incorrectly positioned to the right
+          lane: 'Farm',
+          tier: 0,
+          withinBounds: true
+        },
+        {
+          item: chainItems[1],
+          position: { x: 270, y: 150 }, // Tier 1 incorrectly positioned to the left
+          lane: 'Farm',
+          tier: 1,
+          withinBounds: true
+        }
+      ]
+      
+      const result = validatePrerequisitePositioning(chainItems, positionedNodes)
+      
+      expect(result.passed).toBe(false)
+      expect(result.metrics?.prerequisiteViolations).toBeGreaterThan(0)
+      expect(result.issues.some(issue => 
+        issue.severity === 'error' && issue.message.includes('not to the left')
+      )).toBe(true)
+    })
+
+    it('should validate tier alignment across lanes', async () => {
+      const { validateTierAlignmentAcrossLanes } = await import('@/utils/graphBuilder')
+      
+      // Create nodes in same tier but different lanes
+      const positionedNodes = [
+        {
+          item: mockFarmItems[0],
+          position: { x: 270, y: 100 },
+          lane: 'Farm',
+          tier: 0,
+          withinBounds: true
+        },
+        {
+          item: mockBlacksmithItems[0],
+          position: { x: 270, y: 300 }, // Same X position (good alignment)
+          lane: 'Blacksmith',
+          tier: 0,
+          withinBounds: true
+        }
+      ]
+      
+      const boundaries = new Map([
+        ['Farm', {
+          lane: 'Farm',
+          startY: 50,
+          endY: 200,
+          centerY: 125,
+          height: 150,
+          usableHeight: 110
+        }],
+        ['Blacksmith', {
+          lane: 'Blacksmith',
+          startY: 250,
+          endY: 400,
+          centerY: 325,
+          height: 150,
+          usableHeight: 110
+        }]
+      ])
+      
+      const result = validateTierAlignmentAcrossLanes(positionedNodes, boundaries)
+      
+      expect(result.testName).toBe('Tier Alignment Across Lanes')
+      expect(result.passed).toBe(true)
+      expect(result.metrics?.totalTiers).toBe(1)
+      expect(result.metrics?.alignmentIssues).toBe(0)
+    })
+
+    it('should run comprehensive tier-based positioning validation', async () => {
+      const { validateTierBasedPositioning } = await import('@/utils/graphBuilder')
+      
+      const results = validateTierBasedPositioning(mockMixedItems, [], new Map())
+      
+      expect(results).toHaveLength(3) // Three validation tests
+      expect(results[0].testName).toBe('Prerequisite Positioning Validation')
+      expect(results[1].testName).toBe('Tier Alignment Across Lanes')
+      expect(results[2].testName).toBe('Prerequisite Edge Connections')
+      
+      results.forEach(result => {
+        expect(result.passed).toBeDefined()
+        expect(result.issues).toBeDefined()
+        expect(result.recommendations).toBeDefined()
+      })
     })
   })
 

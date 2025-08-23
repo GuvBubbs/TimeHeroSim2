@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { buildGraphElements, validationReporter } from '@/utils/graphBuilder'
+import { 
+  buildGraphElements, 
+  validationReporter, 
+  LAYOUT_CONSTANTS, 
+  DERIVED_CONSTANTS,
+  validateCoordinateSystemConsistency,
+  validatePositionCalculationConsistency
+} from '@/utils/graphBuilder'
 import { mockMixedItems, mockOvercrowdedLaneItems } from '../fixtures/gameDataFixtures'
 
 // Mock console methods
@@ -101,8 +108,8 @@ describe('Integration Validation Tests', () => {
         expect(boundary).toBeDefined()
         
         if (boundary) {
-          const nodeHalfHeight = 20 // NODE_HEIGHT / 2
-          const buffer = 20 // LANE_BUFFER
+          const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
+          const buffer = LAYOUT_CONSTANTS.LANE_BUFFER
           const minY = boundary.startY + buffer + nodeHalfHeight
           const maxY = boundary.endY - buffer - nodeHalfHeight
           
@@ -135,7 +142,7 @@ describe('Integration Validation Tests', () => {
           const range = maxX - minX
           
           // Allow some tolerance for tier alignment (10% of tier width)
-          const tierWidth = 180 // LAYOUT_CONSTANTS.TIER_WIDTH
+          const tierWidth = LAYOUT_CONSTANTS.TIER_WIDTH
           expect(range).toBeLessThanOrEqual(tierWidth * 0.1)
         }
       })
@@ -201,6 +208,83 @@ describe('Integration Validation Tests', () => {
       expect(duration).toBeLessThan(5000) // 5 seconds
       expect(result.nodes).toHaveLength(50)
       expect(result.comprehensiveReport.summary.totalNodes).toBe(50)
+    })
+  })
+
+  describe('Coordinate System Consistency', () => {
+    it('should validate coordinate system constants are consistent', () => {
+      const validation = validateCoordinateSystemConsistency()
+      
+      expect(validation.isValid).toBe(true)
+      expect(validation.issues).toHaveLength(0)
+      expect(validation.constants).toBeDefined()
+      expect(validation.derivedConstants).toBeDefined()
+      
+      // Verify derived constants are correctly calculated
+      expect(validation.derivedConstants.NODE_HALF_HEIGHT).toBe(validation.constants.NODE_HEIGHT / 2)
+      expect(validation.derivedConstants.NODE_HALF_WIDTH).toBe(validation.constants.NODE_WIDTH / 2)
+      expect(validation.derivedConstants.TIER_CENTER_OFFSET).toBe(validation.constants.TIER_WIDTH / 2)
+      expect(validation.derivedConstants.LANE_TOTAL_PADDING).toBe(validation.constants.LANE_BUFFER * 2)
+    })
+
+    it('should validate position calculations use consistent coordinate system', () => {
+      const result = buildGraphElements(mockMixedItems)
+      const validation = validatePositionCalculationConsistency(
+        mockMixedItems,
+        result.laneHeights,
+        result.laneBoundaries
+      )
+      
+      expect(validation.isValid).toBe(true)
+      expect(validation.issues).toHaveLength(0)
+      expect(validation.metrics.totalNodes).toBeGreaterThan(0)
+      expect(validation.metrics.consistentXCalculations).toBe(validation.metrics.totalNodes)
+      expect(validation.metrics.boundaryAlignmentIssues).toBe(0)
+    })
+
+    it('should use consistent constants across all validation functions', () => {
+      // Test that validation functions use the same constants as positioning
+      const result = buildGraphElements(mockMixedItems)
+      
+      result.nodes.forEach(node => {
+        const boundary = result.laneBoundaries.get(node.data.swimLane)
+        expect(boundary).toBeDefined()
+        
+        if (boundary) {
+          // Verify boundary calculations use consistent constants
+          const expectedMinY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + DERIVED_CONSTANTS.NODE_HALF_HEIGHT
+          const expectedMaxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - DERIVED_CONSTANTS.NODE_HALF_HEIGHT
+          
+          // The boundary should be calculated consistently
+          expect(boundary.usableHeight).toBe(boundary.height - LAYOUT_CONSTANTS.LANE_BUFFER * 2)
+        }
+      })
+    })
+
+    it('should maintain tier width consistency across all lanes', () => {
+      const result = buildGraphElements(mockMixedItems)
+      
+      // Group nodes by tier
+      const tierGroups = new Map<number, any[]>()
+      result.nodes.forEach(node => {
+        const tier = node.data.tier
+        if (!tierGroups.has(tier)) {
+          tierGroups.set(tier, [])
+        }
+        tierGroups.get(tier)!.push(node)
+      })
+      
+      // Verify tier spacing is consistent
+      tierGroups.forEach((nodes, tier) => {
+        nodes.forEach(node => {
+          const expectedMinX = LAYOUT_CONSTANTS.LANE_START_X + DERIVED_CONSTANTS.NODE_HALF_WIDTH
+          const expectedTierX = LAYOUT_CONSTANTS.LANE_START_X + (tier * LAYOUT_CONSTANTS.TIER_WIDTH) + DERIVED_CONSTANTS.NODE_HALF_WIDTH
+          const expectedFinalX = Math.max(expectedMinX, expectedTierX)
+          
+          // Allow small tolerance for floating point calculations
+          expect(Math.abs(node.position.x - expectedFinalX)).toBeLessThan(LAYOUT_CONSTANTS.BOUNDARY_TOLERANCE + 1)
+        })
+      })
     })
   })
 

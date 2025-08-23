@@ -102,12 +102,100 @@
       </div>
         </div>
     
-    <!-- Graph Stats -->
+    <!-- Graph Stats with Validation Status -->
     <div v-if="!isLoading && graphStats" class="graph-stats absolute bottom-4 left-4 bg-sim-surface rounded-lg shadow-lg p-3 text-sm">
       <div class="flex items-center space-x-4 text-sim-muted">
         <span><i class="fas fa-circle mr-1 text-xs"></i>{{ graphStats.nodes }} nodes</span>
         <span><i class="fas fa-arrow-right mr-1 text-xs"></i>{{ graphStats.edges }} edges</span>
         <span><i class="fas fa-layer-group mr-1 text-xs"></i>{{ graphStats.lanes }} lanes</span>
+        
+        <!-- Validation Status Indicator -->
+        <button v-if="validationSummary" 
+                @click="showValidationPanel = !showValidationPanel"
+                class="flex items-center space-x-1 px-2 py-1 rounded transition-colors"
+                :class="validationSummary.failedTests === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'">
+          <i :class="validationSummary.failedTests === 0 ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'" class="text-xs"></i>
+          <span>{{ validationSummary.passedTests }}/{{ validationSummary.totalTests }}</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Validation Panel -->
+    <div v-if="showValidationPanel && validationSummary" 
+         class="validation-panel absolute bottom-20 left-4 bg-sim-surface rounded-lg shadow-lg p-4 max-w-md max-h-96 overflow-y-auto">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-sim-text">Position Validation</h3>
+        <button @click="showValidationPanel = false" 
+                class="text-sim-muted hover:text-sim-text">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <!-- Validation Summary -->
+      <div class="mb-4 p-3 rounded" 
+           :class="validationSummary.failedTests === 0 ? 'bg-green-900/20 border border-green-700' : 'bg-red-900/20 border border-red-700'">
+        <div class="text-sm">
+          <div class="flex justify-between">
+            <span>Tests Passed:</span>
+            <span class="font-mono">{{ validationSummary.passedTests }}/{{ validationSummary.totalTests }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Total Issues:</span>
+            <span class="font-mono">{{ validationSummary.totalIssues }}</span>
+          </div>
+          <div class="flex justify-between" v-if="validationSummary.errorCount > 0">
+            <span>Errors:</span>
+            <span class="font-mono text-red-400">{{ validationSummary.errorCount }}</span>
+          </div>
+          <div class="flex justify-between" v-if="validationSummary.warningCount > 0">
+            <span>Warnings:</span>
+            <span class="font-mono text-yellow-400">{{ validationSummary.warningCount }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Validation Results Details -->
+      <div v-if="validationResults.length > 0" class="space-y-2">
+        <div v-for="result in validationResults" :key="result.testName" 
+             class="p-2 rounded border text-xs"
+             :class="result.passed ? 'bg-green-900/10 border-green-700' : 'bg-red-900/10 border-red-700'">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-medium">{{ result.testName }}</span>
+            <i :class="result.passed ? 'fas fa-check text-green-400' : 'fas fa-times text-red-400'"></i>
+          </div>
+          
+          <!-- Show issues if any -->
+          <div v-if="result.issues && result.issues.length > 0" class="space-y-1">
+            <div v-for="issue in result.issues.slice(0, 3)" :key="issue.message" 
+                 class="flex items-start space-x-1">
+              <i :class="issue.severity === 'error' ? 'fas fa-times text-red-400' : 
+                         issue.severity === 'warning' ? 'fas fa-exclamation-triangle text-yellow-400' : 
+                         'fas fa-info-circle text-blue-400'" 
+                 class="text-xs mt-0.5"></i>
+              <span class="text-sim-muted">{{ issue.message }}</span>
+            </div>
+            <div v-if="result.issues.length > 3" class="text-sim-muted italic">
+              ... and {{ result.issues.length - 3 }} more issues
+            </div>
+          </div>
+          
+          <!-- Show metrics if available -->
+          <div v-if="result.metrics" class="mt-2 pt-2 border-t border-sim-border">
+            <div v-for="(value, key) in result.metrics" :key="key" 
+                 class="flex justify-between text-sim-muted">
+              <span>{{ key }}:</span>
+              <span class="font-mono">{{ typeof value === 'number' ? value.toFixed(1) : value }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Run Tests Button -->
+      <div class="mt-4 pt-3 border-t border-sim-border">
+        <button @click="runValidationTests" 
+                class="w-full px-3 py-2 bg-sim-accent text-white rounded hover:bg-blue-600 transition-colors text-sm">
+          <i class="fas fa-play mr-2"></i>Run Validation Tests
+        </button>
       </div>
     </div>
     
@@ -129,7 +217,7 @@ import cola from 'cytoscape-cola'
 import fcose from 'cytoscape-fcose'
 import { useGameDataStore } from '@/stores/gameData'
 import { useConfigurationStore } from '@/stores/configuration'
-import { buildGraphElements, addMaterialEdges } from '@/utils/graphBuilder'
+import { buildGraphElements, addMaterialEdges, runAllAutomatedTests } from '@/utils/graphBuilder'
 import EditItemModal from '@/components/GameConfiguration/EditItemModal.vue'
 import type { GameDataItem } from '@/types/game-data'
 
@@ -162,6 +250,9 @@ const filteredItemsCount = computed(() => {
 })
 
 const graphStats = ref<{ nodes: number, edges: number, lanes: number } | null>(null)
+const validationResults = ref<any[]>([])
+const validationSummary = ref<any | null>(null)
+const showValidationPanel = ref(false)
 
 // Cytoscape graph methods  
 const zoomIn = () => {
@@ -204,7 +295,7 @@ const handleSaveItem = (updatedItem: GameDataItem) => {
 }
 
 const toggleMaterialEdges = () => {
-  console.log(`🔄 Material edges ${showMaterialEdges.value ? 'enabled' : 'disabled'}`)
+  // Remove verbose toggle logging
   rebuildGraph()
 }
 
@@ -299,13 +390,48 @@ const exitFamilyTree = () => {
   cy.fit()
 }
 
+const runValidationTests = async () => {
+  console.log('🧪 Running validation tests...')
+  
+  try {
+    const testResults = runAllAutomatedTests(gameData.items)
+    
+    // Update validation results with test results
+    validationResults.value = [...(validationResults.value || []), ...testResults]
+    
+    // Update summary
+    const allResults = validationResults.value
+    const passedTests = allResults.filter(r => r.passed).length
+    const totalTests = allResults.length
+    const allIssues = allResults.flatMap(r => r.issues || [])
+    
+    validationSummary.value = {
+      totalTests,
+      passedTests,
+      failedTests: totalTests - passedTests,
+      totalIssues: allIssues.length,
+      errorCount: allIssues.filter(i => i.severity === 'error').length,
+      warningCount: allIssues.filter(i => i.severity === 'warning').length
+    }
+    
+    // Remove verbose validation logging
+    
+  } catch (error) {
+    console.error('❌ Error running validation tests:', error)
+  }
+}
+
 const rebuildGraph = async () => {
   if (!cy || !cyContainer.value) return
   
-  console.log('🔄 Rebuilding graph with updated data...')
+  // Remove verbose rebuild logging
   
-  // Build new elements
-  const { nodes, edges, laneHeights } = buildGraphElements(gameData.items)
+  // Build new elements with validation
+  const { nodes, edges, laneHeights, validationResults: newValidationResults, validationSummary: newValidationSummary } = buildGraphElements(gameData.items)
+  
+  // Update validation state
+  validationResults.value = newValidationResults || []
+  validationSummary.value = newValidationSummary || null
   
   // Add material edges if enabled
   if (showMaterialEdges.value) {
@@ -346,26 +472,43 @@ const rebuildGraph = async () => {
   // Force proper z-index ordering on rebuild too
   setTimeout(() => {
     cy.nodes('.lane-background').forEach(node => {
-      node.style('z-index', -1)
+      node.style({ 
+        'z-index': -10,
+        'z-index-compare': 'manual',
+        'events': 'no'
+      })
       node.lock()
       node.ungrabify()
     })
     
+    cy.edges().forEach(edge => {
+      edge.style({ 
+        'z-index': 5,
+        'z-index-compare': 'manual'
+      })
+    })
+    
     cy.nodes('.lane-label').forEach(node => {
-      node.style('z-index', 1)
+      node.style({ 
+        'z-index': 100,
+        'z-index-compare': 'manual'
+      })
       node.lock()
+      node.ungrabify()
     })
     
     cy.nodes('.game-node').forEach(node => {
-      node.style('z-index', 10)
-    })
-    
-    cy.edges().forEach(edge => {
-      edge.style('z-index', 5)
+      node.style({ 
+        'z-index': 10,
+        'z-index-compare': 'manual'
+      })
+      node.lock()
+      node.ungrabify()
     })
     
     cy.forceRender()
-  }, 10)
+    // Remove verbose rebuild completion logging
+  }, 50)
   
   // Re-fit
   cy.fit()
@@ -375,6 +518,7 @@ const rebuildGraph = async () => {
 const addSwimLaneVisuals = () => {
   if (!cy) return
   
+  // Use the same lane list as graphBuilder.ts for consistency
   const SWIM_LANES = [
     'Farm',              // Row 0
     'Vendors',           // Row 1 - Town vendors (general)
@@ -401,118 +545,78 @@ const addSwimLaneVisuals = () => {
       return
     }
     
-    console.log(`📏 Calculating swimlane sizes for ${allGameNodes.length} nodes`)
+    console.log(`📏 Creating swimlane backgrounds for ${allGameNodes.length} nodes`)
     
-    // Calculate graph width from actual nodes
+    // Calculate graph bounds for background sizing
     const graphBounds = allGameNodes.boundingBox()
-    const graphWidth = graphBounds.x2 - graphBounds.x1 + 200 // Full width + padding
+    const graphWidth = Math.max(graphBounds.x2 - graphBounds.x1 + 400, window.innerWidth - 100) // Ensure full width coverage
     const graphCenterX = graphBounds.x1 + (graphWidth / 2)
     
-    // First pass: collect lane data and sort by vertical position
-    const laneData = []
-    SWIM_LANES.forEach((lane, index) => {
+    // Use the same constants as graphBuilder.ts for consistency
+    const LANE_PADDING = 25
+    const LANE_BUFFER = 20
+    
+    // Calculate lane boundaries using the same logic as graphBuilder.ts
+    let cumulativeY = LANE_PADDING
+    
+    SWIM_LANES.forEach((lane, laneIndex) => {
       const laneNodes = allGameNodes.filter(node => node.data('swimLane') === lane)
       
+      let laneHeight
+      let laneCenterY
+      let backgroundOpacity = 0.4
+      let backgroundColor
+      
+      // Feature-based background colors with enhanced tinting
+      const laneColors: Record<string, string> = {
+        'Farm': '#1a3d2e',           // Enhanced green tint
+        'Vendors': '#3d1f1f',        // Enhanced red tint
+        'Blacksmith': '#3d2f1a',     // Enhanced amber tint
+        'Agronomist': '#1a2f23',     // Enhanced dark green tint
+        'Carpenter': '#2a1f3d',      // Enhanced violet tint
+        'Land Steward': '#1a2f3d',   // Enhanced sky tint
+        'Material Trader': '#3d2a1a', // Enhanced orange tint
+        'Skills Trainer': '#3d1f2f', // Enhanced pink tint
+        'Adventure': '#3d2a1a',      // Enhanced orange tint
+        'Combat': '#3d1f1f',         // Enhanced red tint
+        'Forge': '#3d321a',          // Enhanced yellow tint
+        'Mining': '#1a2a3d',         // Enhanced cyan tint
+        'Tower': '#2a1f3d',          // Enhanced purple tint
+        'General': '#2a2a2a'         // Enhanced gray tint
+      }
+
       if (laneNodes.length === 0) {
-        // Empty lane - add placeholder
-        laneData.push({
-          name: lane,
-          index,
-          nodes: 0,
-          minY: index * 80 + 50,
-          maxY: index * 80 + 90,
-          isEmpty: true
-        })
-        return
+        // Empty lane - minimal height
+        laneHeight = 80
+        laneCenterY = cumulativeY + (laneHeight / 2)
+        backgroundOpacity = 0.4 // Higher opacity for empty lanes
+        backgroundColor = laneColors[lane] || (laneIndex % 2 === 0 ? '#1e293b' : '#0f172a')
+      } else {
+        // Lane with nodes - calculate height based on actual node distribution
+        const nodePositions = laneNodes.map(node => node.position().y)
+        const minNodeY = Math.min(...nodePositions)
+        const maxNodeY = Math.max(...nodePositions)
+        const nodeRange = maxNodeY - minNodeY
+        
+        // Calculate height with proper padding (matching graphBuilder.ts logic)
+        laneHeight = Math.max(100, nodeRange + (LANE_BUFFER * 2) + 40) // Extra padding for visual separation
+        laneCenterY = cumulativeY + (laneHeight / 2)
+        
+        // Feature-based background colors for visual distinction
+        backgroundColor = laneColors[lane] || (laneIndex % 2 === 0 ? '#1a2332' : '#0f172a')
+        backgroundOpacity = 0.8 // Higher opacity for lanes with nodes
+        
+        // Remove individual lane logs - they're too verbose
       }
       
-      const laneNodePositions = laneNodes.map(node => node.position().y)
-      const laneMinY = Math.min(...laneNodePositions)
-      const laneMaxY = Math.max(...laneNodePositions)
-      
-      laneData.push({
-        name: lane,
-        index,
-        nodes: laneNodes.length,
-        minY: laneMinY,
-        maxY: laneMaxY,
-        isEmpty: false
-      })
-    })
-    
-    // Sort lanes by their actual vertical position (topmost first)
-    laneData.sort((a, b) => a.minY - b.minY)
-    
-    console.log('Lane order by position:', laneData.map(l => `${l.name}(${l.minY.toFixed(0)}-${l.maxY.toFixed(0)})`))
-    
-    // Second pass: create continuous backgrounds that butt against each other
-    let currentTopY = laneData[0].minY - 40 // Start 40px above first lane for padding
-    
-    laneData.forEach((lane, sortedIndex) => {
-      const NODE_HALF_HEIGHT = 20 // Half of NODE_HEIGHT (40px)
-      
-      if (lane.isEmpty) {
-        // Empty lane gets minimal space
-        const laneHeight = 60
-        const laneCenterY = currentTopY + (laneHeight / 2)
-        
-        cy.add({
-          group: 'nodes',
-          data: { id: `lane-bg-${lane.name}`, label: '' },
-          position: { x: graphCenterX, y: laneCenterY },
-          classes: 'lane-background'
-        })
-        
-        cy.add({
-          group: 'nodes', 
-          data: { id: `lane-label-${lane.name}`, label: lane.name },
-          position: { x: 100, y: laneCenterY },
-          classes: 'lane-label',
-          selectable: false, 
-          grabbable: false,
-          locked: true
-        })
-        
-        // Style empty lane label immediately
-        const emptyLabelNode = cy.getElementById(`lane-label-${lane.name}`)
-        if (emptyLabelNode.length > 0) {
-          emptyLabelNode.style({
-            'z-index': 100,
-            'background-opacity': 1,
-            'color': '#94a3b8',  // Dimmer color for empty lanes
-            'font-weight': 'bold',
-            'font-size': '13px'
-          })
-          console.log(`Styled empty lane label "${lane.name}"`)
-        }
-        
-        // Style the background
-        const bgNode = cy.getElementById(`lane-bg-${lane.name}`)
-        if (bgNode.length > 0) {
-          bgNode.style({
-            'width': graphWidth - 120,
-            'height': laneHeight,
-            'z-index': -1,
-            'events': 'no'
-          })
-        }
-        
-        currentTopY += laneHeight
-        return
-      }
-      
-      // For lanes with nodes: use consistent padding that matches node positioning
-      const LANE_PADDING = 25 // Match graphBuilder.ts LAYOUT_CONSTANTS.LANE_PADDING
-      const nodeRange = lane.maxY - lane.minY
-      const laneHeight = Math.max(120, nodeRange + (LANE_PADDING * 2)) // +80px total padding
-      const laneCenterY = currentTopY + (laneHeight / 2)
-      
-      console.log(`Lane "${lane.name}": ${lane.nodes} nodes, range ${nodeRange.toFixed(0)}px, height ${laneHeight.toFixed(0)}px (${LANE_PADDING}px padding), positioned at Y=${currentTopY.toFixed(0)}-${(currentTopY + laneHeight).toFixed(0)}`)
-      
-      // Add background rectangle
+      // Create background rectangle
       cy.add({
         group: 'nodes',
-        data: { id: `lane-bg-${lane.name}`, label: '' },
+        data: { 
+          id: `lane-bg-${lane}`, 
+          label: '',
+          laneIndex: laneIndex // Store for color calculation
+        },
         position: { x: graphCenterX, y: laneCenterY },
         classes: 'lane-background',
         selectable: false,
@@ -520,67 +624,132 @@ const addSwimLaneVisuals = () => {
         locked: true
       })
       
-      // Add lane label centered on the background
+      // Create lane label
       cy.add({
         group: 'nodes',
-        data: { id: `lane-label-${lane.name}`, label: lane.name },
-        position: { x: 100, y: laneCenterY },
+        data: { 
+          id: `lane-label-${lane}`, 
+          label: lane,
+          laneIndex: laneIndex
+        },
+        position: { x: 100, y: laneCenterY }, // Fixed position on left side
         classes: 'lane-label',
-        selectable: false, 
+        selectable: false,
         grabbable: false,
         locked: true
       })
       
-      console.log(`Added lane label "${lane.name}" at position (100, ${laneCenterY.toFixed(0)})`)
-      
-      // Immediately style the lane label to ensure visibility
-      const labelNode = cy.getElementById(`lane-label-${lane.name}`)
-      if (labelNode.length > 0) {
-        labelNode.style({
-          'z-index': 100,  // High z-index to ensure visibility
-          'background-opacity': 1,
-          'color': '#e2e8f0',
-          'font-weight': 'bold',
-          'font-size': '14px'
-        })
-        console.log(`Styled lane label "${lane.name}" - visible: ${labelNode.style('display') !== 'none'}`)
-      } else {
-        console.error(`Failed to find lane label "${lane.name}" after creation`)
+      // Feature-based border colors
+      const borderColors: Record<string, string> = {
+        'Farm': '#047857',           // Green border
+        'Vendors': '#b91c1c',        // Red border
+        'Blacksmith': '#d97706',     // Amber border
+        'Agronomist': '#065f46',     // Dark green border
+        'Carpenter': '#7c3aed',      // Violet border
+        'Land Steward': '#0891b2',   // Sky border
+        'Material Trader': '#ea580c', // Orange border
+        'Skills Trainer': '#db2777', // Pink border
+        'Adventure': '#c2410c',      // Orange border
+        'Combat': '#991b1b',         // Dark red border
+        'Forge': '#a16207',          // Yellow border
+        'Mining': '#0e7490',         // Cyan border
+        'Tower': '#6d28d9',          // Purple border
+        'General': '#4b5563'         // Gray border
       }
-      
-      // Apply proper sizing to make it span full width
-      const bgNode = cy.getElementById(`lane-bg-${lane.name}`)
+
+      // Apply styles immediately to ensure proper rendering
+      const bgNode = cy.getElementById(`lane-bg-${lane}`)
       if (bgNode.length > 0) {
         bgNode.style({
-          'width': graphWidth - 120,  // Full graph width minus margin
+          'width': graphWidth,
           'height': laneHeight,
-          'z-index': -1,
-          'events': 'no'
+          'background-color': backgroundColor,
+          'background-opacity': backgroundOpacity,
+          'border-width': 1,
+          'border-color': borderColors[lane] || '#334155',
+          'border-opacity': 0.4,
+          'z-index': -10, // Ensure it's behind everything
+          'events': 'no',
+          'overlay-opacity': 0
         })
       }
       
-      // Move to next lane position (no gap - they butt against each other)
-      currentTopY += laneHeight
+      // Feature-based label background colors (darker versions)
+      const labelColors: Record<string, string> = {
+        'Farm': '#064e3b',           // Dark green
+        'Vendors': '#7f1d1d',        // Dark red
+        'Blacksmith': '#92400e',     // Dark amber
+        'Agronomist': '#065f46',     // Dark green
+        'Carpenter': '#5b21b6',      // Dark violet
+        'Land Steward': '#0c4a6e',   // Dark sky
+        'Material Trader': '#9a3412', // Dark orange
+        'Skills Trainer': '#9d174d', // Dark pink
+        'Adventure': '#9a3412',      // Dark orange
+        'Combat': '#7f1d1d',         // Dark red
+        'Forge': '#92400e',          // Dark yellow
+        'Mining': '#0c4a6e',         // Dark cyan
+        'Tower': '#5b21b6',          // Dark purple
+        'General': '#374151'         // Dark gray
+      }
+
+      const labelNode = cy.getElementById(`lane-label-${lane}`)
+      if (labelNode.length > 0) {
+        labelNode.style({
+          'width': '120px',
+          'height': '30px',
+          'background-color': labelColors[lane] || '#1e293b',
+          'background-opacity': 0.9,
+          'border-width': 1,
+          'border-color': borderColors[lane] || '#475569',
+          'color': laneNodes.length > 0 ? '#f8fafc' : '#94a3b8', // Brighter text for active lanes
+          'font-size': '12px',
+          'font-weight': 'bold',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'z-index': 100, // Ensure labels are always visible
+          'overlay-opacity': 0
+        })
+      }
+      
+      // Move to next lane position
+      cumulativeY += laneHeight + LANE_PADDING
     })
     
-    // Force proper layering
-    cy.nodes('.lane-background').forEach(node => {
-      node.lock()
-      node.ungrabify()
-    })
-    cy.nodes('.lane-label').forEach(node => {
-      node.lock()
-      node.ungrabify()
-    })
+    // Force proper z-index layering
+    setTimeout(() => {
+      // Backgrounds at the bottom
+      cy.nodes('.lane-background').forEach(node => {
+        node.style('z-index', -10)
+        node.lock()
+        node.ungrabify()
+      })
+      
+      // Labels above backgrounds but below nodes
+      cy.nodes('.lane-label').forEach(node => {
+        node.style('z-index', 100)
+        node.lock()
+        node.ungrabify()
+      })
+      
+      // Game nodes on top
+      cy.nodes('.game-node').forEach(node => {
+        node.style('z-index', 10)
+      })
+      
+      // Edges in middle
+      cy.edges().forEach(edge => {
+        edge.style('z-index', 5)
+      })
+      
+      cy.forceRender()
+      
+      const backgroundCount = cy.nodes('.lane-background').length
+      const labelCount = cy.nodes('.lane-label').length
+      // Remove verbose background creation logging
+      
+    }, 50) // Small delay to ensure all elements are added
     
-    // Final debug: check all lane labels
-    const allLabels = cy.nodes('.lane-label')
-    console.log(`✅ Created ${allLabels.length} lane labels:`, allLabels.map(l => `${l.data('label')} at (${l.position().x}, ${l.position().y})`))
-    
-    console.log('✅ Swimlane backgrounds sized to actual node positions')
-    cy.forceRender()
-    
-  }, 150) // Wait for nodes to be fully positioned
+  }, 200) // Wait for nodes to be fully positioned
 }
 
 // Helper function for calculating prerequisite depth (needed for visualization)
@@ -621,10 +790,14 @@ const initializeGraph = async () => {
   isLoading.value = true
   
   try {
-    console.log('🔄 Initializing dependency graph...')
+    // Remove verbose initialization logging
     
-    // Build elements from game data
-    const { nodes, edges, laneHeights } = buildGraphElements(gameData.items)
+    // Build elements from game data with validation
+    const { nodes, edges, laneHeights, validationResults: initialValidationResults, validationSummary: initialValidationSummary } = buildGraphElements(gameData.items)
+    
+    // Store validation results
+    validationResults.value = initialValidationResults || []
+    validationSummary.value = initialValidationSummary || null
     
     // Add material edges if enabled
     if (showMaterialEdges.value) {
@@ -675,15 +848,31 @@ const initializeGraph = async () => {
           }
         },
         
-        // Feature-specific colors (matching swim lanes)
-        { selector: '.feature-farm', style: { 'background-color': '#059669', 'border-color': '#047857' } },
-        { selector: '.feature-tower', style: { 'background-color': '#7c3aed', 'border-color': '#6d28d9' } },
-        { selector: '.feature-town', style: { 'background-color': '#dc2626', 'border-color': '#b91c1c' } },
-        { selector: '.feature-adventure', style: { 'background-color': '#ea580c', 'border-color': '#c2410c' } },
-        { selector: '.feature-combat', style: { 'background-color': '#b91c1c', 'border-color': '#991b1b' } },
-        { selector: '.feature-forge', style: { 'background-color': '#ca8a04', 'border-color': '#a16207' } },
-        { selector: '.feature-mining', style: { 'background-color': '#0891b2', 'border-color': '#0e7490' } },
-        { selector: '.feature-general', style: { 'background-color': '#6b7280', 'border-color': '#4b5563' } },
+        // Feature-specific colors (base colors for game systems)
+        { selector: '.feature-farm', style: { 'background-color': '#059669', 'border-color': '#047857' } },        // Green - Farm
+        { selector: '.feature-town', style: { 'background-color': '#dc2626', 'border-color': '#b91c1c' } },        // Red - Town
+        { selector: '.feature-adventure', style: { 'background-color': '#ea580c', 'border-color': '#c2410c' } },   // Orange - Adventure
+        { selector: '.feature-combat', style: { 'background-color': '#b91c1c', 'border-color': '#991b1b' } },      // Dark Red - Combat
+        { selector: '.feature-forge', style: { 'background-color': '#ca8a04', 'border-color': '#a16207' } },       // Yellow - Forge
+        { selector: '.feature-mining', style: { 'background-color': '#0891b2', 'border-color': '#0e7490' } },      // Cyan - Mining
+        { selector: '.feature-tower', style: { 'background-color': '#7c3aed', 'border-color': '#6d28d9' } },       // Purple - Tower
+        { selector: '.feature-general', style: { 'background-color': '#6b7280', 'border-color': '#4b5563' } },     // Gray - General
+        
+        // Swimlane-specific colors (override feature colors for unique lane identification)
+        { selector: '.lane-farm', style: { 'background-color': '#059669', 'border-color': '#047857' } },           // Green - Farm
+        { selector: '.lane-vendors', style: { 'background-color': '#dc2626', 'border-color': '#b91c1c' } },        // Red - General Vendors
+        { selector: '.lane-blacksmith', style: { 'background-color': '#f59e0b', 'border-color': '#d97706' } },     // Amber - Blacksmith
+        { selector: '.lane-agronomist', style: { 'background-color': '#047857', 'border-color': '#065f46' } },     // Dark Green - Agronomist
+        { selector: '.lane-carpenter', style: { 'background-color': '#8b5cf6', 'border-color': '#7c3aed' } },      // Violet - Carpenter
+        { selector: '.lane-land-steward', style: { 'background-color': '#06b6d4', 'border-color': '#0891b2' } },   // Sky - Land Steward
+        { selector: '.lane-material-trader', style: { 'background-color': '#f97316', 'border-color': '#ea580c' } }, // Orange - Material Trader
+        { selector: '.lane-skills-trainer', style: { 'background-color': '#ec4899', 'border-color': '#db2777' } }, // Pink - Skills Trainer
+        { selector: '.lane-adventure', style: { 'background-color': '#ea580c', 'border-color': '#c2410c' } },      // Orange - Adventure
+        { selector: '.lane-combat', style: { 'background-color': '#b91c1c', 'border-color': '#991b1b' } },         // Dark Red - Combat
+        { selector: '.lane-forge', style: { 'background-color': '#ca8a04', 'border-color': '#a16207' } },          // Yellow - Forge
+        { selector: '.lane-mining', style: { 'background-color': '#0891b2', 'border-color': '#0e7490' } },         // Cyan - Mining
+        { selector: '.lane-tower', style: { 'background-color': '#7c3aed', 'border-color': '#6d28d9' } },          // Purple - Tower
+        { selector: '.lane-general', style: { 'background-color': '#6b7280', 'border-color': '#4b5563' } },        // Gray - General
         
         // Grid-aligned edge styles (Civ V style) - ENHANCED VISIBILITY
         {
@@ -759,46 +948,150 @@ const initializeGraph = async () => {
           }
         },
         
-        // Lane backgrounds with alternating colors - ENHANCED Z-INDEX CONTROL
+        // Lane backgrounds with feature-based tinting - ENHANCED Z-INDEX CONTROL
         {
           selector: '.lane-background',
           style: {
             'shape': 'rectangle',
             'background-color': (ele: any) => {
               const lane = ele.data('id').replace('lane-bg-', '')
-              const lanes = ['Farm', 'Tower', 'Adventure', 'Combat', 'Forge', 'Mining', 'Town', 'General']
-              const index = lanes.indexOf(lane)
-              return index % 2 === 0 ? '#1a2332' : '#0f172a'
+              const laneIndex = ele.data('laneIndex') || 0
+              
+              // Feature-based background colors with enhanced tinting
+              const laneColors: Record<string, string> = {
+                'Farm': '#1a3d2e',           // Enhanced green tint
+                'Vendors': '#3d1f1f',        // Enhanced red tint
+                'Blacksmith': '#3d2f1a',     // Enhanced amber tint
+                'Agronomist': '#1a2f23',     // Enhanced dark green tint
+                'Carpenter': '#2a1f3d',      // Enhanced violet tint
+                'Land Steward': '#1a2f3d',   // Enhanced sky tint
+                'Material Trader': '#3d2a1a', // Enhanced orange tint
+                'Skills Trainer': '#3d1f2f', // Enhanced pink tint
+                'Adventure': '#3d2a1a',      // Enhanced orange tint
+                'Combat': '#3d1f1f',         // Enhanced red tint
+                'Forge': '#3d321a',          // Enhanced yellow tint
+                'Mining': '#1a2a3d',         // Enhanced cyan tint
+                'Tower': '#2a1f3d',          // Enhanced purple tint
+                'General': '#2a2a2a'         // Enhanced gray tint
+              }
+              
+              // Use lane-specific color or fall back to alternating pattern
+              return laneColors[lane] || (laneIndex % 2 === 0 ? '#1a2332' : '#0f172a')
             },
-            'background-opacity': 0.6,
-            'border-width': 2,
-            'border-color': '#2d3748',
+            'background-opacity': (ele: any) => {
+              const lane = ele.data('id').replace('lane-bg-', '')
+              // Check if lane has nodes by looking for game nodes with this swimlane
+              const hasNodes = cy.nodes('.game-node').some(node => node.data('swimLane') === lane)
+              return hasNodes ? 0.8 : 0.4 // Higher opacity for more visible tinting
+            },
+            'border-width': 1,
+            'border-color': (ele: any) => {
+              const lane = ele.data('id').replace('lane-bg-', '')
+              
+              // Feature-based border colors (lighter versions of background)
+              const borderColors: Record<string, string> = {
+                'Farm': '#047857',           // Green border
+                'Vendors': '#b91c1c',        // Red border
+                'Blacksmith': '#d97706',     // Amber border
+                'Agronomist': '#065f46',     // Dark green border
+                'Carpenter': '#7c3aed',      // Violet border
+                'Land Steward': '#0891b2',   // Sky border
+                'Material Trader': '#ea580c', // Orange border
+                'Skills Trainer': '#db2777', // Pink border
+                'Adventure': '#c2410c',      // Orange border
+                'Combat': '#991b1b',         // Dark red border
+                'Forge': '#a16207',          // Yellow border
+                'Mining': '#0e7490',         // Cyan border
+                'Tower': '#6d28d9',          // Purple border
+                'General': '#4b5563'         // Gray border
+              }
+              
+              return borderColors[lane] || '#334155'
+            },
+            'border-opacity': 0.4,
             'border-style': 'solid',
-            'z-index': -1,  // MUST be negative
+            'z-index': -10,  // Very negative to ensure it's behind everything
+            'z-index-compare': 'manual',
             'overlay-opacity': 0,
-            'events': 'no'  // Disable all events
+            'events': 'no',  // Disable all events
+            'selectable': false,
+            'grabbable': false
           }
         },
         
-        // Swim lane labels
+        // Swim lane labels with feature-based styling
         {
           selector: '.lane-label',
           style: {
             'shape': 'rectangle',
             'width': '120px',
-            'height': '40px',
-            'background-color': '#0f172a',
-            'background-opacity': 0.8,
-            'border-width': 2,
-            'border-color': '#334155',
+            'height': '30px',
+            'background-color': (ele: any) => {
+              const lane = ele.data('label')
+              
+              // Feature-based label background colors (darker versions)
+              const labelColors: Record<string, string> = {
+                'Farm': '#064e3b',           // Dark green
+                'Vendors': '#7f1d1d',        // Dark red
+                'Blacksmith': '#92400e',     // Dark amber
+                'Agronomist': '#065f46',     // Dark emerald
+                'Carpenter': '#5b21b6',      // Dark violet
+                'Land Steward': '#0c4a6e',   // Dark sky
+                'Material Trader': '#9a3412', // Dark orange
+                'Skills Trainer': '#9d174d', // Dark pink
+                'Adventure': '#9a3412',      // Dark orange
+                'Combat': '#7f1d1d',         // Dark red
+                'Forge': '#92400e',          // Dark yellow
+                'Mining': '#0c4a6e',         // Dark cyan
+                'Tower': '#5b21b6',          // Dark purple
+                'General': '#374151'         // Dark gray
+              }
+              
+              return labelColors[lane] || '#1e293b'
+            },
+            'background-opacity': 0.9,
+            'border-width': 1,
+            'border-color': (ele: any) => {
+              const lane = ele.data('label')
+              
+              // Feature-based border colors (same as swimlane borders)
+              const borderColors: Record<string, string> = {
+                'Farm': '#047857',           // Green border
+                'Vendors': '#b91c1c',        // Red border
+                'Blacksmith': '#d97706',     // Amber border
+                'Agronomist': '#065f46',     // Dark green border
+                'Carpenter': '#7c3aed',      // Violet border
+                'Land Steward': '#0891b2',   // Sky border
+                'Material Trader': '#ea580c', // Orange border
+                'Skills Trainer': '#db2777', // Pink border
+                'Adventure': '#c2410c',      // Orange border
+                'Combat': '#991b1b',         // Dark red border
+                'Forge': '#a16207',          // Yellow border
+                'Mining': '#0e7490',         // Cyan border
+                'Tower': '#6d28d9',          // Purple border
+                'General': '#4b5563'         // Gray border
+              }
+              
+              return borderColors[lane] || '#475569'
+            },
+            'border-opacity': 0.8,
             'label': 'data(label)',  // Display the node's label text
             'text-valign': 'center',
             'text-halign': 'center',
             'font-weight': 'bold',
-            'font-size': '13px',
-            'color': '#94a3b8',
-            'z-index': 5,
-            'overlay-opacity': 0
+            'font-size': '12px',
+            'color': (ele: any) => {
+              const lane = ele.data('label')
+              // Check if lane has nodes
+              const hasNodes = cy.nodes('.game-node').some(node => node.data('swimLane') === lane)
+              return hasNodes ? '#f8fafc' : '#94a3b8' // Brighter text for active lanes
+            },
+            'z-index': 100, // High z-index to ensure visibility above backgrounds
+            'z-index-compare': 'manual',
+            'overlay-opacity': 0,
+            'events': 'no',
+            'selectable': false,
+            'grabbable': false
           }
         }
       ],
@@ -854,30 +1147,46 @@ const initializeGraph = async () => {
     container.style.height = `${Math.max(600, totalHeight)}px`
     
     // FORCE PROPER Z-INDEX ORDERING - ENHANCED
-    // OPTIMIZED Z-INDEX ENFORCEMENT
     setTimeout(() => {
-      // Layer elements efficiently without excessive logging
+      // Enforce strict z-index layering for proper visual hierarchy
       cy.nodes('.lane-background').forEach(node => {
-        node.style({ 'z-index': -1, 'events': 'no' })
+        node.style({ 
+          'z-index': -10, 
+          'z-index-compare': 'manual',
+          'events': 'no' 
+        })
         node.lock()
         node.ungrabify()
       })
       
-      cy.edges().forEach(edge => edge.style('z-index', 2))
+      cy.edges().forEach(edge => {
+        edge.style({ 
+          'z-index': 5,
+          'z-index-compare': 'manual'
+        })
+      })
+      
       cy.nodes('.lane-label').forEach(node => {
-        node.style('z-index', 5)
+        node.style({ 
+          'z-index': 100,
+          'z-index-compare': 'manual'
+        })
         node.lock()
         node.ungrabify()
       })
+      
       cy.nodes('.game-node').forEach(node => {
-        node.style('z-index', 10)
+        node.style({ 
+          'z-index': 10,
+          'z-index-compare': 'manual'
+        })
         node.lock()
         node.ungrabify()
       })
       
       cy.forceRender()
-      console.log('✅ Layout complete')
-    }, 10)
+      // Remove verbose layout completion logging
+    }, 50) // Increased delay to ensure all elements are added
     
     // COMPREHENSIVE EDGE DEBUG LOGGING
     const edgeCount = cy.edges().length
@@ -918,7 +1227,7 @@ const initializeGraph = async () => {
                 invalidTierPrereqs++
                 console.warn(`  ⚠️ ${found.name} (tier ${prereqTier}) invalid - not left of ${item.name} (tier ${itemTier})`)
               } else {
-                console.log(`  ✅ ${found.name} (tier ${prereqTier}) → ${item.name} (tier ${itemTier})`)
+                // Remove individual edge logging
               }
             }
           })
@@ -959,22 +1268,21 @@ const initializeGraph = async () => {
           
           if (fallbackEdges.length > 0) {
             cy.add(fallbackEdges)
-            console.log(`✅ Added ${fallbackEdges.length} fallback edges`)
+            // Remove fallback edge logging
             cy.forceRender()
           }
         }, 100)
       }
     } else {
-      console.log(`✅ Successfully created ${edgeCount} edges for ${nodeCount} nodes`)
+      // Keep only essential edge creation summary
+      console.log(`Graph: ${nodeCount} nodes, ${edgeCount} edges`)
       
       // Log edge details
       cy.edges('.edge-prerequisite').forEach(edge => {
         const data = edge.data()
         const sourceNode = cy.getElementById(data.source)
         const targetNode = cy.getElementById(data.target)
-        if (sourceNode.length && targetNode.length) {
-          console.log(`🔗 ${sourceNode.data('label')} → ${targetNode.data('label')}`)
-        }
+        // Edge created successfully (removed verbose logging)
       })
     }
     
@@ -982,7 +1290,7 @@ const initializeGraph = async () => {
     await nextTick()
     cy.fit()
     
-    console.log(`✅ Graph initialized with ${nodes.length} nodes and ${edges.length} edges`)
+    // Remove duplicate graph summary
     
   } catch (error) {
     console.error('❌ Failed to initialize graph:', error)
@@ -1039,7 +1347,7 @@ const setupEventHandlers = () => {
 onMounted(async () => {
   // Ensure data is loaded
   if (gameData.items.length === 0) {
-    console.log('🔄 Loading game data...')
+    // Remove verbose data loading log
     await gameData.loadGameData()
   }
   

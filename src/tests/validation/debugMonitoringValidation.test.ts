@@ -12,6 +12,8 @@ const mockGameData: GameDataItem[] = [
   {
     id: 'farm_action_1',
     name: 'Plant Seeds',
+    type: 'action',
+    categories: ['farming'],
     category: 'Actions',
     sourceFile: 'farm_actions.csv',
     prerequisites: []
@@ -19,15 +21,19 @@ const mockGameData: GameDataItem[] = [
   {
     id: 'blacksmith_item_1',
     name: 'Iron Sword',
+    type: 'weapon',
+    categories: ['sword'],
     category: 'Unlocks',
     sourceFile: 'town_blacksmith.csv',
     prerequisites: ['farm_action_1']
   },
   {
     id: 'general_item_1',
-    name: 'Unknown Item',
+    name: 'Basic Tool',
+    type: 'tool',
+    categories: ['basic'],
     category: 'Actions',
-    sourceFile: 'unknown.csv',
+    sourceFile: 'general_actions.csv',
     prerequisites: []
   }
 ]

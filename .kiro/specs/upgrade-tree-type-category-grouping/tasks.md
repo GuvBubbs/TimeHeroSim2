@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [x] 1. Create type and category data extraction system
+- [ ] 1. Create type and category data extraction system
   - Add functions to extract `type` and `categories` columns from CSV data in `src/utils/graphBuilder.ts`
   - Implement data validation and normalization for type/category values
   - Create group hierarchy builder that organizes items by swimlane → type → category

@@ -120,6 +120,15 @@ interface UserFriendlyError {
   recoveryApplied?: boolean
 }
 
+// PHASE 1: Interface for type/category grouping hierarchy
+interface GroupHierarchy {
+  [swimlane: string]: {
+    [type: string]: {
+      [category: string]: GameDataItem[]
+    }
+  }
+}
+
 // Interface for validation results
 interface ValidationResult {
   testName: string
@@ -582,6 +591,13 @@ function runAllAutomatedTests(items: GameDataItem[]): ValidationResult[] {
 export function buildGraphElements(items: GameDataItem[]) {
   const nodes: any[] = []
   const edges: any[] = []
+  
+  // PHASE 1: Test logging for type/category extraction (TEMPORARY - will be removed)
+  // Uncomment the next 4 lines to test hierarchy extraction in browser console
+  // if (items.length > 0 && items.some(item => item.type || item.categories)) {
+  //   console.log(`🧪 PHASE 1 TEST: Logging hierarchy for ${items.length} items`);
+  //   logGroupHierarchy(items);
+  // }
   
   // Clear swimlane cache for new build session
   swimlaneCache.clear()
@@ -3154,6 +3170,86 @@ function calculatePrerequisiteDepth(item: GameDataItem, allItems: GameDataItem[]
   
   maxDepth = getDepth(item.id)
   return maxDepth
+}
+
+/**
+ * PHASE 1: Type/Category Grouping Data Extraction Functions
+ * These functions extract and organize items by type and category for future grouping enhancements
+ * They DO NOT modify existing positioning logic - they are for data analysis only
+ */
+
+/**
+ * Extract type/category hierarchy from game data items
+ * This creates a structured hierarchy for future grouping features
+ * 
+ * @param items Game data items to analyze
+ * @returns Hierarchical structure: swimlane -> type -> category -> items
+ */
+function extractTypeCategories(items: GameDataItem[]): GroupHierarchy {
+  const hierarchy: GroupHierarchy = {};
+  
+  items.forEach(item => {
+    const swimlane = determineSwimLane(item); // Use existing function
+    const type = normalizeGroupString(item.type || 'ungrouped');
+    const category = normalizeGroupString(item.categories?.[0] || 'uncategorized');
+    
+    // Build hierarchy with null-safe operations
+    if (!hierarchy[swimlane]) hierarchy[swimlane] = {};
+    if (!hierarchy[swimlane][type]) hierarchy[swimlane][type] = {};
+    if (!hierarchy[swimlane][type][category]) hierarchy[swimlane][type][category] = [];
+    
+    hierarchy[swimlane][type][category].push(item);
+  });
+  
+  return hierarchy;
+}
+
+/**
+ * Normalize string for grouping consistency
+ * Handles variations in naming and removes plurals
+ * 
+ * @param str String to normalize
+ * @returns Normalized string for consistent grouping
+ */
+function normalizeGroupString(str: string): string {
+  return str.toLowerCase().trim().replace(/\s+/g, '_').replace(/s$/, '');
+}
+
+/**
+ * Log group hierarchy for verification and debugging
+ * This helps verify that extraction is working correctly
+ * 
+ * @param items Game data items to analyze
+ */
+function logGroupHierarchy(items: GameDataItem[]): void {
+  const hierarchy = extractTypeCategories(items);
+  console.log('🎯 TYPE/CATEGORY HIERARCHY EXTRACTION (Phase 1):');
+  
+  Object.entries(hierarchy).forEach(([swimlane, types]) => {
+    console.log(`\n📊 ${swimlane}:`);
+    Object.entries(types).forEach(([type, categories]) => {
+      console.log(`  📁 Type: ${type}`);
+      Object.entries(categories).forEach(([category, itemsInCategory]) => {
+        console.log(`    📄 Category: ${category} (${itemsInCategory.length} items)`);
+        itemsInCategory.forEach(item => {
+          const tier = calculatePrerequisiteDepth(item, items);
+          console.log(`      - ${item.name} (tier: ${tier})`);
+        });
+      });
+    });
+  });
+  
+  // Summary statistics
+  const totalSwimLanes = Object.keys(hierarchy).length;
+  const totalTypes = Object.values(hierarchy).reduce((sum, types) => sum + Object.keys(types).length, 0);
+  const totalCategories = Object.values(hierarchy).reduce((sum, types) => 
+    sum + Object.values(types).reduce((typeSum, categories) => typeSum + Object.keys(categories).length, 0), 0);
+  
+  console.log(`\n📈 EXTRACTION SUMMARY:`);
+  console.log(`  Swimlanes: ${totalSwimLanes}`);
+  console.log(`  Types: ${totalTypes}`);
+  console.log(`  Categories: ${totalCategories}`);
+  console.log(`  Total Items: ${items.length}`);
 }
 
 /**

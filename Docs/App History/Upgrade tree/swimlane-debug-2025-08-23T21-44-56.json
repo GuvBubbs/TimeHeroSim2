@@ -1,0 +1,163 @@
+{
+  "sessionDuration": 60640,
+  "assignmentStats": null,
+  "positioningMetrics": {
+    "totalCalculations": 0,
+    "averageCalculationTime": 0,
+    "adjustmentRate": 0,
+    "boundaryViolations": 0
+  },
+  "recommendations": [],
+  "positionMonitoringData": [],
+  "visualBoundaryData": [
+    {
+      "lane": "Farm",
+      "startY": 25,
+      "endY": 125,
+      "centerY": 75,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Vendors",
+      "startY": 150,
+      "endY": 250,
+      "centerY": 200,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Blacksmith",
+      "startY": 275,
+      "endY": 375,
+      "centerY": 325,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Agronomist",
+      "startY": 400,
+      "endY": 500,
+      "centerY": 450,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Carpenter",
+      "startY": 525,
+      "endY": 625,
+      "centerY": 575,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Land Steward",
+      "startY": 650,
+      "endY": 750,
+      "centerY": 700,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Material Trader",
+      "startY": 775,
+      "endY": 875,
+      "centerY": 825,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Skills Trainer",
+      "startY": 900,
+      "endY": 1000,
+      "centerY": 950,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Adventure",
+      "startY": 1025,
+      "endY": 1125,
+      "centerY": 1075,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Combat",
+      "startY": 1150,
+      "endY": 1250,
+      "centerY": 1200,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Forge",
+      "startY": 1275,
+      "endY": 1375,
+      "centerY": 1325,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Mining",
+      "startY": 1400,
+      "endY": 1500,
+      "centerY": 1450,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "Tower",
+      "startY": 1525,
+      "endY": 1625,
+      "centerY": 1575,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    },
+    {
+      "lane": "General",
+      "startY": 1650,
+      "endY": 1750,
+      "centerY": 1700,
+      "height": 100,
+      "usableHeight": 60,
+      "nodeCount": 0,
+      "overcrowded": false
+    }
+  ],
+  "config": {
+    "enableConsoleLogging": true,
+    "enableVisualBoundaries": false,
+    "enableAssignmentStats": true,
+    "enablePositionMonitoring": true,
+    "enableDetailedCalculations": false,
+    "logLevel": "standard"
+  },
+  "exportTimestamp": "2025-08-23T21:44:56.496Z"
+}

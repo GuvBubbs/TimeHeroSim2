@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sim Design/02-game-configuration.md",
+                "file": "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "02-game-configuration"
+              "title": "Time Hero - Unified Game Design & Progression"
             }
           }
         ]
@@ -168,13 +168,20 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "9edb0f1900f705be",
+  "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
+    "Time Hero Game Design Reference/Time Hero - Combat Mechanics & Balance.md",
+    "Sim Design/02-game-configuration.md",
+    "App History/Upgrade tree/swimlane-debug-2025-08-23T21-44-56.json",
+    "App History/Upgrade tree/TASK_13_COMPLETION_SUMMARY.md",
+    "App History/Upgrade tree/TASK_12_COMPLETION_SUMMARY.md",
+    "App History/Upgrade tree/TASK_11_COMPLETION_SUMMARY.md",
+    "App History/Upgrade tree/TASK_10_COMPLETION_SUMMARY.md",
+    "App History/Upgrade tree",
+    "App History",
     "App Build/UpgradeTree-As-Built.md",
     "App Build",
     "Sim Design/03-upgrade-tree.md",
-    "Sim Design/02-game-configuration.md",
-    "Time Hero Game Design Reference/Time Hero - Combat Mechanics & Balance.md",
     "Sim Design/phased-development-plan.md",
     "Prompts/phase-0-build-prompt.md",
     "Prompts",

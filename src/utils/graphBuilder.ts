@@ -1,6 +1,9 @@
 import type { GameDataItem } from '@/types/game-data'
 import { CSV_FILE_LIST } from '@/types/csv-data'
 import { validationReporter, type ValidationReport } from './validationReporter'
+import { debugMonitor, logSwimLaneAssignment, logPositionCalculation, recordVisualBoundaryData } from './debugMonitor'
+import { getPerformanceMonitor, withPerformanceTracking, initializePerformanceMonitor } from './performanceMonitor'
+import { getOptimizedPositioningEngine } from './optimizedPositioning'
 
 // Complete swim lanes including individual town vendors
 const SWIM_LANES = [
@@ -580,6 +583,12 @@ export function buildGraphElements(items: GameDataItem[]) {
   const nodes: any[] = []
   const edges: any[] = []
   
+  // Clear swimlane cache for new build session
+  swimlaneCache.clear()
+  
+  // Start debug monitoring session
+  debugMonitor.startSession()
+  
   // Clear previous errors and recovery contexts at start of new build
   errorHandlingSystem.clearErrorsAndRecovery()
   
@@ -610,6 +619,12 @@ export function buildGraphElements(items: GameDataItem[]) {
   
   // Calculate lane boundaries for boundary enforcement
   const laneBoundaries = calculateLaneBoundaries(laneHeights)
+  
+  // Record visual boundary data for debugging
+  recordVisualBoundaryData(laneBoundaries)
+  
+  // Generate assignment statistics
+  const assignmentStats = generateAssignmentStatistics(treeItems)
   
   // Sort items by tier for consistent positioning
   const sortedItems = treeItems.sort((a, b) => {
@@ -746,30 +761,33 @@ export function buildGraphElements(items: GameDataItem[]) {
   // Generate error recovery report
   const errorRecoveryReport = errorHandlingSystem.generateErrorRecoveryReport()
   
-  // Log error recovery summary
-  if (errorRecoveryReport.totalErrors > 0 || errorRecoveryReport.totalRecoveries > 0) {
+  // Log error recovery summary (only if there are significant issues)
+  if (errorRecoveryReport.totalErrors > 10 || errorRecoveryReport.errorsBySeverity.critical > 0) {
     console.log(`\n🔧 ERROR RECOVERY SUMMARY`)
     console.log(`═══════════════════════════`)
     console.log(errorRecoveryReport.summary)
     
-    if (errorRecoveryReport.totalErrors > 0) {
-      console.log(`Errors by severity:`)
-      Object.entries(errorRecoveryReport.errorsBySeverity).forEach(([severity, count]) => {
-        const icon = severity === 'critical' ? '🚨' : severity === 'error' ? '❌' : severity === 'warning' ? '⚠️' : 'ℹ️'
-        console.log(`  ${icon} ${severity}: ${count}`)
-      })
+    // Only show critical and error counts
+    if (errorRecoveryReport.errorsBySeverity.critical > 0) {
+      console.log(`🚨 Critical errors: ${errorRecoveryReport.errorsBySeverity.critical}`)
+    }
+    if (errorRecoveryReport.errorsBySeverity.error > 0) {
+      console.log(`❌ Errors: ${errorRecoveryReport.errorsBySeverity.error}`)
     }
     
     if (errorRecoveryReport.totalRecoveries > 0) {
-      console.log(`Recoveries by strategy:`)
-      Object.entries(errorRecoveryReport.recoveriesByStrategy).forEach(([strategy, count]) => {
-        console.log(`  🔧 ${strategy}: ${count}`)
-      })
+      console.log(`🔧 Recoveries applied: ${errorRecoveryReport.totalRecoveries}`)
     }
     console.log(``)
-  } else if (shouldRunValidation) {
-    console.log(`✅ No positioning errors or recoveries needed`)
+  } else if (shouldRunValidation && errorRecoveryReport.totalErrors === 0) {
+    console.log(`✅ No positioning errors detected`)
   }
+
+  // Generate clean assignment summary instead of individual logs
+  debugMonitor.generateAssignmentSummary()
+
+  // Generate debug monitoring report
+  const debugReport = debugMonitor.generateMonitoringReport()
 
   return { 
     nodes, 
@@ -779,7 +797,9 @@ export function buildGraphElements(items: GameDataItem[]) {
     validationResults: [],
     validationSummary: { totalTests: 0, failedTests: 0, totalIssues: 0 },
     comprehensiveReport,
-    errorRecoveryReport
+    errorRecoveryReport,
+    assignmentStats,
+    debugReport
   }
 }
 
@@ -814,7 +834,16 @@ export const getUserFriendlyErrors = () => errorHandlingSystem.getUserFriendlyEr
 export const getRecoveryContext = (nodeId: string) => errorHandlingSystem.getRecoveryContext(nodeId)
 export const generateErrorRecoveryReport = () => errorHandlingSystem.generateErrorRecoveryReport()
 
+// Cache for swimlane assignments to avoid duplicate logging
+const swimlaneCache = new Map<string, { lane: string, reason: string, logged: boolean }>()
+
 function determineSwimLane(item: GameDataItem): string {
+  // Check cache first
+  const cached = swimlaneCache.get(item.id)
+  if (cached) {
+    return cached.lane
+  }
+  
   let assignmentReason = ''
   let assignedLane = ''
   
@@ -912,7 +941,16 @@ function determineSwimLane(item: GameDataItem): string {
     assignmentReason = `Final fallback - no matching lane found`
   }
   
-  // Removed verbose assignment logging
+  // Cache the result and log only once
+  const gameFeature = getGameFeatureFromSourceFile(item.sourceFile)
+  swimlaneCache.set(item.id, { lane: assignedLane, reason: assignmentReason, logged: false })
+  
+  // Only log if not already logged
+  const cacheEntry = swimlaneCache.get(item.id)!
+  if (!cacheEntry.logged) {
+    logSwimLaneAssignment(item, assignedLane, assignmentReason, item.sourceFile, gameFeature)
+    cacheEntry.logged = true
+  }
   
   return assignedLane
 }
@@ -3058,6 +3096,14 @@ function calculateNodePosition(
       timestamp: performance.now()
     })
   }
+  
+  // Enhanced debug logging for position calculations
+  const debugSteps = calculationSteps.map(step => ({
+    step: step.step,
+    value: step.output,
+    description: step.description
+  }))
+  logPositionCalculation(item, swimLane, tier, calculatedPosition, calculatedPosition, debugSteps, calculationTime)
   
   // Record detailed debug information only if enabled
   const boundary = laneBoundaries?.get(swimLane)

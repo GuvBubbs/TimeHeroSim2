@@ -34,6 +34,8 @@ pnpm preview          # Preview production build
 vue-tsc -b            # TypeScript compilation check
 ```
 
+⚠️ **Agent Warning**: Do NOT run `pnpm dev` or `npm run dev` - these commands start the dev server but never return control to the agent, causing it to hang indefinitely.
+
 ## Architecture Patterns
 - **Composition API**: Use `<script setup>` syntax in Vue components
 - **Pinia Stores**: Modular stores for different game systems
@@ -53,6 +55,14 @@ vue-tsc -b            # TypeScript compilation check
 - **GameDataItem interface**: Standardized structure for core game data
 - **Material system**: "Crystal x2;Silver x5" → `{Crystal: 2, Silver: 5}`
 - **Real-time validation**: Cross-file consistency checking
+
+## Agent Development Guidelines
+
+### Logging Best Practices
+- **Keep logs concise**: Focus on summaries and key information only
+- **Avoid verbose logging**: Logs should be copy-pasteable into chats without wasting context
+- **Communicate essentials**: Log the most important things that help with debugging and progress tracking
+- **No excessive detail**: Skip verbose output that doesn't add value to understanding
 
 ## Deployment
 - **Target**: GitHub Pages static deployment

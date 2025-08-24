@@ -64,6 +64,9 @@ vue-tsc -b            # TypeScript compilation check
 - **Communicate essentials**: Log the most important things that help with debugging and progress tracking
 - **No excessive detail**: Skip verbose output that doesn't add value to understanding
 
+### Documentation Guidelines
+- **Save all docs to Docs/ folder**: Any documentation, design specs, or reference materials should be saved in the `Docs/` directory to maintain project organization
+
 ## Deployment
 - **Target**: GitHub Pages static deployment
 - **Base URL**: `/TimeHeroSim2/` (configured in vite.config.ts)

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
+                "file": "Sim Design/Upgrade Tree/upgrade-tree-grouping-plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Time Hero - Unified Game Design & Progression"
+              "title": "upgrade-tree-grouping-plan"
             }
           }
         ]
@@ -170,6 +170,8 @@
   },
   "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
+    "Sim Design/phased-development-plan.md",
+    "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
     "Sim Design/Upgrade Tree/upgrade-tree-grouping-plan.md",
     "Sim Design/Upgrade Tree",
     "Sim Design/untitled folder",
@@ -187,7 +189,6 @@
     "App Build/UpgradeTree-As-Built.md",
     "App Build",
     "Sim Design/03-upgrade-tree.md",
-    "Sim Design/phased-development-plan.md",
     "Prompts/phase-0-build-prompt.md",
     "Prompts",
     "concise_context.md",
@@ -197,7 +198,6 @@
     "Sim Design/05-simulation-setup.md",
     "Sim Design/06-live-monitor.md",
     "Sim Design/04-player-personas.md",
-    "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
     "Sim Design",
     "untitled folder"
   ]

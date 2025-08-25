@@ -28,7 +28,7 @@
   - Add proper z-index management to keep backgrounds behind nodes
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [x] 5. Add visible swimlane labels
+- [ ] 5. Add visible swimlane labels
   - Implement lane label generation with proper positioning on the left side
   - Ensure labels are centered vertically within their respective lanes
   - Apply proper styling for visibility and readability
@@ -98,7 +98,7 @@
   - Add performance monitoring for render times
   - _Requirements: 2.5_
 
-- [x] 15. Final integration and polish
+- [ ] 15. Final integration and polish
   - Integrate all swimlane fixes with existing graph rebuild functionality
   - Ensure compatibility with search, filtering, and family tree features
   - Add smooth transitions for visual changes

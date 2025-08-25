@@ -211,12 +211,8 @@
       <!-- Run Tests Button -->
       <div class="mt-4 pt-3 border-t border-sim-border">
         <button @click="runValidationTests" 
-                class="w-full px-3 py-2 bg-sim-accent text-white rounded hover:bg-blue-600 transition-colors text-sm mb-2">
+                class="w-full px-3 py-2 bg-sim-accent text-white rounded hover:bg-blue-600 transition-colors text-sm">
           <i class="fas fa-play mr-2"></i>Run Validation Tests
-        </button>
-        <button @click="runIntegrationTests" 
-                class="w-full px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm">
-          <i class="fas fa-cogs mr-2"></i>Run Integration Tests
         </button>
       </div>
     </div>
@@ -612,7 +608,7 @@ const toggleMaterialEdges = () => {
   rebuildGraph()
 }
 
-// Enhanced search functionality with smooth transitions
+// Search functionality
 const filterNodes = () => {
   if (!cy) return
   
@@ -620,7 +616,6 @@ const filterNodes = () => {
   let visibleCount = 0
   let totalCount = 0
   
-  // Add smooth transition for search filtering
   cy.nodes().forEach(node => {
     totalCount++
     const data = node.data()
@@ -631,82 +626,29 @@ const filterNodes = () => {
                    (data.swimLane && data.swimLane.toLowerCase().includes(query))
     
     if (matches) {
-      // Smooth fade-in transition
-      node.animate({
-        style: { 
-          'display': 'element',
-          'opacity': 1
-        }
-      }, {
-        duration: 200,
-        easing: 'ease-out'
-      })
+      node.style('display', 'element')
       visibleCount++
     } else {
-      // Smooth fade-out transition
-      node.animate({
-        style: { 
-          'opacity': 0.1
-        }
-      }, {
-        duration: 150,
-        easing: 'ease-in',
-        complete: () => {
-          node.style('display', 'none')
-        }
-      })
+      node.style('display', 'none')
     }
   })
   
-  // Update edges visibility with smooth transitions
+  // Update edges visibility based on node visibility
   cy.edges().forEach(edge => {
     const sourceVisible = edge.source().style('display') !== 'none'
     const targetVisible = edge.target().style('display') !== 'none'
-    
-    if (sourceVisible && targetVisible) {
-      edge.animate({
-        style: { 
-          'display': 'element',
-          'opacity': 1
-        }
-      }, {
-        duration: 200,
-        easing: 'ease-out'
-      })
-    } else {
-      edge.animate({
-        style: { 
-          'opacity': 0.1
-        }
-      }, {
-        duration: 150,
-        easing: 'ease-in',
-        complete: () => {
-          edge.style('display', 'none')
-        }
-      })
-    }
+    edge.style('display', sourceVisible && targetVisible ? 'element' : 'none')
   })
   
   // Update search stats
   searchStats.value = { visible: visibleCount, total: totalCount }
   
-  // Smooth fit to visible nodes if search is active
+  // Fit to visible nodes if search is active
   if (query) {
-    setTimeout(() => {
-      const visibleNodes = cy.nodes().filter(node => node.style('display') !== 'none')
-      if (visibleNodes.length > 0) {
-        cy.animate({
-          fit: {
-            eles: visibleNodes,
-            padding: 50
-          }
-        }, {
-          duration: 300,
-          easing: 'ease-out'
-        })
-      }
-    }, 250) // Wait for fade transitions to complete
+    const visibleNodes = cy.nodes().filter(node => node.style('display') !== 'none')
+    if (visibleNodes.length > 0) {
+      cy.fit(visibleNodes, 50) // 50px padding
+    }
   }
   
   console.log(`🔍 Search "${query}": ${visibleCount}/${totalCount} nodes visible`)
@@ -717,28 +659,9 @@ const clearSearch = () => {
   searchStats.value = null
   
   if (cy) {
-    // Smooth transition to show all elements
-    cy.elements().animate({
-      style: { 
-        'display': 'element',
-        'opacity': 1
-      }
-    }, {
-      duration: 300,
-      easing: 'ease-out',
-      complete: () => {
-        // Smooth fit to all elements
-        cy.animate({
-          fit: {
-            eles: cy.elements(),
-            padding: 30
-          }
-        }, {
-          duration: 400,
-          easing: 'ease-out'
-        })
-      }
-    })
+    // Show all elements
+    cy.elements().style('display', 'element')
+    cy.fit()
   }
   
   console.log('🔍 Search cleared - showing all nodes')
@@ -755,43 +678,12 @@ const showFamilyTree = (item: GameDataItem) => {
   // Get all connected nodes
   const node = cy.getElementById(item.id)
   const connected = node.predecessors().union(node.successors()).union(node)
-  const nonConnected = cy.elements().not(connected)
   
-  // Smooth fade out non-connected elements
-  nonConnected.animate({
-    style: { 
-      'opacity': 0.1
-    }
-  }, {
-    duration: 200,
-    easing: 'ease-in',
-    complete: () => {
-      nonConnected.style('display', 'none')
-    }
-  })
+  // Hide non-connected
+  cy.elements().not(connected).style('display', 'none')
   
-  // Highlight connected elements
-  connected.animate({
-    style: { 
-      'opacity': 1
-    }
-  }, {
-    duration: 300,
-    easing: 'ease-out'
-  })
-  
-  // Smooth fit to visible elements
-  setTimeout(() => {
-    cy.animate({
-      fit: {
-        eles: connected,
-        padding: 50
-      }
-    }, {
-      duration: 400,
-      easing: 'ease-out'
-    })
-  }, 250)
+  // Fit to visible
+  cy.fit(connected)
 }
 
 const exitFamilyTree = () => {
@@ -802,28 +694,9 @@ const exitFamilyTree = () => {
   
   console.log('🌳 Exiting family tree mode')
   
-  // Smooth transition to show all elements
-  cy.elements().animate({
-    style: { 
-      'display': 'element',
-      'opacity': 1
-    }
-  }, {
-    duration: 300,
-    easing: 'ease-out',
-    complete: () => {
-      // Smooth fit to all elements
-      cy.animate({
-        fit: {
-          eles: cy.elements(),
-          padding: 30
-        }
-      }, {
-        duration: 400,
-        easing: 'ease-out'
-      })
-    }
-  })
+  // Show all nodes
+  cy.elements().style('display', 'element')
+  cy.fit()
 }
 
 const runValidationTests = async () => {
@@ -854,93 +727,6 @@ const runValidationTests = async () => {
     
   } catch (error) {
     console.error('❌ Error running validation tests:', error)
-  }
-}
-
-// Comprehensive integration test for final polish
-const runIntegrationTests = async () => {
-  console.log('🔧 Running comprehensive integration tests...')
-  
-  try {
-    // Test 1: Graph rebuild functionality
-    console.log('📊 Testing graph rebuild...')
-    await rebuildGraph()
-    
-    // Test 2: Search functionality with transitions
-    console.log('🔍 Testing search functionality...')
-    searchQuery.value = 'farm'
-    filterNodes()
-    await new Promise(resolve => setTimeout(resolve, 500)) // Wait for transitions
-    
-    clearSearch()
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Test 3: Family tree functionality
-    console.log('🌳 Testing family tree functionality...')
-    const testItem = gameData.items.find(item => item.category === 'Actions')
-    if (testItem) {
-      showFamilyTree(testItem)
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      exitFamilyTree()
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
-    
-    // Test 4: Material edges toggle
-    console.log('🔗 Testing material edges...')
-    showMaterialEdges.value = true
-    toggleMaterialEdges()
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    showMaterialEdges.value = false
-    toggleMaterialEdges()
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    // Test 5: Debug boundaries
-    console.log('🔍 Testing debug boundaries...')
-    showDebugBoundaries.value = true
-    toggleDebugBoundaries()
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    showDebugBoundaries.value = false
-    toggleDebugBoundaries()
-    
-    // Test 6: Validation tests
-    console.log('✅ Running validation tests...')
-    await runValidationTests()
-    
-    // Test 7: Performance monitoring (if enabled)
-    if (isPerformanceMonitoringEnabled.value) {
-      console.log('⚡ Testing performance monitoring...')
-      runPerformanceProfile()
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    }
-    
-    console.log('🎉 All integration tests completed successfully!')
-    
-    // Return comprehensive test results
-    return {
-      success: true,
-      testsRun: [
-        'Graph rebuild',
-        'Search functionality', 
-        'Family tree mode',
-        'Material edges toggle',
-        'Debug boundaries',
-        'Validation tests',
-        ...(isPerformanceMonitoringEnabled.value ? ['Performance monitoring'] : [])
-      ],
-      validationSummary: validationSummary.value,
-      graphStats: graphStats.value
-    }
-    
-  } catch (error) {
-    console.error('❌ Integration tests failed:', error)
-    return {
-      success: false,
-      error: error.message,
-      testsRun: []
-    }
   }
 }
 
@@ -1107,46 +893,23 @@ const rebuildGraph = async () => {
     lanes: 14
   }
   
-  // Smooth transition for graph rebuild
-  // First fade out existing elements
-  cy.elements().animate({
-    style: { 
-      'opacity': 0.1
+  // Replace elements
+  cy.elements().remove()
+  cy.add({ nodes, edges })
+  
+  // Re-add swim lane visuals
+  addSwimLaneVisuals()
+  
+  // Add debug boundary elements if enabled
+  if (showDebugBoundaries.value) {
+    const boundaryElements = generateVisualBoundaryElements()
+    if (boundaryElements.length > 0) {
+      cy.add(boundaryElements)
     }
-  }, {
-    duration: 150,
-    easing: 'ease-in',
-    complete: () => {
-      // Replace elements after fade out
-      cy.elements().remove()
-      cy.add({ nodes, edges })
-      
-      // Re-add swim lane visuals
-      addSwimLaneVisuals()
-      
-      // Add debug boundary elements if enabled
-      if (showDebugBoundaries.value) {
-        const boundaryElements = generateVisualBoundaryElements()
-        if (boundaryElements.length > 0) {
-          cy.add(boundaryElements)
-        }
-      }
-      
-      // Re-setup event handlers
-      setupEventHandlers()
-      
-      // Fade in new elements
-      cy.elements().style('opacity', 0)
-      cy.elements().animate({
-        style: { 
-          'opacity': 1
-        }
-      }, {
-        duration: 300,
-        easing: 'ease-out'
-      })
-    }
-  })
+  }
+  
+  // Re-setup event handlers
+  setupEventHandlers()
   
   // Update container size using consistent constants
   const LANE_PADDING = 25  // Match graphBuilder.ts LAYOUT_CONSTANTS.LANE_PADDING

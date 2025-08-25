@@ -56,21 +56,21 @@
   - Ensure single nodes are centered within their lane
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [x] 9. Fix coordinate system consistency
+- [ ] 9. Fix coordinate system consistency
   - Ensure all positioning calculations use the same coordinate system and constants
   - Verify that `LAYOUT_CONSTANTS` are consistently applied across all functions
   - Fix any discrepancies between lane height calculation and node positioning
   - Add coordinate system validation and debugging output
   - _Requirements: 3.5, 5.4, 6.4_
 
-- [x] 10. Integrate tier-based positioning with swimlane system
+- [ ] 10. Integrate tier-based positioning with swimlane system
   - Ensure horizontal tier positioning works correctly with vertical lane containment
   - Maintain prerequisite-based left-to-right flow while enforcing lane boundaries
   - Verify that prerequisite edges connect properly positioned nodes
   - Add validation for tier alignment across lanes
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 11. Add error handling and recovery systems
+- [ ] 11. Add error handling and recovery systems
   - Implement fallback positioning when boundary enforcement fails
   - Add recovery logic for overcrowded lanes
   - Create emergency spacing algorithms for extreme cases

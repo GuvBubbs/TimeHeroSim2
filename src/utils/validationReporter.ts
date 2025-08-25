@@ -1,5 +1,4 @@
 import type { GameDataItem } from '@/types/game-data'
-import { LAYOUT_CONSTANTS, DERIVED_CONSTANTS } from './graphBuilder'
 
 /**
  * Enhanced Debug Output and Validation Reporting System
@@ -254,8 +253,8 @@ export class ValidationReporter {
     position: { x: number, y: number },
     boundary: DetailedPositionDebug['boundary']
   ): DetailedPositionDebug['boundaryViolation'] {
-    const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-    const buffer = LAYOUT_CONSTANTS.LANE_BUFFER
+    const nodeHalfHeight = 20 // LAYOUT_CONSTANTS.NODE_HEIGHT / 2
+    const buffer = 20 // LAYOUT_CONSTANTS.LANE_BUFFER
     
     const minY = boundary.startY + buffer + nodeHalfHeight
     const maxY = boundary.endY - buffer - nodeHalfHeight
@@ -264,14 +263,14 @@ export class ValidationReporter {
       const distance = minY - position.y
       return {
         type: 'top',
-        severity: distance > LAYOUT_CONSTANTS.LANE_BUFFER ? 'critical' : distance > LAYOUT_CONSTANTS.LANE_BUFFER / 2 ? 'major' : 'minor',
+        severity: distance > 20 ? 'critical' : distance > 10 ? 'major' : 'minor',
         distance
       }
     } else if (position.y > maxY) {
       const distance = position.y - maxY
       return {
         type: 'bottom',
-        severity: distance > LAYOUT_CONSTANTS.LANE_BUFFER ? 'critical' : distance > LAYOUT_CONSTANTS.LANE_BUFFER / 2 ? 'major' : 'minor',
+        severity: distance > 20 ? 'critical' : distance > 10 ? 'major' : 'minor',
         distance
       }
     }
@@ -347,13 +346,12 @@ export class ValidationReporter {
         averageSpacing = spacings.reduce((sum, spacing) => sum + spacing, 0) / spacings.length
       }
       
-      // Determine if overcrowded (average spacing < minimum comfortable spacing)
-      const minComfortableSpacing = LAYOUT_CONSTANTS.NODE_PADDING + DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-      const overcrowded = averageSpacing > 0 && averageSpacing < minComfortableSpacing
+      // Determine if overcrowded (average spacing < 50px)
+      const overcrowded = averageSpacing > 0 && averageSpacing < 50
       
       // Calculate height utilization
       const boundary = nodes[0]?.boundary
-      const heightUtilization = boundary ? (nodeCount * LAYOUT_CONSTANTS.NODE_HEIGHT) / boundary.usableHeight : 0
+      const heightUtilization = boundary ? (nodeCount * 40) / boundary.usableHeight : 0
       
       return {
         lane,

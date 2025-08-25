@@ -124,19 +124,17 @@ describe('Boundary Validation', () => {
     })
 
     it('should classify violation severity correctly', () => {
-      // Farm boundary: startY=0, endY=200, buffer=20, nodeHalfHeight=20
-      // Valid range: minY=40, maxY=160
       const nodesWithViolations: PositionedNode[] = [
         {
           item: mockFarmItems[0],
-          position: { x: 200, y: 35 }, // Minor violation (5px above minY=40)
+          position: { x: 200, y: -5 }, // Minor violation (5px above)
           lane: 'Farm',
           tier: 0,
           withinBounds: false
         },
         {
           item: mockFarmItems[1],
-          position: { x: 200, y: -10 }, // Critical violation (50px above minY=40)
+          position: { x: 200, y: -50 }, // Major violation (50px above)
           lane: 'Farm',
           tier: 0,
           withinBounds: false
@@ -147,11 +145,11 @@ describe('Boundary Validation', () => {
       
       expect(violations).toHaveLength(2)
       
-      // First violation should be minor (5px violation < 10px threshold)
+      // First violation should be minor (< 20px difference)
       const minorViolation = violations.find(v => v.node.item.id === mockFarmItems[0].id)
       expect(minorViolation?.severity).toBe('minor')
       
-      // Second violation should be critical (50px violation > 20px threshold)
+      // Second violation should be critical (> 20px difference)
       const majorViolation = violations.find(v => v.node.item.id === mockFarmItems[1].id)
       expect(majorViolation?.severity).toBe('critical')
     })

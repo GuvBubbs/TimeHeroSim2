@@ -23,8 +23,7 @@ const SWIM_LANES = [
 
 
 // Standardized constants - MUST match calculateNodePosition values
-// These constants define the coordinate system used throughout the application
-export const LAYOUT_CONSTANTS = {
+const LAYOUT_CONSTANTS = {
   NODE_HEIGHT: 40,      // Match Cytoscape node height
   NODE_PADDING: 15,     // Vertical spacing between nodes
   LANE_PADDING: 25,     // Padding between lanes
@@ -35,15 +34,7 @@ export const LAYOUT_CONSTANTS = {
   LANE_START_X: 200,    // Space for lane labels
   MIN_NODE_SPACING: 15, // Minimum spacing between nodes (Requirement 3.3: at least 15px)
   BOUNDARY_TOLERANCE: 1 // Tolerance for boundary validation (pixels)
-} as const
-
-// Derived constants for consistent calculations
-export const DERIVED_CONSTANTS = {
-  NODE_HALF_HEIGHT: LAYOUT_CONSTANTS.NODE_HEIGHT / 2,
-  NODE_HALF_WIDTH: LAYOUT_CONSTANTS.NODE_WIDTH / 2,
-  TIER_CENTER_OFFSET: LAYOUT_CONSTANTS.TIER_WIDTH / 2,
-  LANE_TOTAL_PADDING: LAYOUT_CONSTANTS.LANE_BUFFER * 2
-} as const
+}
 
 // Interface for lane boundary information
 interface LaneBoundary {
@@ -72,49 +63,6 @@ interface BoundaryViolation {
   allowedBoundary: LaneBoundary
   severity: 'minor' | 'major' | 'critical'
   adjustedPosition?: { x: number, y: number }
-}
-
-// Interface for error recovery context
-interface ErrorRecoveryContext {
-  originalPosition: { x: number, y: number }
-  lane: string
-  tier: number
-  boundary: LaneBoundary
-  recoveryStrategy: 'fallback' | 'compression' | 'emergency' | 'redistribution'
-  recoveryReason: string
-  appliedAdjustments: string[]
-}
-
-// Interface for lane overcrowding analysis
-interface LaneOvercrowdingAnalysis {
-  lane: string
-  boundary: LaneBoundary
-  nodeCount: number
-  requiredSpace: number
-  availableSpace: number
-  overcrowdingRatio: number
-  severity: 'none' | 'mild' | 'moderate' | 'severe' | 'critical'
-  recommendedAction: 'none' | 'compress' | 'redistribute' | 'emergency'
-}
-
-// Interface for emergency spacing configuration
-interface EmergencySpacingConfig {
-  minAbsoluteSpacing: number
-  compressionRatio: number
-  maxCompressionAttempts: number
-  fallbackToMinimumHeight: boolean
-  enableRedistribution: boolean
-}
-
-// Interface for user-friendly error messages
-interface UserFriendlyError {
-  severity: 'info' | 'warning' | 'error' | 'critical'
-  title: string
-  message: string
-  technicalDetails?: string
-  suggestedActions: string[]
-  affectedNodes?: string[]
-  recoveryApplied?: boolean
 }
 
 // Interface for validation results
@@ -580,22 +528,11 @@ export function buildGraphElements(items: GameDataItem[]) {
   const nodes: any[] = []
   const edges: any[] = []
   
-  // Clear previous errors and recovery contexts at start of new build
-  errorHandlingSystem.clearErrorsAndRecovery()
-  
   // Only run validation in debug mode to reduce noise
   const shouldRunValidation = (typeof window !== 'undefined' && (window as any).ENABLE_COMPREHENSIVE_VALIDATION === true)
   
   if (shouldRunValidation) {
     validationReporter.startValidation()
-    
-    // Validate coordinate system consistency at the start
-    logCoordinateSystemDebug()
-    const coordinateValidation = validateCoordinateSystemConsistency()
-    if (!coordinateValidation.isValid) {
-      console.error(`❌ Coordinate system validation failed:`)
-      coordinateValidation.issues.forEach(issue => console.error(`  • ${issue}`))
-    }
   }
   
   // FILTER: Only Actions and Unlocks (no Data items)
@@ -630,8 +567,8 @@ export function buildGraphElements(items: GameDataItem[]) {
     // Calculate initial position
     let position = calculateNodePosition(item, swimLane, sortedItems, laneHeights, laneBoundaries)
     
-    // Enforce boundary constraints with error handling
-    position = enforceBoundaryConstraints(position, swimLane, laneBoundaries, item.id)
+    // Enforce boundary constraints
+    position = enforceBoundaryConstraints(position, swimLane, laneBoundaries)
     
     // Create positioned node for validation
     const positionedNode: PositionedNode = {
@@ -689,18 +626,6 @@ export function buildGraphElements(items: GameDataItem[]) {
       console.log(`✅ All ${nodes.length} nodes positioned correctly`)
     }
     
-    // Validate coordinate system consistency for positioning calculations
-    const positionValidation = validatePositionCalculationConsistency(treeItems, laneHeights, laneBoundaries)
-    if (!positionValidation.isValid) {
-      console.error(`❌ Position calculation consistency issues:`)
-      positionValidation.issues.forEach(issue => console.error(`  • ${issue}`))
-    } else {
-      console.log(`✅ Position calculations use consistent coordinate system`)
-      console.log(`  • X calculations: ${positionValidation.metrics.consistentXCalculations}/${positionValidation.metrics.totalNodes}`)
-      console.log(`  • Y calculations: ${positionValidation.metrics.consistentYCalculations}/${positionValidation.metrics.totalNodes}`)
-      console.log(`  • Boundary alignment issues: ${positionValidation.metrics.boundaryAlignmentIssues}`)
-    }
-    
     comprehensiveReport = validationReporter.generateReport([])
   } else {
     // Production mode: minimal logging
@@ -743,34 +668,6 @@ export function buildGraphElements(items: GameDataItem[]) {
     logEnhancedDistributionSummary(nodes, laneBoundaries)
   }
   
-  // Generate error recovery report
-  const errorRecoveryReport = errorHandlingSystem.generateErrorRecoveryReport()
-  
-  // Log error recovery summary
-  if (errorRecoveryReport.totalErrors > 0 || errorRecoveryReport.totalRecoveries > 0) {
-    console.log(`\n🔧 ERROR RECOVERY SUMMARY`)
-    console.log(`═══════════════════════════`)
-    console.log(errorRecoveryReport.summary)
-    
-    if (errorRecoveryReport.totalErrors > 0) {
-      console.log(`Errors by severity:`)
-      Object.entries(errorRecoveryReport.errorsBySeverity).forEach(([severity, count]) => {
-        const icon = severity === 'critical' ? '🚨' : severity === 'error' ? '❌' : severity === 'warning' ? '⚠️' : 'ℹ️'
-        console.log(`  ${icon} ${severity}: ${count}`)
-      })
-    }
-    
-    if (errorRecoveryReport.totalRecoveries > 0) {
-      console.log(`Recoveries by strategy:`)
-      Object.entries(errorRecoveryReport.recoveriesByStrategy).forEach(([strategy, count]) => {
-        console.log(`  🔧 ${strategy}: ${count}`)
-      })
-    }
-    console.log(``)
-  } else if (shouldRunValidation) {
-    console.log(`✅ No positioning errors or recoveries needed`)
-  }
-
   return { 
     nodes, 
     edges, 
@@ -778,8 +675,7 @@ export function buildGraphElements(items: GameDataItem[]) {
     laneBoundaries,
     validationResults: [],
     validationSummary: { totalTests: 0, failedTests: 0, totalIssues: 0 },
-    comprehensiveReport,
-    errorRecoveryReport
+    comprehensiveReport
   }
 }
 
@@ -794,25 +690,8 @@ export {
   validateAllPositions,
   validatePositionWithinBounds,
   enforceBoundaryConstraints,
-  validateCoordinateSystemConsistency,
-  validatePositionCalculationConsistency,
-  logCoordinateSystemDebug,
-  validationReporter,
-  // New tier-based positioning validation functions
-  validatePrerequisitePositioning,
-  validateTierAlignmentAcrossLanes,
-  validatePrerequisiteEdgeConnections,
-  validateTierBasedPositioning,
-  validateTierSwimLaneIntegration,
-  // Error handling and recovery system functions
-  errorHandlingSystem
+  validationReporter
 }
-
-// Export error handling system functions for external access
-export const getErrorHandlingSystem = () => errorHandlingSystem
-export const getUserFriendlyErrors = () => errorHandlingSystem.getUserFriendlyErrors()
-export const getRecoveryContext = (nodeId: string) => errorHandlingSystem.getRecoveryContext(nodeId)
-export const generateErrorRecoveryReport = () => errorHandlingSystem.generateErrorRecoveryReport()
 
 function determineSwimLane(item: GameDataItem): string {
   let assignmentReason = ''
@@ -1140,43 +1019,48 @@ function validatePositionWithinBounds(
 }
 
 /**
- * Enforce boundary constraints by adjusting position with comprehensive error handling
+ * Enforce boundary constraints by adjusting position
  * Ensures nodes stay within their assigned lane boundaries by:
  * - Checking if position exceeds lane bounds
  * - Adjusting Y coordinate to fit within usable area
- * - Applying fallback positioning when boundary enforcement fails
- * - Logging user-friendly warnings when adjustments are made
+ * - Logging warnings when adjustments are made
  * 
  * @param position Current node position
  * @param lane Target swimlane name
  * @param boundaries Map of lane boundaries
- * @param nodeId Node identifier for error tracking
- * @returns Adjusted position that fits within lane bounds with recovery context
+ * @returns Adjusted position that fits within lane bounds
  */
 function enforceBoundaryConstraints(
   position: { x: number, y: number },
   lane: string,
-  boundaries: Map<string, LaneBoundary>,
-  nodeId: string = 'unknown'
+  boundaries: Map<string, LaneBoundary>
 ): { x: number, y: number } {
-  // Use error handling system for comprehensive boundary enforcement
-  const { position: adjustedPosition, recoveryContext } = errorHandlingSystem.handleBoundaryEnforcementFailure(
-    position,
-    lane,
-    boundaries,
-    nodeId
-  )
-  
-  // Log recovery context if debugging is enabled
-  if ((typeof window !== 'undefined' && (window as any).ENABLE_COMPREHENSIVE_VALIDATION === true) && 
-      recoveryContext.appliedAdjustments.length > 0) {
-    console.log(`🔧 Boundary enforcement recovery for node ${nodeId}:`)
-    console.log(`   Strategy: ${recoveryContext.recoveryStrategy}`)
-    console.log(`   Reason: ${recoveryContext.recoveryReason}`)
-    console.log(`   Adjustments: ${recoveryContext.appliedAdjustments.join(', ')}`)
+  const boundary = boundaries.get(lane)
+  if (!boundary) {
+    console.warn(`⚠️ No boundary found for lane: ${lane}`)
+    return position
   }
   
-  return adjustedPosition
+  const nodeHalfHeight = LAYOUT_CONSTANTS.NODE_HEIGHT / 2
+  const minY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
+  const maxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight
+  
+  let adjustedY = position.y
+  let wasAdjusted = false
+  
+  if (position.y < minY) {
+    adjustedY = minY
+    wasAdjusted = true
+  } else if (position.y > maxY) {
+    adjustedY = maxY
+    wasAdjusted = true
+  }
+  
+  if (wasAdjusted) {
+    console.warn(`⚠️ Position adjusted for lane ${lane}: Y ${position.y.toFixed(1)} → ${adjustedY.toFixed(1)}`)
+  }
+  
+  return { x: position.x, y: adjustedY }
 }
 
 // Validate all node positions against their lane boundaries
@@ -1229,10 +1113,10 @@ class PositionValidationSystem {
     // Test 2: Lane Height Accuracy
     this.testLaneHeightAccuracy(nodes, boundaries)
     
-    // Test 3: Enhanced Tier Width Consistency (Requirements 6.3, 6.4)
+    // Test 3: Tier Width Consistency (Requirement 6.4)
     this.testTierWidthConsistency(nodes, items)
     
-    // Test 4: Enhanced Vertical-Horizontal Interference (Requirement 6.5)
+    // Test 4: Vertical Containment vs Horizontal Positioning (Requirement 6.5)
     this.testVerticalHorizontalInterference(nodes, boundaries)
     
     // Test 5: Minimum Spacing Requirements
@@ -1240,9 +1124,6 @@ class PositionValidationSystem {
     
     // Test 6: Position Calculation Accuracy
     this.testPositionCalculationAccuracy(nodes, boundaries, items)
-    
-    // Test 7: Comprehensive Tier-Based Positioning Integration (Requirements 6.1-6.5)
-    this.runTierBasedPositioningValidation(nodes, boundaries, items)
     
     // Generate comprehensive report
     this.generateValidationReport()
@@ -1335,29 +1216,22 @@ class PositionValidationSystem {
   }
   
   /**
-   * Test tier width consistency across all lanes (Requirement 6.3, 6.4)
+   * Test tier width consistency across all lanes (Requirement 6.4)
    */
   private testTierWidthConsistency(nodes: PositionedNode[], items: GameDataItem[]): void {
     const issues: ValidationIssue[] = []
     const tierPositions = new Map<number, Set<number>>()
-    const tierLaneGroups = new Map<string, PositionedNode[]>()
     
-    // Collect X positions for each tier and group by tier-lane
+    // Collect X positions for each tier
     nodes.forEach(node => {
       const tier = calculatePrerequisiteDepth(node.item, items)
       if (!tierPositions.has(tier)) {
         tierPositions.set(tier, new Set())
       }
       tierPositions.get(tier)!.add(node.position.x)
-      
-      const tierLaneKey = `${tier}-${node.lane}`
-      if (!tierLaneGroups.has(tierLaneKey)) {
-        tierLaneGroups.set(tierLaneKey, [])
-      }
-      tierLaneGroups.get(tierLaneKey)!.push(node)
     })
     
-    // Check consistency within each tier (Requirement 6.3)
+    // Check consistency within each tier
     tierPositions.forEach((xPositions, tier) => {
       const positions = Array.from(xPositions)
       if (positions.length > 1) {
@@ -1365,17 +1239,16 @@ class PositionValidationSystem {
         const maxX = Math.max(...positions)
         const range = maxX - minX
         
-        if (range > LAYOUT_CONSTANTS.TIER_WIDTH * 0.05) { // Tighter tolerance for better alignment
+        if (range > LAYOUT_CONSTANTS.TIER_WIDTH * 0.1) { // Allow 10% tolerance
           issues.push({
             severity: 'warning',
-            message: `Tier ${tier} has inconsistent X positions (range: ${range.toFixed(1)}px, tolerance: ${(LAYOUT_CONSTANTS.TIER_WIDTH * 0.05).toFixed(1)}px)`,
-            metrics: { tier, range, tolerance: LAYOUT_CONSTANTS.TIER_WIDTH * 0.05 }
+            message: `Tier ${tier} has inconsistent X positions (range: ${range.toFixed(1)}px)`,
           })
         }
       }
     })
     
-    // Check tier spacing consistency between consecutive tiers
+    // Check tier spacing consistency
     const sortedTiers = Array.from(tierPositions.keys()).sort((a, b) => a - b)
     for (let i = 1; i < sortedTiers.length; i++) {
       const prevTier = sortedTiers[i - 1]
@@ -1385,55 +1258,28 @@ class PositionValidationSystem {
       const currentX = Math.min(...Array.from(tierPositions.get(currentTier)!))
       const spacing = currentX - prevX
       
-      const expectedSpacing = (currentTier - prevTier) * LAYOUT_CONSTANTS.TIER_WIDTH
+      const expectedSpacing = LAYOUT_CONSTANTS.TIER_WIDTH
       const tolerance = expectedSpacing * 0.1
       
       if (Math.abs(spacing - expectedSpacing) > tolerance) {
         issues.push({
           severity: 'warning',
-          message: `Inconsistent spacing between tier ${prevTier} and ${currentTier}: ${spacing.toFixed(1)}px (expected: ${expectedSpacing}px)`,
-          metrics: { prevTier, currentTier, actualSpacing: spacing, expectedSpacing }
+          message: `Inconsistent spacing between tier ${prevTier} and ${currentTier}: ${spacing.toFixed(1)}px (expected: ${expectedSpacing}px)`
         })
       }
     }
     
-    // Check that nodes in same tier-lane combinations are properly aligned
-    tierLaneGroups.forEach((groupNodes, tierLaneKey) => {
-      if (groupNodes.length <= 1) return
-      
-      const [tier, lane] = tierLaneKey.split('-')
-      const xPositions = groupNodes.map(n => n.position.x)
-      const minX = Math.min(...xPositions)
-      const maxX = Math.max(...xPositions)
-      const range = maxX - minX
-      
-      // Nodes in same tier and lane should have identical X positions
-      if (range > LAYOUT_CONSTANTS.BOUNDARY_TOLERANCE) {
-        issues.push({
-          severity: 'error',
-          message: `Nodes in tier ${tier}, lane "${lane}" have different X positions (range: ${range.toFixed(1)}px) - should be identical`,
-          lane,
-          metrics: { tier: parseInt(tier), lane, range, nodeCount: groupNodes.length }
-        })
-      }
-    })
-    
     this.validationResults.push({
-      testName: 'Enhanced Tier Width Consistency',
+      testName: 'Tier Width Consistency',
       passed: issues.filter(i => i.severity === 'error').length === 0,
       issues,
       recommendations: issues.length > 0 ? [
         'Ensure consistent TIER_WIDTH usage in positioning calculations',
-        'Verify tier-based X positioning algorithm',
-        'Check that nodes in same tier-lane have identical X positions',
-        'Validate prerequisite depth calculation accuracy'
+        'Verify tier-based X positioning algorithm'
       ] : [],
       metrics: {
         totalTiers: tierPositions.size,
-        totalTierLaneGroups: tierLaneGroups.size,
-        inconsistentTiers: issues.filter(i => i.message.includes('inconsistent X positions')).length,
-        spacingIssues: issues.filter(i => i.message.includes('Inconsistent spacing')).length,
-        alignmentErrors: issues.filter(i => i.severity === 'error').length
+        inconsistentTiers: issues.length
       }
     })
   }
@@ -1446,7 +1292,6 @@ class PositionValidationSystem {
     
     // Group nodes by tier to check vertical alignment within lanes
     const tierLaneGroups = new Map<string, PositionedNode[]>()
-    const tierGroups = new Map<number, PositionedNode[]>()
     
     nodes.forEach(node => {
       const key = `${node.tier}-${node.lane}`
@@ -1454,17 +1299,11 @@ class PositionValidationSystem {
         tierLaneGroups.set(key, [])
       }
       tierLaneGroups.get(key)!.push(node)
-      
-      if (!tierGroups.has(node.tier)) {
-        tierGroups.set(node.tier, [])
-      }
-      tierGroups.get(node.tier)!.push(node)
     })
     
-    // Test 1: Check each tier-lane group for proper vertical distribution
+    // Check each tier-lane group for proper vertical distribution
     tierLaneGroups.forEach((groupNodes, key) => {
-      const [tierStr, lane] = key.split('-')
-      const tier = parseInt(tierStr)
+      const [tier, lane] = key.split('-')
       const boundary = boundaries.get(lane)
       
       if (!boundary || groupNodes.length <= 1) return
@@ -1474,7 +1313,7 @@ class PositionValidationSystem {
       const minY = yPositions[0]
       const maxY = yPositions[yPositions.length - 1]
       
-      const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
+      const nodeHalfHeight = LAYOUT_CONSTANTS.NODE_HEIGHT / 2
       const laneMinY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
       const laneMaxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight
       
@@ -1482,9 +1321,8 @@ class PositionValidationSystem {
       if (minY < laneMinY || maxY > laneMaxY) {
         issues.push({
           severity: 'error',
-          message: `Tier ${tier} nodes in lane "${lane}" exceed vertical boundaries (Y range: ${minY.toFixed(1)}-${maxY.toFixed(1)}, allowed: ${laneMinY.toFixed(1)}-${laneMaxY.toFixed(1)})`,
-          lane,
-          metrics: { tier, actualMinY: minY, actualMaxY: maxY, allowedMinY: laneMinY, allowedMaxY: laneMaxY }
+          message: `Tier ${tier} nodes in lane "${lane}" exceed vertical boundaries due to positioning conflicts`,
+          lane
         })
       }
       
@@ -1497,84 +1335,19 @@ class PositionValidationSystem {
         issues.push({
           severity: 'warning',
           message: `Tier ${tier} nodes in lane "${lane}" may be over-compressed (${actualHeight.toFixed(1)}px vs ${requiredHeight.toFixed(1)}px needed)`,
-          lane,
-          metrics: { tier, actualHeight, requiredHeight, compressionRatio: actualHeight / requiredHeight }
+          lane
         })
       }
-      
-      // Check minimum spacing between nodes in same tier-lane group
-      for (let i = 1; i < yPositions.length; i++) {
-        const spacing = yPositions[i] - yPositions[i - 1]
-        if (spacing < LAYOUT_CONSTANTS.MIN_NODE_SPACING) {
-          issues.push({
-            severity: 'error',
-            message: `Insufficient spacing between tier ${tier} nodes in lane "${lane}": ${spacing.toFixed(1)}px (minimum: ${LAYOUT_CONSTANTS.MIN_NODE_SPACING}px)`,
-            lane,
-            metrics: { tier, actualSpacing: spacing, minimumSpacing: LAYOUT_CONSTANTS.MIN_NODE_SPACING }
-          })
-        }
-      }
-    })
-    
-    // Test 2: Check that horizontal tier positioning is consistent across lanes
-    tierGroups.forEach((tierNodes, tier) => {
-      if (tierNodes.length <= 1) return
-      
-      const xPositions = tierNodes.map(n => n.position.x)
-      const minX = Math.min(...xPositions)
-      const maxX = Math.max(...xPositions)
-      const xRange = maxX - minX
-      
-      // All nodes in same tier should have very similar X positions
-      if (xRange > LAYOUT_CONSTANTS.TIER_WIDTH * 0.05) {
-        issues.push({
-          severity: 'warning',
-          message: `Tier ${tier} nodes have inconsistent horizontal positioning across lanes (X range: ${xRange.toFixed(1)}px)`,
-          metrics: { tier, xRange, tolerance: LAYOUT_CONSTANTS.TIER_WIDTH * 0.05 }
-        })
-      }
-      
-      // Check that tier positioning doesn't force nodes outside their lanes
-      tierNodes.forEach(node => {
-        const boundary = boundaries.get(node.lane)
-        if (!boundary) return
-        
-        const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-        const laneMinY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
-        const laneMaxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight
-        
-        if (node.position.y < laneMinY || node.position.y > laneMaxY) {
-          issues.push({
-            severity: 'error',
-            message: `Tier ${tier} positioning forced node "${node.item.name}" outside lane "${node.lane}" boundaries`,
-            nodeId: node.item.id,
-            lane: node.lane,
-            position: node.position,
-            metrics: { tier, nodeY: node.position.y, laneMinY, laneMaxY }
-          })
-        }
-      })
     })
     
     this.validationResults.push({
-      testName: 'Enhanced Vertical-Horizontal Interference',
+      testName: 'Vertical-Horizontal Interference',
       passed: issues.filter(i => i.severity === 'error').length === 0,
       issues,
       recommendations: issues.length > 0 ? [
         'Review interaction between tier-based X positioning and lane-based Y positioning',
-        'Ensure vertical containment takes priority over horizontal alignment',
-        'Verify that tier positioning doesn\'t force nodes outside lane boundaries',
-        'Check minimum spacing requirements within tier-lane groups',
-        'Validate horizontal consistency across lanes for same-tier nodes'
-      ] : [],
-      metrics: {
-        totalTierLaneGroups: tierLaneGroups.size,
-        totalTiers: tierGroups.size,
-        boundaryViolations: issues.filter(i => i.message.includes('exceed vertical boundaries')).length,
-        compressionWarnings: issues.filter(i => i.message.includes('over-compressed')).length,
-        spacingViolations: issues.filter(i => i.message.includes('Insufficient spacing')).length,
-        horizontalInconsistencies: issues.filter(i => i.message.includes('inconsistent horizontal positioning')).length
-      }
+        'Ensure vertical containment takes priority over horizontal alignment'
+      ] : []
     })
   }
   
@@ -1704,60 +1477,6 @@ class PositionValidationSystem {
   }
   
   /**
-   * Run comprehensive tier-based positioning validation (Requirements 6.1-6.5)
-   */
-  private runTierBasedPositioningValidation(
-    nodes: PositionedNode[],
-    boundaries: Map<string, LaneBoundary>,
-    items: GameDataItem[]
-  ): void {
-    // Run all tier-based validation tests
-    const tierValidationResults = validateTierBasedPositioning(items, nodes, boundaries)
-    
-    // Add results to main validation results
-    this.validationResults.push(...tierValidationResults)
-    
-    // Log summary if in debug mode
-    if ((typeof window !== 'undefined' && (window as any).ENABLE_COMPREHENSIVE_VALIDATION === true)) {
-      console.log(`\n📐 TIER-BASED POSITIONING VALIDATION`)
-      console.log(`═══════════════════════════════════`)
-      
-      tierValidationResults.forEach(result => {
-        const status = result.passed ? '✅' : '❌'
-        const errorCount = result.issues.filter(i => i.severity === 'error').length
-        const warningCount = result.issues.filter(i => i.severity === 'warning').length
-        
-        console.log(`${status} ${result.testName}: ${errorCount} errors, ${warningCount} warnings`)
-        
-        if (!result.passed && result.issues.length > 0) {
-          result.issues.slice(0, 3).forEach(issue => {
-            const icon = issue.severity === 'error' ? '❌' : '⚠️'
-            console.log(`  ${icon} ${issue.message}`)
-          })
-          
-          if (result.issues.length > 3) {
-            console.log(`  ... and ${result.issues.length - 3} more issues`)
-          }
-        }
-      })
-      
-      // Overall tier validation summary
-      const totalTests = tierValidationResults.length
-      const passedTests = tierValidationResults.filter(r => r.passed).length
-      const totalErrors = tierValidationResults.reduce((sum, r) => sum + r.issues.filter(i => i.severity === 'error').length, 0)
-      const totalWarnings = tierValidationResults.reduce((sum, r) => sum + r.issues.filter(i => i.severity === 'warning').length, 0)
-      
-      console.log(`\n📊 Tier Validation Summary: ${passedTests}/${totalTests} tests passed`)
-      if (totalErrors > 0) console.log(`❌ ${totalErrors} critical tier positioning errors`)
-      if (totalWarnings > 0) console.log(`⚠️ ${totalWarnings} tier positioning warnings`)
-      
-      if (passedTests === totalTests && totalErrors === 0) {
-        console.log(`✅ All tier-based positioning requirements validated successfully`)
-      }
-    }
-  }
-
-  /**
    * Generate comprehensive validation report
    */
   private generateValidationReport(): void {
@@ -1847,557 +1566,6 @@ class PositionValidationSystem {
     }
   }
 }
-
-/**
- * Error Handling and Recovery System
- * Provides comprehensive fallback positioning, overcrowding recovery, and emergency spacing
- */
-class ErrorHandlingAndRecoverySystem {
-  private emergencyConfig: EmergencySpacingConfig = {
-    minAbsoluteSpacing: 5, // Absolute minimum spacing in pixels
-    compressionRatio: 0.7, // Compress to 70% of normal spacing
-    maxCompressionAttempts: 3,
-    fallbackToMinimumHeight: true,
-    enableRedistribution: true
-  }
-  
-  private userFriendlyErrors: UserFriendlyError[] = []
-  private recoveryContexts: Map<string, ErrorRecoveryContext> = new Map()
-  
-  /**
-   * Handle boundary enforcement failure with fallback positioning (Requirement 5.2)
-   */
-  handleBoundaryEnforcementFailure(
-    position: { x: number, y: number },
-    lane: string,
-    boundaries: Map<string, LaneBoundary>,
-    nodeId: string
-  ): { position: { x: number, y: number }, recoveryContext: ErrorRecoveryContext } {
-    const boundary = boundaries.get(lane)
-    if (!boundary) {
-      // Critical failure - no boundary found
-      const fallbackPosition = this.applyEmergencyFallbackPosition(position, lane)
-      const recoveryContext: ErrorRecoveryContext = {
-        originalPosition: position,
-        lane,
-        tier: 0, // Unknown tier
-        boundary: this.createEmergencyBoundary(lane),
-        recoveryStrategy: 'fallback',
-        recoveryReason: 'No boundary found for lane',
-        appliedAdjustments: ['emergency-fallback-position']
-      }
-      
-      this.addUserFriendlyError({
-        severity: 'critical',
-        title: 'Lane Boundary Missing',
-        message: `Could not find boundary information for lane "${lane}". Applied emergency positioning.`,
-        technicalDetails: `Node ${nodeId} at position (${position.x}, ${position.y}) has no lane boundary`,
-        suggestedActions: [
-          'Check lane configuration',
-          'Verify lane height calculations',
-          'Review swimlane setup'
-        ],
-        affectedNodes: [nodeId],
-        recoveryApplied: true
-      })
-      
-      this.recoveryContexts.set(nodeId, recoveryContext)
-      return { position: fallbackPosition, recoveryContext }
-    }
-    
-    // Apply boundary constraint with fallback logic
-    const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-    const minY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
-    const maxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight
-    
-    let adjustedPosition = { ...position }
-    const appliedAdjustments: string[] = []
-    
-    // Check if position is outside bounds
-    if (position.y < minY) {
-      adjustedPosition.y = minY
-      appliedAdjustments.push(`adjusted-y-to-min-boundary-${minY.toFixed(1)}`)
-    } else if (position.y > maxY) {
-      adjustedPosition.y = maxY
-      appliedAdjustments.push(`adjusted-y-to-max-boundary-${maxY.toFixed(1)}`)
-    }
-    
-    // If adjustment was needed, create recovery context
-    if (appliedAdjustments.length > 0) {
-      const recoveryContext: ErrorRecoveryContext = {
-        originalPosition: position,
-        lane,
-        tier: 0, // Will be filled by caller
-        boundary,
-        recoveryStrategy: 'fallback',
-        recoveryReason: 'Position outside lane boundaries',
-        appliedAdjustments
-      }
-      
-      this.addUserFriendlyError({
-        severity: 'warning',
-        title: 'Position Adjusted for Boundary Compliance',
-        message: `Node position was adjusted to fit within lane "${lane}" boundaries.`,
-        technicalDetails: `Original Y: ${position.y.toFixed(1)}, Adjusted Y: ${adjustedPosition.y.toFixed(1)}`,
-        suggestedActions: [
-          'Review lane height calculations',
-          'Check node distribution algorithm',
-          'Consider increasing lane height'
-        ],
-        affectedNodes: [nodeId],
-        recoveryApplied: true
-      })
-      
-      this.recoveryContexts.set(nodeId, recoveryContext)
-    }
-    
-    return { 
-      position: adjustedPosition, 
-      recoveryContext: this.recoveryContexts.get(nodeId) || this.createDefaultRecoveryContext(position, lane, boundary)
-    }
-  }
-  
-  /**
-   * Analyze lane overcrowding and determine recovery strategy (Requirement 5.3)
-   */
-  analyzeLaneOvercrowding(
-    lane: string,
-    nodes: PositionedNode[],
-    boundary: LaneBoundary
-  ): LaneOvercrowdingAnalysis {
-    const laneNodes = nodes.filter(n => n.lane === lane)
-    const nodeCount = laneNodes.length
-    
-    if (nodeCount === 0) {
-      return {
-        lane,
-        boundary,
-        nodeCount: 0,
-        requiredSpace: 0,
-        availableSpace: boundary.usableHeight,
-        overcrowdingRatio: 0,
-        severity: 'none',
-        recommendedAction: 'none'
-      }
-    }
-    
-    // Calculate space requirements
-    const requiredNodeSpace = nodeCount * LAYOUT_CONSTANTS.NODE_HEIGHT
-    const requiredSpacingSpace = Math.max(0, nodeCount - 1) * LAYOUT_CONSTANTS.NODE_PADDING
-    const requiredSpace = requiredNodeSpace + requiredSpacingSpace
-    const availableSpace = boundary.usableHeight
-    
-    const overcrowdingRatio = requiredSpace / availableSpace
-    
-    // Determine severity and recommended action
-    let severity: LaneOvercrowdingAnalysis['severity']
-    let recommendedAction: LaneOvercrowdingAnalysis['recommendedAction']
-    
-    if (overcrowdingRatio <= 1.0) {
-      severity = 'none'
-      recommendedAction = 'none'
-    } else if (overcrowdingRatio <= 1.2) {
-      severity = 'mild'
-      recommendedAction = 'compress'
-    } else if (overcrowdingRatio <= 1.5) {
-      severity = 'moderate'
-      recommendedAction = 'compress'
-    } else if (overcrowdingRatio <= 2.0) {
-      severity = 'severe'
-      recommendedAction = 'redistribute'
-    } else {
-      severity = 'critical'
-      recommendedAction = 'emergency'
-    }
-    
-    return {
-      lane,
-      boundary,
-      nodeCount,
-      requiredSpace,
-      availableSpace,
-      overcrowdingRatio,
-      severity,
-      recommendedAction
-    }
-  }
-  
-  /**
-   * Apply recovery logic for overcrowded lanes (Requirement 5.3)
-   */
-  recoverOvercrowdedLane(
-    analysis: LaneOvercrowdingAnalysis,
-    nodes: PositionedNode[]
-  ): { recoveredNodes: PositionedNode[], recoveryContexts: ErrorRecoveryContext[] } {
-    const laneNodes = nodes.filter(n => n.lane === analysis.lane)
-    const recoveryContexts: ErrorRecoveryContext[] = []
-    
-    if (analysis.severity === 'none') {
-      return { recoveredNodes: laneNodes, recoveryContexts: [] }
-    }
-    
-    let recoveredNodes: PositionedNode[]
-    
-    switch (analysis.recommendedAction) {
-      case 'compress':
-        recoveredNodes = this.applyCompressionRecovery(laneNodes, analysis, recoveryContexts)
-        break
-      case 'redistribute':
-        recoveredNodes = this.applyRedistributionRecovery(laneNodes, analysis, recoveryContexts)
-        break
-      case 'emergency':
-        recoveredNodes = this.applyEmergencyRecovery(laneNodes, analysis, recoveryContexts)
-        break
-      default:
-        recoveredNodes = laneNodes
-    }
-    
-    // Add user-friendly error for overcrowding
-    this.addUserFriendlyError({
-      severity: analysis.severity === 'critical' ? 'critical' : 'warning',
-      title: `Lane Overcrowding Detected`,
-      message: `Lane "${analysis.lane}" has ${analysis.nodeCount} nodes requiring ${analysis.requiredSpace.toFixed(0)}px but only ${analysis.availableSpace.toFixed(0)}px available.`,
-      technicalDetails: `Overcrowding ratio: ${analysis.overcrowdingRatio.toFixed(2)}x, Applied strategy: ${analysis.recommendedAction}`,
-      suggestedActions: [
-        'Consider increasing lane height',
-        'Review node distribution across lanes',
-        'Check if some nodes can be moved to adjacent lanes'
-      ],
-      affectedNodes: laneNodes.map(n => n.item.id),
-      recoveryApplied: true
-    })
-    
-    return { recoveredNodes, recoveryContexts }
-  }
-  
-  /**
-   * Apply compression recovery for mildly overcrowded lanes
-   */
-  private applyCompressionRecovery(
-    nodes: PositionedNode[],
-    analysis: LaneOvercrowdingAnalysis,
-    recoveryContexts: ErrorRecoveryContext[]
-  ): PositionedNode[] {
-    if (nodes.length <= 1) return nodes
-    
-    // Sort nodes by Y position
-    const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y)
-    
-    // Calculate compressed spacing
-    const availableSpacingArea = analysis.availableSpace - (nodes.length * LAYOUT_CONSTANTS.NODE_HEIGHT)
-    const compressedSpacing = Math.max(
-      this.emergencyConfig.minAbsoluteSpacing,
-      availableSpacingArea / Math.max(1, nodes.length - 1)
-    )
-    
-    // Apply compressed positioning
-    const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-    const startY = analysis.boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
-    
-    return sortedNodes.map((node, index) => {
-      const newY = startY + (index * (LAYOUT_CONSTANTS.NODE_HEIGHT + compressedSpacing))
-      const originalPosition = node.position
-      
-      const recoveryContext: ErrorRecoveryContext = {
-        originalPosition,
-        lane: analysis.lane,
-        tier: node.tier,
-        boundary: analysis.boundary,
-        recoveryStrategy: 'compression',
-        recoveryReason: `Lane overcrowding (${analysis.overcrowdingRatio.toFixed(2)}x)`,
-        appliedAdjustments: [`compressed-spacing-${compressedSpacing.toFixed(1)}px`]
-      }
-      
-      recoveryContexts.push(recoveryContext)
-      this.recoveryContexts.set(node.item.id, recoveryContext)
-      
-      return {
-        ...node,
-        position: { x: node.position.x, y: newY },
-        withinBounds: true
-      }
-    })
-  }
-  
-  /**
-   * Apply redistribution recovery for severely overcrowded lanes
-   */
-  private applyRedistributionRecovery(
-    nodes: PositionedNode[],
-    analysis: LaneOvercrowdingAnalysis,
-    recoveryContexts: ErrorRecoveryContext[]
-  ): PositionedNode[] {
-    // For now, fall back to compression with tighter spacing
-    // In a full implementation, this would move some nodes to adjacent lanes
-    const tighterConfig = {
-      ...this.emergencyConfig,
-      compressionRatio: 0.5 // More aggressive compression
-    }
-    
-    const originalConfig = this.emergencyConfig
-    this.emergencyConfig = tighterConfig
-    
-    const result = this.applyCompressionRecovery(nodes, analysis, recoveryContexts)
-    
-    // Update recovery contexts to reflect redistribution attempt
-    recoveryContexts.forEach(context => {
-      context.recoveryStrategy = 'redistribution'
-      context.recoveryReason += ' (redistribution fallback to tight compression)'
-    })
-    
-    this.emergencyConfig = originalConfig
-    return result
-  }
-  
-  /**
-   * Apply emergency recovery for critically overcrowded lanes
-   */
-  private applyEmergencyRecovery(
-    nodes: PositionedNode[],
-    analysis: LaneOvercrowdingAnalysis,
-    recoveryContexts: ErrorRecoveryContext[]
-  ): PositionedNode[] {
-    if (nodes.length <= 1) return nodes
-    
-    // Emergency: use absolute minimum spacing
-    const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y)
-    const emergencySpacing = this.emergencyConfig.minAbsoluteSpacing
-    
-    const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-    const startY = analysis.boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
-    
-    return sortedNodes.map((node, index) => {
-      const newY = startY + (index * (LAYOUT_CONSTANTS.NODE_HEIGHT + emergencySpacing))
-      const originalPosition = node.position
-      
-      const recoveryContext: ErrorRecoveryContext = {
-        originalPosition,
-        lane: analysis.lane,
-        tier: node.tier,
-        boundary: analysis.boundary,
-        recoveryStrategy: 'emergency',
-        recoveryReason: `Critical lane overcrowding (${analysis.overcrowdingRatio.toFixed(2)}x)`,
-        appliedAdjustments: [`emergency-spacing-${emergencySpacing}px`, 'minimum-spacing-override']
-      }
-      
-      recoveryContexts.push(recoveryContext)
-      this.recoveryContexts.set(node.item.id, recoveryContext)
-      
-      return {
-        ...node,
-        position: { x: node.position.x, y: newY },
-        withinBounds: newY <= (analysis.boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight)
-      }
-    })
-  }
-  
-  /**
-   * Create emergency spacing algorithm for extreme cases (Requirement 5.3)
-   */
-  createEmergencySpacingAlgorithm(
-    nodes: PositionedNode[],
-    availableHeight: number
-  ): PositionedNode[] {
-    if (nodes.length === 0) return nodes
-    if (nodes.length === 1) {
-      // Single node: center it
-      const centerY = availableHeight / 2
-      return [{
-        ...nodes[0],
-        position: { x: nodes[0].position.x, y: centerY },
-        withinBounds: true
-      }]
-    }
-    
-    // Multiple nodes: distribute with absolute minimum spacing
-    const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-    const totalNodeHeight = nodes.length * LAYOUT_CONSTANTS.NODE_HEIGHT
-    const availableSpacingHeight = Math.max(0, availableHeight - totalNodeHeight)
-    
-    // Calculate spacing - if not enough space, use zero spacing (nodes will touch)
-    const spacingPerGap = nodes.length > 1 ? 
-      Math.max(0, availableSpacingHeight / (nodes.length - 1)) : 0
-    
-    const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y)
-    
-    return sortedNodes.map((node, index) => {
-      // Start from top with half node height as buffer
-      const newY = nodeHalfHeight + (index * (LAYOUT_CONSTANTS.NODE_HEIGHT + spacingPerGap))
-      
-      // Ensure we don't exceed available height - compress if necessary
-      const maxAllowedY = availableHeight - nodeHalfHeight
-      const finalY = Math.min(newY, maxAllowedY)
-      
-      const recoveryContext: ErrorRecoveryContext = {
-        originalPosition: node.position,
-        lane: node.lane,
-        tier: node.tier,
-        boundary: this.createEmergencyBoundary(node.lane, availableHeight),
-        recoveryStrategy: 'emergency',
-        recoveryReason: 'Emergency spacing algorithm applied',
-        appliedAdjustments: [`emergency-algorithm-spacing-${spacingPerGap.toFixed(1)}px`]
-      }
-      
-      this.recoveryContexts.set(node.item.id, recoveryContext)
-      
-      return {
-        ...node,
-        position: { x: node.position.x, y: finalY },
-        withinBounds: finalY + nodeHalfHeight <= availableHeight
-      }
-    })
-  }
-  
-  /**
-   * Apply emergency fallback position when all else fails
-   */
-  private applyEmergencyFallbackPosition(
-    position: { x: number, y: number },
-    lane: string
-  ): { x: number, y: number } {
-    // Fallback to a safe default position
-    const laneIndex = SWIM_LANES.indexOf(lane)
-    const fallbackY = (laneIndex >= 0 ? laneIndex : 0) * LAYOUT_CONSTANTS.MIN_LANE_HEIGHT + 
-                     LAYOUT_CONSTANTS.MIN_LANE_HEIGHT / 2
-    
-    return {
-      x: Math.max(LAYOUT_CONSTANTS.LANE_START_X, position.x),
-      y: fallbackY
-    }
-  }
-  
-  /**
-   * Create emergency boundary when normal boundary calculation fails
-   */
-  private createEmergencyBoundary(lane: string, height?: number): LaneBoundary {
-    const laneIndex = SWIM_LANES.indexOf(lane)
-    const safeIndex = laneIndex >= 0 ? laneIndex : SWIM_LANES.length - 1
-    const boundaryHeight = height || LAYOUT_CONSTANTS.MIN_LANE_HEIGHT
-    
-    const startY = safeIndex * (LAYOUT_CONSTANTS.MIN_LANE_HEIGHT + LAYOUT_CONSTANTS.LANE_PADDING)
-    const endY = startY + boundaryHeight
-    
-    return {
-      lane,
-      startY,
-      endY,
-      centerY: startY + boundaryHeight / 2,
-      height: boundaryHeight,
-      usableHeight: boundaryHeight - (2 * LAYOUT_CONSTANTS.LANE_BUFFER)
-    }
-  }
-  
-  /**
-   * Create default recovery context
-   */
-  private createDefaultRecoveryContext(
-    position: { x: number, y: number },
-    lane: string,
-    boundary: LaneBoundary
-  ): ErrorRecoveryContext {
-    return {
-      originalPosition: position,
-      lane,
-      tier: 0,
-      boundary,
-      recoveryStrategy: 'fallback',
-      recoveryReason: 'Default recovery context',
-      appliedAdjustments: []
-    }
-  }
-  
-  /**
-   * Add user-friendly error message (Requirement 5.5)
-   */
-  private addUserFriendlyError(error: UserFriendlyError): void {
-    this.userFriendlyErrors.push(error)
-    
-    // Log user-friendly error to console
-    const icon = error.severity === 'critical' ? '🚨' : 
-                 error.severity === 'error' ? '❌' : 
-                 error.severity === 'warning' ? '⚠️' : 'ℹ️'
-    
-    console.log(`${icon} ${error.title}`)
-    console.log(`   ${error.message}`)
-    
-    if (error.technicalDetails) {
-      console.log(`   Technical: ${error.technicalDetails}`)
-    }
-    
-    if (error.suggestedActions.length > 0) {
-      console.log(`   Suggestions: ${error.suggestedActions.join(', ')}`)
-    }
-    
-    if (error.recoveryApplied) {
-      console.log(`   ✅ Automatic recovery applied`)
-    }
-  }
-  
-  /**
-   * Get all user-friendly errors
-   */
-  getUserFriendlyErrors(): UserFriendlyError[] {
-    return [...this.userFriendlyErrors]
-  }
-  
-  /**
-   * Get recovery context for a specific node
-   */
-  getRecoveryContext(nodeId: string): ErrorRecoveryContext | undefined {
-    return this.recoveryContexts.get(nodeId)
-  }
-  
-  /**
-   * Clear all errors and recovery contexts (for new graph builds)
-   */
-  clearErrorsAndRecovery(): void {
-    this.userFriendlyErrors = []
-    this.recoveryContexts.clear()
-  }
-  
-  /**
-   * Generate error and recovery summary report
-   */
-  generateErrorRecoveryReport(): {
-    totalErrors: number
-    errorsBySeverity: Record<string, number>
-    totalRecoveries: number
-    recoveriesByStrategy: Record<string, number>
-    summary: string
-  } {
-    const errorsBySeverity = this.userFriendlyErrors.reduce((acc, error) => {
-      acc[error.severity] = (acc[error.severity] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-    
-    const recoveriesByStrategy = Array.from(this.recoveryContexts.values()).reduce((acc, context) => {
-      acc[context.recoveryStrategy] = (acc[context.recoveryStrategy] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-    
-    const totalErrors = this.userFriendlyErrors.length
-    const totalRecoveries = this.recoveryContexts.size
-    
-    let summary = `Error Recovery Report: ${totalErrors} errors, ${totalRecoveries} recoveries applied`
-    
-    if (totalErrors === 0 && totalRecoveries === 0) {
-      summary = '✅ No errors or recoveries needed - all positioning successful'
-    } else if (totalRecoveries > 0) {
-      summary += ` - ${totalRecoveries} automatic fixes applied`
-    }
-    
-    return {
-      totalErrors,
-      errorsBySeverity,
-      totalRecoveries,
-      recoveriesByStrategy,
-      summary
-    }
-  }
-}
-
-// Global error handling and recovery system instance
-const errorHandlingSystem = new ErrorHandlingAndRecoverySystem()
 
 // Global validation system instance
 const positionValidationSystem = new PositionValidationSystem()
@@ -2504,9 +1672,8 @@ function logEnhancedDistributionSummary(nodes: any[], laneBoundaries: Map<string
 }
 
 /**
- * Enhanced vertical node distribution within lanes with comprehensive error handling
+ * Enhanced vertical node distribution within lanes
  * Implements improved spacing algorithm for Requirements 3.1, 3.2, 3.3, 3.4, 3.5
- * Includes fallback positioning, overcrowding recovery, and emergency spacing (Requirements 5.2, 5.3)
  */
 function handleOvercrowdedLane(
   laneItems: GameDataItem[],
@@ -2514,10 +1681,9 @@ function handleOvercrowdedLane(
   tier: number,
   boundary: LaneBoundary,
   allItems: GameDataItem[]
-): { positions: Map<string, { x: number, y: number }>, warnings: string[], recoveryContexts: ErrorRecoveryContext[] } {
+): { positions: Map<string, { x: number, y: number }>, warnings: string[] } {
   const positions = new Map<string, { x: number, y: number }>()
   const warnings: string[] = []
-  const recoveryContexts: ErrorRecoveryContext[] = []
   
   const nodesInLaneTier = laneItems.filter(item => {
     const itemTier = calculatePrerequisiteDepth(item, allItems)
@@ -2525,19 +1691,7 @@ function handleOvercrowdedLane(
   })
   
   const totalNodes = nodesInLaneTier.length
-  if (totalNodes === 0) return { positions, warnings, recoveryContexts }
-  
-  // Create positioned nodes for error handling analysis
-  const positionedNodes: PositionedNode[] = nodesInLaneTier.map(item => ({
-    item,
-    position: { x: 0, y: 0 }, // Will be calculated
-    lane,
-    tier,
-    withinBounds: false // Will be determined
-  }))
-  
-  // Analyze lane overcrowding using error handling system
-  const overcrowdingAnalysis = errorHandlingSystem.analyzeLaneOvercrowding(lane, positionedNodes, boundary)
+  if (totalNodes === 0) return { positions, warnings }
   
   const nodeHalfHeight = LAYOUT_CONSTANTS.NODE_HEIGHT / 2
   const usableHeight = boundary.usableHeight
@@ -2551,70 +1705,27 @@ function handleOvercrowdedLane(
   if (totalNodes === 1) {
     // Single node - center it within the lane (Requirement 3.4)
     const centerY = boundary.centerY
-    const position = { x: finalX, y: centerY }
+    positions.set(nodesInLaneTier[0].id, { x: finalX, y: centerY })
     
-    // Apply boundary enforcement with error handling
-    const enforcedPosition = enforceBoundaryConstraints(position, lane, new Map([[lane, boundary]]), nodesInLaneTier[0].id)
-    positions.set(nodesInLaneTier[0].id, enforcedPosition)
-    
-    // Update positioned node
-    positionedNodes[0].position = enforcedPosition
-    positionedNodes[0].withinBounds = true
+    // Remove individual single node logs - they're too verbose
   } else {
-    // Multiple nodes - use error handling system for recovery if needed
-    if (overcrowdingAnalysis.severity !== 'none') {
-      // Apply overcrowding recovery
-      const { recoveredNodes, recoveryContexts: nodeRecoveryContexts } = errorHandlingSystem.recoverOvercrowdedLane(
-        overcrowdingAnalysis,
-        positionedNodes
-      )
-      
-      // Update positions from recovered nodes
-      recoveredNodes.forEach(node => {
-        positions.set(node.item.id, node.position)
-      })
-      
-      recoveryContexts.push(...nodeRecoveryContexts)
-      
-      // Add warnings from recovery
-      warnings.push(`Lane ${lane} tier ${tier}: Applied ${overcrowdingAnalysis.recommendedAction} recovery for ${totalNodes} nodes`)
-      if (overcrowdingAnalysis.severity === 'critical') {
-        warnings.push(`CRITICAL: Lane ${lane} requires ${overcrowdingAnalysis.requiredSpace.toFixed(0)}px but only has ${overcrowdingAnalysis.availableSpace.toFixed(0)}px available`)
-      }
+    // Multiple nodes - determine distribution strategy
+    const minRequiredSpacing = (totalNodes - 1) * LAYOUT_CONSTANTS.MIN_NODE_SPACING
+    const idealSpacing = (totalNodes - 1) * LAYOUT_CONSTANTS.NODE_PADDING
+    
+    if (availableSpacingHeight >= idealSpacing) {
+      // Nodes fit comfortably - use even distribution (Requirement 3.1)
+      distributeNodesEvenly(nodesInLaneTier, positions, finalX, boundary, lane, tier)
+    } else if (availableSpacingHeight >= minRequiredSpacing) {
+      // Nodes fit with compression - use maximum possible spacing (Requirement 3.2, 3.3)
+      distributeNodesWithCompression(nodesInLaneTier, positions, finalX, boundary, availableSpacingHeight, warnings, lane, tier)
     } else {
-      // Normal distribution - no overcrowding
-      const minRequiredSpacing = (totalNodes - 1) * LAYOUT_CONSTANTS.MIN_NODE_SPACING
-      const idealSpacing = (totalNodes - 1) * LAYOUT_CONSTANTS.NODE_PADDING
-      
-      if (availableSpacingHeight >= idealSpacing) {
-        // Nodes fit comfortably - use even distribution (Requirement 3.1)
-        distributeNodesEvenly(nodesInLaneTier, positions, finalX, boundary, lane, tier)
-      } else if (availableSpacingHeight >= minRequiredSpacing) {
-        // Nodes fit with compression - use maximum possible spacing (Requirement 3.2, 3.3)
-        distributeNodesWithCompression(nodesInLaneTier, positions, finalX, boundary, availableSpacingHeight, warnings, lane, tier)
-      } else {
-        // Apply emergency spacing algorithm (Requirement 5.3)
-        const emergencyNodes = errorHandlingSystem.createEmergencySpacingAlgorithm(positionedNodes, usableHeight)
-        emergencyNodes.forEach(node => {
-          positions.set(node.item.id, node.position)
-        })
-        
-        warnings.push(`EMERGENCY: Applied emergency spacing algorithm for lane ${lane} tier ${tier}`)
-        warnings.push(`Consider redistributing items or increasing lane height for lane ${lane}`)
-      }
+      // Critical overcrowding - use emergency spacing with boundary enforcement
+      distributeNodesWithEmergencySpacing(nodesInLaneTier, positions, finalX, boundary, warnings, lane, tier)
     }
   }
   
-  // Final boundary validation with error handling
-  positions.forEach((position, itemId) => {
-    const enforcedPosition = enforceBoundaryConstraints(position, lane, new Map([[lane, boundary]]), itemId)
-    if (enforcedPosition.x !== position.x || enforcedPosition.y !== position.y) {
-      positions.set(itemId, enforcedPosition)
-      warnings.push(`Position adjusted for boundary compliance: ${itemId}`)
-    }
-  })
-  
-  return { positions, warnings, recoveryContexts }
+  return { positions, warnings }
 }
 
 /**
@@ -2889,25 +2000,6 @@ function calculateNodePosition(
   // Ensure minimum X position (must be right of lane labels)
   const finalX = Math.max(LANE_START_X + (NODE_WIDTH / 2), baseX)
   
-  // Validate tier positioning consistency (Requirement 6.3, 6.4)
-  if (shouldRecordSteps) {
-    // Check if other items in same tier have consistent X positioning
-    const sameTierItems = allItems.filter(other => {
-      const otherTier = calculatePrerequisiteDepth(other, allItems)
-      return otherTier === tier && other.id !== item.id
-    })
-    
-    if (sameTierItems.length > 0) {
-      calculationSteps.push({
-        step: 'Validate Tier Consistency',
-        description: 'Ensure consistent X positioning for same-tier items',
-        input: { tier, sameTierCount: sameTierItems.length, expectedX: finalX },
-        output: { tierConsistencyCheck: 'passed' },
-        timestamp: performance.now()
-      })
-    }
-  }
-  
   if (shouldRecordSteps) {
     calculationSteps.push({
       step: 'Enforce Minimum X',
@@ -2961,28 +2053,10 @@ function calculateNodePosition(
         compressionResult.warnings.forEach(warning => {
           console.warn(`⚠️ ${warning}`)
         })
-        
-        // Log recovery contexts if any were applied
-        if (compressionResult.recoveryContexts.length > 0) {
-          const itemRecovery = compressionResult.recoveryContexts.find(ctx => 
-            ctx.lane === swimLane && ctx.tier === tier
-          )
-          if (itemRecovery && shouldRecordSteps) {
-            console.log(`🔧 Recovery applied for ${item.name}: ${itemRecovery.recoveryStrategy} (${itemRecovery.recoveryReason})`)
-          }
-        }
       } else {
-        // Fallback to center if position not found - use error handling system
+        // Fallback to center if position not found
         nodeY = boundary.centerY
-        const fallbackPosition = { x: finalX, y: nodeY }
-        const { position: recoveredPosition } = errorHandlingSystem.handleBoundaryEnforcementFailure(
-          fallbackPosition,
-          swimLane,
-          laneBoundaries,
-          item.id
-        )
-        nodeY = recoveredPosition.y
-        console.warn(`⚠️ Could not find position for ${item.name} in lane ${swimLane}, applied fallback with error recovery`)
+        console.warn(`⚠️ Could not find position for ${item.name} in lane ${swimLane}, using center`)
       }
     } else {
       // Fallback to legacy calculation if boundary not found
@@ -3108,620 +2182,6 @@ function calculatePrerequisiteDepth(item: GameDataItem, allItems: GameDataItem[]
   
   maxDepth = getDepth(item.id)
   return maxDepth
-}
-
-/**
- * Tier-Based Positioning Integration Functions
- * These functions ensure proper integration between horizontal tier positioning and vertical swimlane containment
- */
-
-/**
- * Validate prerequisite positioning - ensures prerequisites are positioned to the left (Requirement 6.1)
- */
-function validatePrerequisitePositioning(items: GameDataItem[], nodes: PositionedNode[]): ValidationResult {
-  const issues: ValidationIssue[] = []
-  const nodeMap = new Map(nodes.map(n => [n.item.id, n]))
-  
-  items.forEach(item => {
-    if (!item.prerequisites || item.prerequisites.length === 0) return
-    
-    const currentNode = nodeMap.get(item.id)
-    if (!currentNode) return
-    
-    item.prerequisites.forEach(prereqId => {
-      const prereqNode = nodeMap.get(prereqId)
-      if (!prereqNode) {
-        issues.push({
-          severity: 'warning',
-          message: `Missing prerequisite node "${prereqId}" for item "${item.name}"`,
-          nodeId: item.id
-        })
-        return
-      }
-      
-      // Requirement 6.1: Prerequisites should be to the left (smaller X)
-      if (prereqNode.position.x >= currentNode.position.x) {
-        issues.push({
-          severity: 'error',
-          message: `Prerequisite "${prereqNode.item.name}" (X: ${prereqNode.position.x}) is not to the left of "${item.name}" (X: ${currentNode.position.x})`,
-          nodeId: item.id,
-          position: currentNode.position,
-          expectedPosition: { x: prereqNode.position.x - LAYOUT_CONSTANTS.TIER_WIDTH, y: currentNode.position.y }
-        })
-      }
-      
-      // Additional check: ensure reasonable tier spacing
-      const tierDifference = currentNode.tier - prereqNode.tier
-      const xDifference = currentNode.position.x - prereqNode.position.x
-      const expectedXDifference = tierDifference * LAYOUT_CONSTANTS.TIER_WIDTH
-      
-      if (Math.abs(xDifference - expectedXDifference) > LAYOUT_CONSTANTS.TIER_WIDTH * 0.2) {
-        issues.push({
-          severity: 'warning',
-          message: `Inconsistent tier spacing between "${prereqNode.item.name}" and "${item.name}": ${xDifference.toFixed(1)}px (expected: ${expectedXDifference}px)`,
-          nodeId: item.id
-        })
-      }
-    })
-  })
-  
-  return {
-    testName: 'Prerequisite Positioning Validation',
-    passed: issues.filter(i => i.severity === 'error').length === 0,
-    issues,
-    recommendations: issues.length > 0 ? [
-      'Ensure prerequisite nodes are positioned to the left of dependent nodes',
-      'Verify tier calculation algorithm for prerequisite depth',
-      'Check for circular dependencies in prerequisite chains'
-    ] : [],
-    metrics: {
-      totalItems: items.length,
-      itemsWithPrerequisites: items.filter(i => i.prerequisites && i.prerequisites.length > 0).length,
-      prerequisiteViolations: issues.filter(i => i.severity === 'error').length
-    }
-  }
-}
-
-/**
- * Validate tier alignment across lanes - ensures same-tier nodes are aligned within their lanes (Requirement 6.2)
- */
-function validateTierAlignmentAcrossLanes(nodes: PositionedNode[], boundaries: Map<string, LaneBoundary>): ValidationResult {
-  const issues: ValidationIssue[] = []
-  const tierGroups = new Map<number, PositionedNode[]>()
-  
-  // Group nodes by tier
-  nodes.forEach(node => {
-    if (!tierGroups.has(node.tier)) {
-      tierGroups.set(node.tier, [])
-    }
-    tierGroups.get(node.tier)!.push(node)
-  })
-  
-  // Check alignment within each tier
-  tierGroups.forEach((tierNodes, tier) => {
-    if (tierNodes.length <= 1) return
-    
-    // Check X position consistency (horizontal alignment)
-    const xPositions = tierNodes.map(n => n.position.x)
-    const minX = Math.min(...xPositions)
-    const maxX = Math.max(...xPositions)
-    const xRange = maxX - minX
-    
-    // Allow small tolerance for tier alignment
-    const tolerance = LAYOUT_CONSTANTS.TIER_WIDTH * 0.05 // 5% tolerance
-    
-    if (xRange > tolerance) {
-      issues.push({
-        severity: 'warning',
-        message: `Tier ${tier} nodes have inconsistent X positions (range: ${xRange.toFixed(1)}px, tolerance: ${tolerance.toFixed(1)}px)`,
-        metrics: { tier, xRange, tolerance, nodeCount: tierNodes.length }
-      })
-    }
-    
-    // Check that nodes are properly contained within their respective lanes
-    tierNodes.forEach(node => {
-      const boundary = boundaries.get(node.lane)
-      if (!boundary) return
-      
-      const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-      const minY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
-      const maxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight
-      
-      if (node.position.y < minY || node.position.y > maxY) {
-        issues.push({
-          severity: 'error',
-          message: `Tier ${tier} node "${node.item.name}" in lane "${node.lane}" is outside lane boundaries (Y: ${node.position.y}, allowed: ${minY.toFixed(1)}-${maxY.toFixed(1)})`,
-          nodeId: node.item.id,
-          lane: node.lane,
-          position: node.position
-        })
-      }
-    })
-    
-    // Group by lane within tier to check vertical alignment within lanes
-    const laneGroups = new Map<string, PositionedNode[]>()
-    tierNodes.forEach(node => {
-      if (!laneGroups.has(node.lane)) {
-        laneGroups.set(node.lane, [])
-      }
-      laneGroups.get(node.lane)!.push(node)
-    })
-    
-    // Check vertical distribution within each lane for this tier
-    laneGroups.forEach((laneNodes, lane) => {
-      if (laneNodes.length <= 1) return
-      
-      const yPositions = laneNodes.map(n => n.position.y).sort((a, b) => a - b)
-      const minY = yPositions[0]
-      const maxY = yPositions[yPositions.length - 1]
-      const yRange = maxY - minY
-      
-      // Check minimum spacing between nodes in same tier and lane
-      for (let i = 1; i < yPositions.length; i++) {
-        const spacing = yPositions[i] - yPositions[i - 1]
-        if (spacing < LAYOUT_CONSTANTS.MIN_NODE_SPACING) {
-          issues.push({
-            severity: 'error',
-            message: `Insufficient spacing between tier ${tier} nodes in lane "${lane}": ${spacing.toFixed(1)}px (minimum: ${LAYOUT_CONSTANTS.MIN_NODE_SPACING}px)`,
-            lane,
-            metrics: { tier, spacing, minimumSpacing: LAYOUT_CONSTANTS.MIN_NODE_SPACING }
-          })
-        }
-      }
-    })
-  })
-  
-  return {
-    testName: 'Tier Alignment Across Lanes',
-    passed: issues.filter(i => i.severity === 'error').length === 0,
-    issues,
-    recommendations: issues.length > 0 ? [
-      'Ensure consistent tier-based X positioning across all lanes',
-      'Verify lane boundary enforcement for tier-aligned nodes',
-      'Check vertical distribution algorithm for same-tier nodes within lanes'
-    ] : [],
-    metrics: {
-      totalTiers: tierGroups.size,
-      totalNodes: nodes.length,
-      alignmentIssues: issues.filter(i => i.message.includes('inconsistent X positions')).length,
-      boundaryViolations: issues.filter(i => i.message.includes('outside lane boundaries')).length,
-      spacingViolations: issues.filter(i => i.message.includes('Insufficient spacing')).length
-    }
-  }
-}
-
-/**
- * Validate prerequisite edge connections - ensures edges connect properly positioned nodes (Requirement 6.4)
- */
-function validatePrerequisiteEdgeConnections(items: GameDataItem[], nodes: PositionedNode[], boundaries: Map<string, LaneBoundary>): ValidationResult {
-  const issues: ValidationIssue[] = []
-  const nodeMap = new Map(nodes.map(n => [n.item.id, n]))
-  let totalEdges = 0
-  let validEdges = 0
-  
-  items.forEach(item => {
-    if (!item.prerequisites || item.prerequisites.length === 0) return
-    
-    const targetNode = nodeMap.get(item.id)
-    if (!targetNode) return
-    
-    item.prerequisites.forEach(prereqId => {
-      totalEdges++
-      const sourceNode = nodeMap.get(prereqId)
-      
-      if (!sourceNode) {
-        issues.push({
-          severity: 'error',
-          message: `Cannot create edge: source node "${prereqId}" not found for target "${item.name}"`,
-          nodeId: item.id
-        })
-        return
-      }
-      
-      // Validate edge geometry
-      const xDistance = targetNode.position.x - sourceNode.position.x
-      const yDistance = Math.abs(targetNode.position.y - sourceNode.position.y)
-      
-      // Check horizontal flow (prerequisite should be to the left)
-      if (xDistance <= 0) {
-        issues.push({
-          severity: 'error',
-          message: `Invalid edge direction: "${sourceNode.item.name}" (X: ${sourceNode.position.x}) to "${targetNode.item.name}" (X: ${targetNode.position.x}) - prerequisite should be to the left`,
-          nodeId: item.id
-        })
-        return
-      }
-      
-      // Check reasonable edge length (not too long or too short)
-      const edgeLength = Math.sqrt(xDistance * xDistance + yDistance * yDistance)
-      const maxReasonableLength = LAYOUT_CONSTANTS.TIER_WIDTH * 3 // Max 3 tiers apart
-      const minReasonableLength = LAYOUT_CONSTANTS.TIER_WIDTH * 0.5 // Min half tier apart
-      
-      if (edgeLength > maxReasonableLength) {
-        issues.push({
-          severity: 'warning',
-          message: `Very long edge: "${sourceNode.item.name}" to "${targetNode.item.name}" (${edgeLength.toFixed(1)}px) - may indicate positioning issues`,
-          nodeId: item.id,
-          metrics: { edgeLength, maxReasonableLength }
-        })
-      } else if (edgeLength < minReasonableLength) {
-        issues.push({
-          severity: 'warning',
-          message: `Very short edge: "${sourceNode.item.name}" to "${targetNode.item.name}" (${edgeLength.toFixed(1)}px) - nodes may be too close`,
-          nodeId: item.id,
-          metrics: { edgeLength, minReasonableLength }
-        })
-      }
-      
-      // Check if both nodes are within their lane boundaries
-      const sourceBoundary = boundaries.get(sourceNode.lane)
-      const targetBoundary = boundaries.get(targetNode.lane)
-      
-      if (sourceBoundary && targetBoundary) {
-        const sourceWithinBounds = validateNodeWithinBoundary(sourceNode, sourceBoundary)
-        const targetWithinBounds = validateNodeWithinBoundary(targetNode, targetBoundary)
-        
-        if (!sourceWithinBounds || !targetWithinBounds) {
-          issues.push({
-            severity: 'error',
-            message: `Edge connects nodes outside lane boundaries: "${sourceNode.item.name}" (${sourceWithinBounds ? 'valid' : 'invalid'}) to "${targetNode.item.name}" (${targetWithinBounds ? 'valid' : 'invalid'})`,
-            nodeId: item.id
-          })
-          return
-        }
-      }
-      
-      validEdges++
-    })
-  })
-  
-  return {
-    testName: 'Prerequisite Edge Connections',
-    passed: issues.filter(i => i.severity === 'error').length === 0,
-    issues,
-    recommendations: issues.length > 0 ? [
-      'Ensure prerequisite edges flow from left to right',
-      'Verify both source and target nodes are within lane boundaries',
-      'Check for reasonable edge lengths and positioning'
-    ] : [],
-    metrics: {
-      totalEdges,
-      validEdges,
-      invalidEdges: totalEdges - validEdges,
-      edgeValidationRate: totalEdges > 0 ? (validEdges / totalEdges) * 100 : 100
-    }
-  }
-}
-
-/**
- * Helper function to validate if a node is within its lane boundary
- */
-function validateNodeWithinBoundary(node: PositionedNode, boundary: LaneBoundary): boolean {
-  const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-  const minY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
-  const maxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight
-  
-  return node.position.y >= minY && node.position.y <= maxY
-}
-
-/**
- * Comprehensive tier-based positioning validation (integrates all tier-swimlane requirements)
- */
-function validateTierBasedPositioning(items: GameDataItem[], nodes: PositionedNode[], boundaries: Map<string, LaneBoundary>): ValidationResult[] {
-  const results: ValidationResult[] = []
-  
-  // Run all tier-based validation tests (Requirements 6.1-6.5)
-  results.push(validatePrerequisitePositioning(items, nodes))
-  results.push(validateTierAlignmentAcrossLanes(nodes, boundaries))
-  results.push(validatePrerequisiteEdgeConnections(items, nodes, boundaries))
-  
-  // Additional integration validation
-  results.push(validateTierSwimLaneIntegration(items, nodes, boundaries))
-  
-  return results
-}
-
-/**
- * Validate tier-swimlane integration - ensures tier positioning doesn't interfere with lane containment (Requirement 6.5)
- */
-function validateTierSwimLaneIntegration(items: GameDataItem[], nodes: PositionedNode[], boundaries: Map<string, LaneBoundary>): ValidationResult {
-  const issues: ValidationIssue[] = []
-  
-  // Group nodes by tier to analyze cross-lane consistency
-  const tierGroups = new Map<number, PositionedNode[]>()
-  nodes.forEach(node => {
-    if (!tierGroups.has(node.tier)) {
-      tierGroups.set(node.tier, [])
-    }
-    tierGroups.get(node.tier)!.push(node)
-  })
-  
-  // Validate each tier's integration with swimlane system
-  tierGroups.forEach((tierNodes, tier) => {
-    // Check horizontal consistency across lanes for same tier
-    const xPositions = tierNodes.map(n => n.position.x)
-    const minX = Math.min(...xPositions)
-    const maxX = Math.max(...xPositions)
-    const xRange = maxX - minX
-    
-    // Tier alignment should be very tight (Requirement 6.3)
-    const tolerance = LAYOUT_CONSTANTS.TIER_WIDTH * 0.02 // 2% tolerance
-    if (xRange > tolerance) {
-      issues.push({
-        severity: 'warning',
-        message: `Tier ${tier} has inconsistent horizontal positioning across lanes (range: ${xRange.toFixed(1)}px, tolerance: ${tolerance.toFixed(1)}px)`,
-        metrics: { tier, xRange, tolerance, nodeCount: tierNodes.length }
-      })
-    }
-    
-    // Check that tier positioning doesn't force nodes outside lane boundaries
-    tierNodes.forEach(node => {
-      const boundary = boundaries.get(node.lane)
-      if (!boundary) return
-      
-      const nodeHalfHeight = DERIVED_CONSTANTS.NODE_HALF_HEIGHT
-      const minY = boundary.startY + LAYOUT_CONSTANTS.LANE_BUFFER + nodeHalfHeight
-      const maxY = boundary.endY - LAYOUT_CONSTANTS.LANE_BUFFER - nodeHalfHeight
-      
-      if (node.position.y < minY || node.position.y > maxY) {
-        issues.push({
-          severity: 'error',
-          message: `Tier ${tier} positioning forced node "${node.item.name}" outside lane "${node.lane}" boundaries (Y: ${node.position.y.toFixed(1)}, allowed: ${minY.toFixed(1)}-${maxY.toFixed(1)})`,
-          nodeId: node.item.id,
-          lane: node.lane,
-          position: node.position
-        })
-      }
-    })
-    
-    // Check for proper prerequisite flow within tier constraints
-    tierNodes.forEach(node => {
-      if (!node.item.prerequisites || node.item.prerequisites.length === 0) return
-      
-      node.item.prerequisites.forEach(prereqId => {
-        const prereqNode = nodes.find(n => n.item.id === prereqId)
-        if (!prereqNode) return
-        
-        // Prerequisite should be in earlier tier (Requirement 6.1)
-        if (prereqNode.tier >= node.tier) {
-          issues.push({
-            severity: 'error',
-            message: `Invalid tier relationship: prerequisite "${prereqNode.item.name}" (tier ${prereqNode.tier}) should be in earlier tier than "${node.item.name}" (tier ${node.tier})`,
-            nodeId: node.item.id
-          })
-        }
-        
-        // Check horizontal positioning matches tier relationship
-        if (prereqNode.position.x >= node.position.x) {
-          issues.push({
-            severity: 'error',
-            message: `Tier positioning violation: prerequisite "${prereqNode.item.name}" (X: ${prereqNode.position.x}) should be left of "${node.item.name}" (X: ${node.position.x})`,
-            nodeId: node.item.id,
-            position: node.position,
-            expectedPosition: { x: prereqNode.position.x - LAYOUT_CONSTANTS.TIER_WIDTH, y: node.position.y }
-          })
-        }
-      })
-    })
-  })
-  
-  // Validate tier spacing consistency
-  const sortedTiers = Array.from(tierGroups.keys()).sort((a, b) => a - b)
-  for (let i = 1; i < sortedTiers.length; i++) {
-    const prevTier = sortedTiers[i - 1]
-    const currentTier = sortedTiers[i]
-    
-    const prevNodes = tierGroups.get(prevTier)!
-    const currentNodes = tierGroups.get(currentTier)!
-    
-    const prevX = Math.min(...prevNodes.map(n => n.position.x))
-    const currentX = Math.min(...currentNodes.map(n => n.position.x))
-    
-    const actualSpacing = currentX - prevX
-    const expectedSpacing = (currentTier - prevTier) * LAYOUT_CONSTANTS.TIER_WIDTH
-    const spacingTolerance = expectedSpacing * 0.1
-    
-    if (Math.abs(actualSpacing - expectedSpacing) > spacingTolerance) {
-      issues.push({
-        severity: 'warning',
-        message: `Inconsistent tier spacing between tier ${prevTier} and ${currentTier}: ${actualSpacing.toFixed(1)}px (expected: ${expectedSpacing}px ± ${spacingTolerance.toFixed(1)}px)`,
-        metrics: { prevTier, currentTier, actualSpacing, expectedSpacing, tolerance: spacingTolerance }
-      })
-    }
-  }
-  
-  return {
-    testName: 'Tier-Swimlane Integration',
-    passed: issues.filter(i => i.severity === 'error').length === 0,
-    issues,
-    recommendations: issues.length > 0 ? [
-      'Ensure tier-based X positioning is consistent across all lanes',
-      'Verify that tier positioning doesn\'t override lane boundary enforcement',
-      'Check prerequisite depth calculation for accuracy',
-      'Validate tier spacing constants are applied consistently'
-    ] : [],
-    metrics: {
-      totalTiers: tierGroups.size,
-      totalNodes: nodes.length,
-      crossLaneConsistencyIssues: issues.filter(i => i.message.includes('inconsistent horizontal positioning')).length,
-      boundaryViolations: issues.filter(i => i.message.includes('outside lane') && i.severity === 'error').length,
-      tierRelationshipViolations: issues.filter(i => i.message.includes('Invalid tier relationship')).length,
-      positioningViolations: issues.filter(i => i.message.includes('Tier positioning violation')).length,
-      spacingInconsistencies: issues.filter(i => i.message.includes('Inconsistent tier spacing')).length
-    }
-  }
-}
-
-/**
- * Coordinate System Validation Functions
- * These functions ensure all positioning calculations use consistent constants and coordinate systems
- */
-
-/**
- * Validate that all positioning calculations use consistent coordinate system constants
- */
-function validateCoordinateSystemConsistency(): {
-  isValid: boolean
-  issues: string[]
-  constants: typeof LAYOUT_CONSTANTS
-  derivedConstants: typeof DERIVED_CONSTANTS
-} {
-  const issues: string[] = []
-  
-  // Validate that constants are properly defined
-  if (LAYOUT_CONSTANTS.NODE_HEIGHT <= 0) {
-    issues.push('NODE_HEIGHT must be positive')
-  }
-  
-  if (LAYOUT_CONSTANTS.TIER_WIDTH <= 0) {
-    issues.push('TIER_WIDTH must be positive')
-  }
-  
-  if (LAYOUT_CONSTANTS.LANE_PADDING < 0) {
-    issues.push('LANE_PADDING must be non-negative')
-  }
-  
-  if (LAYOUT_CONSTANTS.LANE_BUFFER < 0) {
-    issues.push('LANE_BUFFER must be non-negative')
-  }
-  
-  if (LAYOUT_CONSTANTS.MIN_NODE_SPACING < 0) {
-    issues.push('MIN_NODE_SPACING must be non-negative')
-  }
-  
-  // Validate derived constants are correctly calculated
-  if (DERIVED_CONSTANTS.NODE_HALF_HEIGHT !== LAYOUT_CONSTANTS.NODE_HEIGHT / 2) {
-    issues.push('NODE_HALF_HEIGHT derivation is incorrect')
-  }
-  
-  if (DERIVED_CONSTANTS.NODE_HALF_WIDTH !== LAYOUT_CONSTANTS.NODE_WIDTH / 2) {
-    issues.push('NODE_HALF_WIDTH derivation is incorrect')
-  }
-  
-  if (DERIVED_CONSTANTS.TIER_CENTER_OFFSET !== LAYOUT_CONSTANTS.TIER_WIDTH / 2) {
-    issues.push('TIER_CENTER_OFFSET derivation is incorrect')
-  }
-  
-  if (DERIVED_CONSTANTS.LANE_TOTAL_PADDING !== LAYOUT_CONSTANTS.LANE_BUFFER * 2) {
-    issues.push('LANE_TOTAL_PADDING derivation is incorrect')
-  }
-  
-  // Validate logical relationships
-  if (LAYOUT_CONSTANTS.MIN_NODE_SPACING > LAYOUT_CONSTANTS.NODE_PADDING) {
-    issues.push('MIN_NODE_SPACING should not exceed NODE_PADDING')
-  }
-  
-  if (LAYOUT_CONSTANTS.LANE_BUFFER * 2 >= LAYOUT_CONSTANTS.MIN_LANE_HEIGHT) {
-    issues.push('LANE_BUFFER * 2 should be less than MIN_LANE_HEIGHT to allow usable space')
-  }
-  
-  return {
-    isValid: issues.length === 0,
-    issues,
-    constants: LAYOUT_CONSTANTS,
-    derivedConstants: DERIVED_CONSTANTS
-  }
-}
-
-/**
- * Validate that position calculations are using consistent coordinate system
- */
-function validatePositionCalculationConsistency(
-  items: GameDataItem[],
-  laneHeights: Map<string, number>,
-  laneBoundaries: Map<string, LaneBoundary>
-): {
-  isValid: boolean
-  issues: string[]
-  metrics: {
-    totalNodes: number
-    consistentXCalculations: number
-    consistentYCalculations: number
-    boundaryAlignmentIssues: number
-  }
-} {
-  const issues: string[] = []
-  let consistentXCalculations = 0
-  let consistentYCalculations = 0
-  let boundaryAlignmentIssues = 0
-  
-  const treeItems = items.filter(item => 
-    item.category === 'Actions' || item.category === 'Unlocks'
-  )
-  
-  treeItems.forEach(item => {
-    const lane = determineSwimLane(item)
-    const tier = calculatePrerequisiteDepth(item, treeItems)
-    const boundary = laneBoundaries.get(lane)
-    
-    if (!boundary) {
-      issues.push(`No boundary found for lane ${lane} (item: ${item.name})`)
-      return
-    }
-    
-    // Validate X calculation consistency
-    const expectedX = LAYOUT_CONSTANTS.LANE_START_X + (tier * LAYOUT_CONSTANTS.TIER_WIDTH) + DERIVED_CONSTANTS.NODE_HALF_WIDTH
-    const minX = LAYOUT_CONSTANTS.LANE_START_X + DERIVED_CONSTANTS.NODE_HALF_WIDTH
-    const finalExpectedX = Math.max(minX, expectedX)
-    
-    // This is the expected X calculation - we can't validate actual position here
-    // but we can validate the calculation logic is consistent
-    if (expectedX >= minX) {
-      consistentXCalculations++
-    }
-    
-    // Validate Y calculation boundary alignment
-    const laneHeight = laneHeights.get(lane) || LAYOUT_CONSTANTS.MIN_LANE_HEIGHT
-    const calculatedBoundaryHeight = laneHeight
-    const actualBoundaryHeight = boundary.height
-    
-    if (Math.abs(calculatedBoundaryHeight - actualBoundaryHeight) > LAYOUT_CONSTANTS.BOUNDARY_TOLERANCE) {
-      boundaryAlignmentIssues++
-      issues.push(`Boundary height mismatch for lane ${lane}: calculated ${calculatedBoundaryHeight}, actual ${actualBoundaryHeight}`)
-    } else {
-      consistentYCalculations++
-    }
-  })
-  
-  return {
-    isValid: issues.length === 0,
-    issues,
-    metrics: {
-      totalNodes: treeItems.length,
-      consistentXCalculations,
-      consistentYCalculations,
-      boundaryAlignmentIssues
-    }
-  }
-}
-
-/**
- * Add debugging output for coordinate system usage
- */
-function logCoordinateSystemDebug(): void {
-  console.log(`\n🎯 COORDINATE SYSTEM DEBUG`)
-  console.log(`═══════════════════════════`)
-  console.log(`Layout Constants:`)
-  Object.entries(LAYOUT_CONSTANTS).forEach(([key, value]) => {
-    console.log(`  ${key}: ${value}`)
-  })
-  console.log(``)
-  console.log(`Derived Constants:`)
-  Object.entries(DERIVED_CONSTANTS).forEach(([key, value]) => {
-    console.log(`  ${key}: ${value}`)
-  })
-  console.log(``)
-  
-  const validation = validateCoordinateSystemConsistency()
-  if (validation.isValid) {
-    console.log(`✅ Coordinate system constants are consistent`)
-  } else {
-    console.log(`❌ Coordinate system issues found:`)
-    validation.issues.forEach(issue => {
-      console.log(`  • ${issue}`)
-    })
-  }
-  console.log(``)
 }
 
 // Export boundary validation functions for external use

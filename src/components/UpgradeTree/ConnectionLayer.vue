@@ -63,8 +63,10 @@
       :stroke-width="getConnectionWidth(connection)"
       :marker-end="getMarkerEnd(connection)"
       fill="none"
+      style="cursor: pointer"
       @mouseenter="handleConnectionHover(connection, true)"
       @mouseleave="handleConnectionHover(connection, false)"
+      @click="handleConnectionClick(connection)"
     />
   </svg>
 </template>
@@ -90,6 +92,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'connection-hover': [connection: Connection, isHovering: boolean]
+  'connection-click': [connection: Connection]
 }>()
 
 // Constants
@@ -322,6 +325,11 @@ function getMarkerEnd(connection: Connection): string {
 // Handle connection hover
 function handleConnectionHover(connection: Connection, isHovering: boolean) {
   emit('connection-hover', connection, isHovering)
+}
+
+// Handle connection click for path-based navigation
+function handleConnectionClick(connection: Connection) {
+  emit('connection-click', connection)
 }
 </script>
 

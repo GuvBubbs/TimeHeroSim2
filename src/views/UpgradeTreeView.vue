@@ -7,7 +7,13 @@
         <div class="text-sm text-sim-muted">
           <span v-if="treeStore.isLoading">Loading...</span>
           <span v-else-if="treeStore.loadError" class="text-red-400">{{ treeStore.loadError }}</span>
-          <span v-else>{{ treeStore.nodes.length }} nodes loaded</span>
+          <span v-else>
+            {{ treeStore.nodes.length }} nodes loaded
+            <span v-if="treeStore.highlightMode" class="ml-4 text-amber-400">
+              • {{ treeStore.selectedNodes.size }} selected
+              <span v-if="treeStore.multiSelectMode" class="text-amber-300">(Multi-select: Ctrl+Click)</span>
+            </span>
+          </span>
         </div>
       </div>
     </div>
@@ -39,10 +45,18 @@
         :is-node-highlighted="treeStore.isNodeHighlighted"
         :is-node-dimmed="treeStore.isNodeDimmed"
         :get-swimlane-start-y="treeStore.getSwimlaneStartY"
+        :node-highlight-info="treeStore.nodeHighlightInfo"
+        :get-node-highlight-state="treeStore.getNodeHighlightState"
+        :get-node-depth="treeStore.getNodeDepth"
+        :get-node-connection-type="treeStore.getNodeConnectionType"
+        :get-connection-depth="treeStore.getConnectionDepth"
+        :is-connection-highlighted="treeStore.isConnectionHighlighted"
         @node-click="handleNodeClick"
         @edit-click="handleEditClick"
         @background-click="handleBackgroundClick"
         @connection-hover="handleConnectionHover"
+        @connection-click="handleConnectionClick"
+        @node-hover="handleNodeHover"
       />
     </div>
     
@@ -64,13 +78,25 @@ onMounted(async () => {
   await treeStore.loadTreeData()
 })
 
-// Handle node body click (enter highlight mode)
-function handleNodeClick(node: TreeNode) {
-  if (treeStore.highlightMode && treeStore.selectedNodeId === node.id) {
-    // Clicking same node exits highlight mode
+// Handle node body click (enhanced with modifier key support)
+function handleNodeClick(node: TreeNode, event?: MouseEvent) {
+  // Prevent event bubbling to avoid triggering background click handlers
+  if (event) {
+    event.stopPropagation()
+  }
+  
+  const isMultiSelect = event?.ctrlKey || event?.metaKey // Ctrl/Cmd for multi-select
+  const wasHighlightedBefore = treeStore.highlightMode && treeStore.selectedNodeId === node.id
+  
+  if (isMultiSelect && treeStore.highlightMode) {
+    // Multi-select mode: toggle multi-select and add to selection
+    treeStore.toggleMultiSelectMode(true)
+    treeStore.enterHighlightMode(node.id, true)
+  } else if (wasHighlightedBefore) {
+    // Clicking same highlighted node exits highlight mode
     treeStore.exitHighlightMode()
   } else {
-    // Enter highlight mode for this node
+    // Enter highlight mode for this node (clears multi-select)
     treeStore.enterHighlightMode(node.id)
   }
 }
@@ -86,10 +112,23 @@ function handleBackgroundClick() {
   treeStore.exitHighlightMode()
 }
 
-// Handle connection hover
+// Handle connection hover (enhanced for store integration)
 function handleConnectionHover(connection: Connection, isHovering: boolean) {
-  // TODO: Could add visual feedback for hovered connections
-  console.log('Connection hover:', connection, isHovering)
+  treeStore.handleConnectionHover(isHovering ? connection : null)
+}
+
+// Handle connection click for path-based navigation
+function handleConnectionClick(connection: Connection) {
+  treeStore.handleConnectionClick(connection)
+}
+
+// Handle node hover for enhanced feedback
+function handleNodeHover(node: TreeNode, isHovering: boolean) {
+  // Future: Could add preview highlighting or tooltips
+  if (isHovering && !treeStore.highlightMode) {
+    // Show subtle preview of what would be highlighted
+    console.log(`Preview highlight for ${node.name}`)
+  }
 }
 </script>
 

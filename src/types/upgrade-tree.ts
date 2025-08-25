@@ -30,6 +30,35 @@ export interface Connection {
   from: string
   to: string
   highlighted?: boolean
+  depth?: number           // For dependency tree traversal
+  type?: 'prerequisite' | 'dependent'
+}
+
+// Phase 5: Enhanced dependency tracking interfaces
+export interface DependencyTree {
+  selected: string[]                    // Primary selected nodes
+  directPrerequisites: string[]        // 1-hop dependencies (what this needs)
+  indirectPrerequisites: string[]      // 2+ hop dependencies
+  directDependents: string[]           // 1-hop dependents (what needs this)
+  indirectDependents: string[]         // 2+ hop dependents
+  connectionPaths: ConnectionPath[]    // Specific dependency paths
+}
+
+export interface ConnectionPath {
+  from: string
+  to: string
+  depth: number                        // Hop count from selected node
+  type: 'prerequisite' | 'dependent'
+  swimlaneSpan: string[]              // Swimlanes this path crosses
+}
+
+// Enhanced highlight states for multi-level visualization
+export type HighlightState = 'none' | 'selected' | 'direct' | 'indirect' | 'dimmed'
+
+export interface NodeHighlightInfo {
+  state: HighlightState
+  depth?: number                       // Distance from selected node(s)
+  connectionType?: 'prerequisite' | 'dependent'
 }
 
 export interface NodePosition {

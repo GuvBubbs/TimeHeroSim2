@@ -46,7 +46,10 @@
           :highlight-mode="highlightMode"
           :highlighted-nodes="highlightedNodes"
           :get-swimlane-start-y="getSwimlaneStartY"
+          :get-connection-depth="getConnectionDepth"
+          :is-connection-highlighted="isConnectionHighlighted"
           @connection-hover="handleConnectionHover"
+          @connection-click="handleConnectionClick"
         />
         
         <!-- Tree nodes -->
@@ -57,9 +60,13 @@
           :highlighted="isNodeHighlighted(node.id)"
           :dimmed="isNodeDimmed(node.id)"
           :swimlane-color="getSwimlaneColor(node.swimlane)"
+          :highlight-state="(getNodeHighlightState ? getNodeHighlightState(node.id) : 'none') as any"
+          :depth="getNodeDepth ? getNodeDepth(node.id) : 0"
+          :connection-type="getNodeConnectionType ? getNodeConnectionType(node.id) : undefined"
           :style="getNodeStyle(node)"
-          @node-click="handleNodeClick(node)"
+          @node-click="handleNodeClick(node, $event)"
           @edit-click="handleEditClick(node)"
+          @node-hover="handleNodeHover(node, $event)"
         />
       </div>
     </div>
@@ -84,15 +91,24 @@ interface Props {
   isNodeHighlighted: (id: string) => boolean
   isNodeDimmed: (id: string) => boolean
   getSwimlaneStartY: (swimlaneId: string) => number
+  // Phase 5: Enhanced functions
+  nodeHighlightInfo?: Map<string, any>
+  getNodeHighlightState?: (id: string) => string
+  getNodeDepth?: (id: string) => number
+  getNodeConnectionType?: (id: string) => 'prerequisite' | 'dependent' | undefined
+  getConnectionDepth?: (connection: Connection) => number
+  isConnectionHighlighted?: (connection: Connection) => boolean
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'node-click': [node: TreeNode]
+  'node-click': [node: TreeNode, event: MouseEvent]
   'edit-click': [node: TreeNode]
   'background-click': []
   'connection-hover': [connection: Connection, isHovering: boolean]
+  'connection-click': [connection: Connection]
+  'node-hover': [node: TreeNode, isHovering: boolean]
 }>()
 
 // Calculate total grid dimensions
@@ -212,14 +228,33 @@ function getSwimlaneHeight(swimlane: Swimlane): number {
 }
 
 // Get swimlane color for a swimlane ID
+// Get swimlane color for a node
 function getSwimlaneColor(swimlaneId: string): string {
   const swimlane = props.swimlanes.find(s => s.id === swimlaneId)
   return swimlane?.color || '#666'
 }
 
+// Get node depth from highlight info
+function getNodeDepth(nodeId: string): number {
+  if (props.nodeHighlightInfo) {
+    const info = props.nodeHighlightInfo.get(nodeId)
+    return info?.depth || 0
+  }
+  return 0
+}
+
+// Get node connection type from highlight info
+function getNodeConnectionType(nodeId: string): 'prerequisite' | 'dependent' | undefined {
+  if (props.nodeHighlightInfo) {
+    const info = props.nodeHighlightInfo.get(nodeId)
+    return info?.connectionType
+  }
+  return undefined
+}
+
 // Event handlers
-function handleNodeClick(node: TreeNode) {
-  emit('node-click', node)
+function handleNodeClick(node: TreeNode, event: MouseEvent) {
+  emit('node-click', node, event)
 }
 
 function handleEditClick(node: TreeNode) {
@@ -235,6 +270,14 @@ function handleBackgroundClick(event: MouseEvent) {
 
 function handleConnectionHover(connection: Connection, isHovering: boolean) {
   emit('connection-hover', connection, isHovering)
+}
+
+function handleConnectionClick(connection: Connection) {
+  emit('connection-click', connection)
+}
+
+function handleNodeHover(node: TreeNode, isHovering: boolean) {
+  emit('node-hover', node, isHovering)
 }
 </script>
 

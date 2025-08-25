@@ -1,37 +1,27 @@
 import type { GameDataItem } from '@/types/game-data'
 import { CSV_FILE_LIST } from '@/types/csv-data'
 
-// Complete swim lanes including individual town vendors
+// UPDATED: 8 swim lanes with individual town vendors
 const SWIM_LANES = [
-  'Farm',              // Row 0
-  'Vendors',           // Row 1 - Town vendors (general)
-  'Blacksmith',        // Row 2 - Town blacksmith items  
-  'Agronomist',        // Row 3 - Town agronomist items
-  'Carpenter',         // Row 4 - Town carpenter items
-  'Land Steward',      // Row 5 - Town land steward items
-  'Material Trader',   // Row 6 - Town material trader items
-  'Skills Trainer',    // Row 7 - Town skills trainer items
-  'Adventure',         // Row 8 - Adventure routes
-  'Combat',            // Row 9 - Combat items
-  'Forge',             // Row 10 - Forge items
-  'Mining',            // Row 11 - Mining items
-  'Tower',             // Row 12 - Tower items
-  'General'            // Row 13 - Catch-all
+  'Farm',           // Row 0
+  'Tower',          // Row 1  
+  'Adventure',      // Row 2
+  'Combat',         // Row 3
+  'Forge',          // Row 4
+  'Mining',         // Row 5
+  'Town',           // Row 6 (General town items)
+  'General'         // Row 7 (catch-all)
 ]
 
-
-
-// Standardized constants - MUST match calculateNodePosition values
-const LAYOUT_CONSTANTS = {
-  NODE_HEIGHT: 40,      // Match Cytoscape node height
-  NODE_PADDING: 15,     // Vertical spacing between nodes
-  LANE_PADDING: 25,     // Padding between lanes
-  LANE_BUFFER: 20,      // Padding within lanes (top/bottom)
-  MIN_LANE_HEIGHT: 100, // Minimum lane height
-  TIER_WIDTH: 180,      // Horizontal spacing between tiers
-  NODE_WIDTH: 140,      // Actual node width
-  LANE_START_X: 200     // Space for lane labels
-}
+// Town vendor mapping for more specific swim lanes
+const TOWN_VENDORS = [
+  'Blacksmith',     // town_blacksmith.csv
+  'Agronomist',     // town_agronomist.csv  
+  'Carpenter',      // town_carpenter.csv
+  'Land Steward',   // town_land_steward.csv
+  'Material Trader', // town_material_trader.csv
+  'Skills Trainer', // town_skills_trainer.csv
+]
 
 // Calculate lane heights based on content
 function calculateLaneHeights(items: GameDataItem[]): Map<string, number> {
@@ -50,12 +40,15 @@ function calculateLaneHeights(items: GameDataItem[]): Map<string, number> {
     tierMap.set(tier, (tierMap.get(tier) || 0) + 1)
   })
   
-  // Calculate required height for each lane using standardized constants
+  // Calculate required height for each lane
+  const NODE_HEIGHT = 50
+  const NODE_PADDING = 15
+  const MIN_LANE_HEIGHT = 80
   
   SWIM_LANES.forEach(lane => {
     const tierMap = nodesPerLaneTier.get(lane)
     if (!tierMap) {
-      laneHeights.set(lane, LAYOUT_CONSTANTS.MIN_LANE_HEIGHT)
+      laneHeights.set(lane, MIN_LANE_HEIGHT)
       return
     }
     
@@ -65,16 +58,11 @@ function calculateLaneHeights(items: GameDataItem[]): Map<string, number> {
       maxNodesInTier = Math.max(maxNodesInTier, count)
     })
     
-    // Calculate required height with proper padding
     const requiredHeight = Math.max(
-      LAYOUT_CONSTANTS.MIN_LANE_HEIGHT,
-      (maxNodesInTier * LAYOUT_CONSTANTS.NODE_HEIGHT) + 
-      ((maxNodesInTier + 1) * LAYOUT_CONSTANTS.NODE_PADDING) + 
-      (2 * LAYOUT_CONSTANTS.LANE_BUFFER) // Add buffer for lane boundaries
+      MIN_LANE_HEIGHT,
+      (maxNodesInTier * NODE_HEIGHT) + ((maxNodesInTier + 1) * NODE_PADDING)
     )
     laneHeights.set(lane, requiredHeight)
-    
-    console.log(`🏊 Lane "${lane}": ${maxNodesInTier} max nodes per tier, height: ${requiredHeight}px`)
   })
   
   return laneHeights
@@ -180,7 +168,7 @@ export function buildGraphElements(items: GameDataItem[]) {
 }
 
 function determineSwimLane(item: GameDataItem): string {
-  // For town items, determine specific vendor from source file
+  // For town items, try to determine vendor from source file
   if (item.sourceFile?.startsWith('town_')) {
     const vendorMatch = item.sourceFile.match(/town_(.+)\.csv$/)
     if (vendorMatch) {
@@ -192,18 +180,18 @@ function determineSwimLane(item: GameDataItem): string {
         case 'land_steward': return 'Land Steward'
         case 'material_trader': return 'Material Trader'
         case 'skills_trainer': return 'Skills Trainer'
-        default: return 'Vendors'  // General town vendors
+        default: return 'Town'
       }
     }
   }
   
-  // Map game feature to swim lane using CSV metadata
+  // Map game feature to swim lane  
   const gameFeature = getGameFeatureFromSourceFile(item.sourceFile)
   if (gameFeature && SWIM_LANES.includes(gameFeature)) {
     return gameFeature
   }
   
-  // Default to General for unrecognized items
+  // Default to General
   return 'General'
 }
 
@@ -249,18 +237,14 @@ function calculateNodePosition(
   allItems: GameDataItem[],
   laneHeights: Map<string, number>
 ): { x: number, y: number } {
-  // Use standardized constants for consistency
-  const {
-    TIER_WIDTH,
-    NODE_WIDTH, 
-    NODE_HEIGHT,
-    NODE_PADDING,
-    LANE_PADDING,
-    LANE_START_X,
-    LANE_BUFFER
-  } = LAYOUT_CONSTANTS
-  
-  const VERTICAL_SPACING = NODE_PADDING  // Use same as NODE_PADDING for consistency
+  const TIER_WIDTH = 180   // Fixed: Must be >= NODE_WIDTH + spacing to prevent overlaps
+  const NODE_WIDTH = 140   // Actual node width
+  const NODE_HEIGHT = 40   // Actual node height  
+  const NODE_PADDING = 10
+  const LANE_PADDING = 25  // Increased for better separation
+  const LANE_START_X = 200 // Space for lane labels
+  const VERTICAL_SPACING = 15  // Increased from 10px
+  const LANE_BUFFER = 20   // Increased from 15px
   
   // Calculate cumulative Y position for this lane
   let laneStartY = LANE_PADDING
@@ -287,10 +271,10 @@ function calculateNodePosition(
   const indexInGroup = nodesInLaneTier.findIndex(n => n.id === item.id)
   const totalInGroup = nodesInLaneTier.length
   
-  // Enhanced vertical distribution with consistent spacing
-  const laneHeight = laneHeights.get(swimLane) || LAYOUT_CONSTANTS.MIN_LANE_HEIGHT
+  // Enhanced vertical distribution - prevent clustering and ensure proper spacing
+  const laneHeight = laneHeights.get(swimLane) || 80
   const usableHeight = laneHeight - (2 * LANE_BUFFER)
-  const minSpacingBetweenNodes = NODE_PADDING  // Use consistent padding
+  const minSpacingBetweenNodes = 15  // Minimum gap between node edges
   const totalHeightNeeded = totalInGroup * NODE_HEIGHT + (totalInGroup - 1) * minSpacingBetweenNodes
   
   let nodeY: number
@@ -303,23 +287,16 @@ function calculateNodePosition(
     const startY = laneStartY + LANE_BUFFER + extraSpace
     nodeY = startY + (indexInGroup * (NODE_HEIGHT + minSpacingBetweenNodes + extraSpace)) + (NODE_HEIGHT / 2)
   } else {
-    // Too many nodes - use minimum spacing but ensure nodes stay within lane bounds
-    const minSpacing = Math.max(2, (usableHeight - (totalInGroup * NODE_HEIGHT)) / Math.max(1, totalInGroup - 1))
+    // Too many nodes - use minimum spacing and expand lane if needed
+    const actualSpacing = Math.max(5, (usableHeight - (totalInGroup * NODE_HEIGHT)) / Math.max(1, totalInGroup - 1))
     const startY = laneStartY + LANE_BUFFER
-    nodeY = startY + (indexInGroup * (NODE_HEIGHT + minSpacing)) + (NODE_HEIGHT / 2)
-    
-    // Ensure node doesn't exceed lane boundary
-    const maxY = laneStartY + laneHeight - LANE_BUFFER - (NODE_HEIGHT / 2)
-    nodeY = Math.min(nodeY, maxY)
+    nodeY = startY + (indexInGroup * (NODE_HEIGHT + actualSpacing)) + (NODE_HEIGHT / 2)
     
     // Log warning about crowded lane
-    if (minSpacing < NODE_PADDING / 2) {
-      console.warn(`⚠️ Lane ${swimLane} tier ${tier} is crowded: ${totalInGroup} nodes with ${minSpacing.toFixed(1)}px spacing`)
+    if (actualSpacing < 10) {
+      console.warn(`⚠️ Lane ${swimLane} tier ${tier} is crowded: ${totalInGroup} nodes with ${actualSpacing.toFixed(1)}px spacing`)
     }
   }
-  
-  // Debug log for positioning verification
-  console.log(`📍 ${item.name}: Lane "${swimLane}" (${laneStartY}-${laneStartY + laneHeight}), Tier ${tier}, Position (${finalX}, ${nodeY})`)
   
   return { x: finalX, y: nodeY }
 }

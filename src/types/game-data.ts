@@ -13,10 +13,6 @@ export interface GameDataItem {
   type: string
   categories: string[]
   
-  // NEW: Optional grouping fields for enhanced tree organization
-  // Note: type and categories above are for existing data structure,
-  // grouping uses them optionally with fallbacks
-  
   // Costs and gains
   goldCost?: number
   goldGain?: number

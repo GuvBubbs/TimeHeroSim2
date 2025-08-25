@@ -59,7 +59,7 @@ const nodeStyle = computed(() => ({
 
 <style scoped>
 .tree-node {
-  background: rgba(0, 0, 0, 0.6); /* Dark background */
+  background: rgba(0, 0, 0, 0.9); /* More opaque background for better readability */
   border: 2px solid var(--node-color);
   border-radius: 0.5rem;
   padding: 0.5rem;

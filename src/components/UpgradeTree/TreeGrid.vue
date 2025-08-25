@@ -34,6 +34,21 @@
           :grid-config="gridConfig"
         />
         
+        <!-- Connection Layer (SVG arrows) -->
+        <ConnectionLayerComponent
+          :connections="connections"
+          :nodes="nodes"
+          :node-positions="nodePositions"
+          :swimlanes="swimlanes"
+          :grid-config="gridConfig"
+          :total-width="parseInt(gridStyle.width?.toString() || '0')"
+          :total-height="parseInt(gridStyle.height?.toString() || '0')"
+          :highlight-mode="highlightMode"
+          :highlighted-nodes="highlightedNodes"
+          :get-swimlane-start-y="getSwimlaneStartY"
+          @connection-hover="handleConnectionHover"
+        />
+        
         <!-- Tree nodes -->
         <TreeNodeComponent
           v-for="node in nodes"
@@ -53,14 +68,19 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { TreeNode, Swimlane } from '@/types/upgrade-tree'
+import type { TreeNode, Swimlane, Connection } from '@/types/upgrade-tree'
 import TreeNodeComponent from '@/components/UpgradeTree/TreeNode.vue'
 import SwimLaneComponent from '@/components/UpgradeTree/SwimLane.vue'
+import ConnectionLayerComponent from '@/components/UpgradeTree/ConnectionLayer.vue'
 
 interface Props {
   nodes: TreeNode[]
+  connections: Connection[]
   swimlanes: Swimlane[]
   gridConfig: any
+  nodePositions: Map<string, { x: number; y: number; swimlane: string }>
+  highlightMode: boolean
+  highlightedNodes: Set<string>
   isNodeHighlighted: (id: string) => boolean
   isNodeDimmed: (id: string) => boolean
   getSwimlaneStartY: (swimlaneId: string) => number
@@ -72,6 +92,7 @@ const emit = defineEmits<{
   'node-click': [node: TreeNode]
   'edit-click': [node: TreeNode]
   'background-click': []
+  'connection-hover': [connection: Connection, isHovering: boolean]
 }>()
 
 // Calculate total grid dimensions
@@ -210,6 +231,10 @@ function handleBackgroundClick(event: MouseEvent) {
   if ((event.target as HTMLElement).classList.contains('tree-grid')) {
     emit('background-click')
   }
+}
+
+function handleConnectionHover(connection: Connection, isHovering: boolean) {
+  emit('connection-hover', connection, isHovering)
 }
 </script>
 

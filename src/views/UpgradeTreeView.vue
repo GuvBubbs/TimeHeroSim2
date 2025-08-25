@@ -30,14 +30,19 @@
       <TreeGrid 
         v-else
         :nodes="treeStore.nodes"
+        :connections="treeStore.connections"
         :swimlanes="treeStore.swimlanes"
         :grid-config="treeStore.gridConfig"
+        :node-positions="treeStore.nodePositions"
+        :highlight-mode="treeStore.highlightMode"
+        :highlighted-nodes="treeStore.highlightedNodes"
         :is-node-highlighted="treeStore.isNodeHighlighted"
         :is-node-dimmed="treeStore.isNodeDimmed"
         :get-swimlane-start-y="treeStore.getSwimlaneStartY"
         @node-click="handleNodeClick"
         @edit-click="handleEditClick"
         @background-click="handleBackgroundClick"
+        @connection-hover="handleConnectionHover"
       />
     </div>
     
@@ -49,7 +54,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useUpgradeTreeStore } from '@/stores/upgradeTree'
-import type { TreeNode } from '@/types/upgrade-tree'
+import type { TreeNode, Connection } from '@/types/upgrade-tree'
 import TreeGrid from '@/components/UpgradeTree/TreeGrid.vue'
 
 const treeStore = useUpgradeTreeStore()
@@ -79,6 +84,12 @@ function handleEditClick(node: TreeNode) {
 // Handle clicking on background (exit highlight mode)
 function handleBackgroundClick() {
   treeStore.exitHighlightMode()
+}
+
+// Handle connection hover
+function handleConnectionHover(connection: Connection, isHovering: boolean) {
+  // TODO: Could add visual feedback for hovered connections
+  console.log('Connection hover:', connection, isHovering)
 }
 </script>
 

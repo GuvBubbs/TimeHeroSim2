@@ -7,9 +7,6 @@ import './styles/main.css'
 // Import validation control utilities (makes them available globally)
 import './utils/validationControl'
 
-// Import performance monitoring utilities (makes them available globally)
-import './utils/enablePerformanceMonitoring'
-
 const app = createApp(App)
 const pinia = createPinia()
 

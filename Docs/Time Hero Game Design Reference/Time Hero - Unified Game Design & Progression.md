@@ -148,7 +148,7 @@ Ticks cost **energy** and require the right **tool**. This section lists on-farm
 | Chop Trees | 100 energy | Axe | Wood ×10 | None |
 | Clear Grove | 200 energy | Axe+ | Wood ×25 | None |
 
-#### **Stage 4 – Homestead (40→65 plots)**
+#### **Stage 4 – Manor Grounds (40→65 plots)**
 
 | Cleanup | Plots \+ | Total Plots | Energy Cost | Tool Required | Yields |
 | ----- | ----- | ----- | ----- | ----- | ----- |

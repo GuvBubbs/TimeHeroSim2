@@ -67,24 +67,6 @@
         </label>
       </div>
       
-      <!-- Debug Controls -->
-      <div class="controls-section border-b border-sim-border pb-2">
-        <label class="flex items-center space-x-2 text-sm cursor-pointer">
-          <input type="checkbox" v-model="showDebugBoundaries" @change="toggleDebugBoundaries" 
-                 class="accent-sim-accent">
-          <span><i class="fas fa-border-style mr-1 text-xs"></i>Lane Boundaries</span>
-        </label>
-        <button @click="showDebugPanel = !showDebugPanel"
-                class="w-full mt-1 px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-xs transition-colors">
-          <i class="fas fa-bug mr-1"></i>Debug Panel
-        </button>
-        <button v-if="isPerformanceMonitoringEnabled" 
-                @click="showPerformancePanel = !showPerformancePanel"
-                class="w-full mt-1 px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs transition-colors">
-          <i class="fas fa-tachometer-alt mr-1"></i>Performance
-        </button>
-      </div>
-      
       <!-- Zoom Controls -->
       <div class="controls-section space-x-1">
         <button @click="zoomIn" 
@@ -217,257 +199,6 @@
       </div>
     </div>
     
-    <!-- Debug Panel -->
-    <div v-if="showDebugPanel" 
-         class="debug-panel absolute top-4 left-1/2 transform -translate-x-1/2 bg-sim-surface rounded-lg shadow-lg p-4 max-w-4xl max-h-96 overflow-y-auto z-50">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold text-sim-text flex items-center">
-          <i class="fas fa-bug mr-2"></i>Debug Monitor
-        </h3>
-        <button @click="showDebugPanel = false" 
-                class="text-sim-muted hover:text-sim-text">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      
-      <!-- Debug Controls -->
-      <div class="grid grid-cols-2 gap-4 mb-4">
-        <div class="space-y-2">
-          <h4 class="text-sm font-medium text-sim-text">Debug Options</h4>
-          <label class="flex items-center space-x-2 text-xs cursor-pointer">
-            <input type="checkbox" v-model="debugConfig.enableConsoleLogging" @change="updateDebugConfig" 
-                   class="accent-sim-accent">
-            <span>Console Logging</span>
-          </label>
-          <label class="flex items-center space-x-2 text-xs cursor-pointer">
-            <input type="checkbox" v-model="debugConfig.enableAssignmentStats" @change="updateDebugConfig" 
-                   class="accent-sim-accent">
-            <span>Assignment Statistics</span>
-          </label>
-          <label class="flex items-center space-x-2 text-xs cursor-pointer">
-            <input type="checkbox" v-model="debugConfig.enablePositionMonitoring" @change="updateDebugConfig" 
-                   class="accent-sim-accent">
-            <span>Position Monitoring</span>
-          </label>
-        </div>
-        
-        <div class="space-y-2">
-          <h4 class="text-sm font-medium text-sim-text">Log Level</h4>
-          <select v-model="debugConfig.logLevel" @change="updateDebugConfig" 
-                  class="w-full px-2 py-1 bg-sim-surface border border-sim-border rounded text-xs">
-            <option value="minimal">Minimal</option>
-            <option value="standard">Standard</option>
-            <option value="verbose">Verbose</option>
-            <option value="debug">Debug</option>
-          </select>
-          
-          <button @click="exportDebugData" 
-                  class="w-full px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs transition-colors">
-            <i class="fas fa-download mr-1"></i>Export Debug Data
-          </button>
-        </div>
-      </div>
-      
-      <!-- Assignment Statistics -->
-      <div v-if="assignmentStats" class="mb-4">
-        <h4 class="text-sm font-medium text-sim-text mb-2">Assignment Statistics</h4>
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <div class="bg-sim-background rounded p-2">
-            <div class="text-sim-muted">Total Items</div>
-            <div class="font-mono text-lg">{{ assignmentStats.totalItems }}</div>
-          </div>
-          <div class="bg-sim-background rounded p-2">
-            <div class="text-sim-muted">Unassigned</div>
-            <div class="font-mono text-lg" :class="assignmentStats.unassignedItems.length > 0 ? 'text-yellow-400' : 'text-green-400'">
-              {{ assignmentStats.unassignedItems.length }}
-            </div>
-          </div>
-          <div class="bg-sim-background rounded p-2">
-            <div class="text-sim-muted">Active Lanes</div>
-            <div class="font-mono text-lg">{{ activeLaneCount }}</div>
-          </div>
-        </div>
-        
-        <!-- Lane Distribution Chart -->
-        <div class="mt-3">
-          <div class="text-xs text-sim-muted mb-1">Items per Lane:</div>
-          <div class="space-y-1">
-            <div v-for="[lane, count] in sortedLaneAssignments" :key="lane" 
-                 class="flex items-center justify-between text-xs">
-              <span class="w-24 truncate">{{ lane }}</span>
-              <div class="flex-1 mx-2 bg-sim-background rounded-full h-2 overflow-hidden">
-                <div class="h-full bg-sim-accent transition-all duration-300" 
-                     :style="{ width: `${(count / assignmentStats.totalItems) * 100}%` }"></div>
-              </div>
-              <span class="font-mono w-8 text-right">{{ count }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Debug Report -->
-      <div v-if="debugReport" class="mb-4">
-        <h4 class="text-sm font-medium text-sim-text mb-2">Performance Metrics</h4>
-        <div class="grid grid-cols-4 gap-2 text-xs">
-          <div class="bg-sim-background rounded p-2">
-            <div class="text-sim-muted">Session Time</div>
-            <div class="font-mono">{{ (debugReport.sessionDuration / 1000).toFixed(1) }}s</div>
-          </div>
-          <div class="bg-sim-background rounded p-2">
-            <div class="text-sim-muted">Calculations</div>
-            <div class="font-mono">{{ debugReport.positioningMetrics.totalCalculations }}</div>
-          </div>
-          <div class="bg-sim-background rounded p-2">
-            <div class="text-sim-muted">Avg Time</div>
-            <div class="font-mono">{{ debugReport.positioningMetrics.averageCalculationTime.toFixed(2) }}ms</div>
-          </div>
-          <div class="bg-sim-background rounded p-2">
-            <div class="text-sim-muted">Adjustments</div>
-            <div class="font-mono" :class="debugReport.positioningMetrics.adjustmentRate > 20 ? 'text-yellow-400' : 'text-green-400'">
-              {{ debugReport.positioningMetrics.adjustmentRate.toFixed(1) }}%
-            </div>
-          </div>
-        </div>
-        
-        <!-- Recommendations -->
-        <div v-if="debugReport.recommendations.length > 0" class="mt-3">
-          <div class="text-xs text-sim-muted mb-1">Recommendations:</div>
-          <div class="space-y-1">
-            <div v-for="rec in debugReport.recommendations" :key="rec" 
-                 class="text-xs text-yellow-400 flex items-start">
-              <i class="fas fa-lightbulb mr-1 mt-0.5 text-xs"></i>
-              <span>{{ rec }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Performance Panel -->
-    <div v-if="showPerformancePanel && isPerformanceMonitoringEnabled" 
-         class="performance-panel absolute top-4 right-1/2 transform translate-x-1/2 bg-sim-surface rounded-lg shadow-lg p-4 max-w-4xl max-h-96 overflow-y-auto z-50">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold text-sim-text flex items-center">
-          <i class="fas fa-tachometer-alt mr-2"></i>Performance Monitor
-        </h3>
-        <button @click="showPerformancePanel = false" 
-                class="text-sim-muted hover:text-sim-text">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      
-      <!-- Performance Controls -->
-      <div class="grid grid-cols-3 gap-2 mb-4">
-        <button @click="runPerformanceProfile" 
-                class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs transition-colors">
-          <i class="fas fa-play mr-1"></i>Profile
-        </button>
-        <button @click="optimizePerformance" 
-                class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs transition-colors">
-          <i class="fas fa-rocket mr-1"></i>Optimize
-        </button>
-        <button @click="exportPerformanceData" 
-                class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs transition-colors">
-          <i class="fas fa-download mr-1"></i>Export
-        </button>
-      </div>
-      
-      <!-- Performance Metrics -->
-      <div v-if="performanceReport" class="space-y-4">
-        <!-- Session Overview -->
-        <div class="bg-sim-background rounded p-3">
-          <h4 class="text-sm font-medium text-sim-text mb-2">Session Overview</h4>
-          <div class="grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <div class="text-sim-muted">Total Duration</div>
-              <div class="font-mono text-lg">{{ (performanceReport.totalDuration / 1000).toFixed(1) }}s</div>
-            </div>
-            <div>
-              <div class="text-sim-muted">Operations</div>
-              <div class="font-mono text-lg">{{ performanceReport.metrics.length }}</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Memory Usage -->
-        <div v-if="performanceReport.memoryUsage" class="bg-sim-background rounded p-3">
-          <h4 class="text-sm font-medium text-sim-text mb-2">Memory Usage</h4>
-          <div class="grid grid-cols-3 gap-2 text-xs">
-            <div>
-              <div class="text-sim-muted">Initial</div>
-              <div class="font-mono">{{ (performanceReport.memoryUsage.initialMemory / 1024 / 1024).toFixed(1) }}MB</div>
-            </div>
-            <div>
-              <div class="text-sim-muted">Peak</div>
-              <div class="font-mono">{{ (performanceReport.memoryUsage.peakMemory / 1024 / 1024).toFixed(1) }}MB</div>
-            </div>
-            <div>
-              <div class="text-sim-muted">Final</div>
-              <div class="font-mono">{{ (performanceReport.memoryUsage.finalMemory / 1024 / 1024).toFixed(1) }}MB</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Performance Bottlenecks -->
-        <div v-if="performanceReport.bottlenecks && performanceReport.bottlenecks.length > 0" 
-             class="bg-sim-background rounded p-3">
-          <h4 class="text-sm font-medium text-sim-text mb-2">Performance Issues</h4>
-          <div class="space-y-2">
-            <div v-for="bottleneck in performanceReport.bottlenecks.slice(0, 5)" 
-                 :key="bottleneck.operation" 
-                 class="flex items-center justify-between text-xs p-2 rounded"
-                 :class="bottleneck.severity === 'critical' ? 'bg-red-900/20 border border-red-700' : 
-                         bottleneck.severity === 'severe' ? 'bg-orange-900/20 border border-orange-700' : 
-                         'bg-yellow-900/20 border border-yellow-700'">
-              <div class="flex items-center space-x-2">
-                <i :class="bottleneck.severity === 'critical' ? 'fas fa-exclamation-triangle text-red-400' : 
-                           bottleneck.severity === 'severe' ? 'fas fa-exclamation-triangle text-orange-400' : 
-                           'fas fa-exclamation-triangle text-yellow-400'"></i>
-                <span>{{ bottleneck.operation }}</span>
-              </div>
-              <span class="font-mono">{{ bottleneck.duration.toFixed(1) }}ms</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Recommendations -->
-        <div v-if="performanceReport.recommendations && performanceReport.recommendations.length > 0" 
-             class="bg-sim-background rounded p-3">
-          <h4 class="text-sm font-medium text-sim-text mb-2">Recommendations</h4>
-          <div class="space-y-1">
-            <div v-for="rec in performanceReport.recommendations" :key="rec" 
-                 class="text-xs text-blue-400 flex items-start">
-              <i class="fas fa-lightbulb mr-1 mt-0.5 text-xs"></i>
-              <span>{{ rec }}</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Recent Metrics -->
-        <div class="bg-sim-background rounded p-3">
-          <h4 class="text-sm font-medium text-sim-text mb-2">Recent Operations</h4>
-          <div class="space-y-1 max-h-32 overflow-y-auto">
-            <div v-for="metric in performanceReport.metrics.slice(-10)" 
-                 :key="metric.name + metric.startTime" 
-                 class="flex items-center justify-between text-xs">
-              <span class="truncate">{{ metric.name }}</span>
-              <span class="font-mono ml-2" 
-                    :class="(metric.duration || 0) > 100 ? 'text-yellow-400' : 'text-green-400'">
-                {{ (metric.duration || 0).toFixed(1) }}ms
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- No Data Message -->
-      <div v-else class="text-center text-sim-muted py-8">
-        <i class="fas fa-chart-line text-4xl mb-4"></i>
-        <p>No performance data available</p>
-        <p class="text-xs mt-1">Click "Profile" to start monitoring</p>
-      </div>
-    </div>
-
     <!-- REUSE EXISTING MODAL! -->
     <EditItemModal 
       v-if="editingItem"
@@ -480,16 +211,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 import fcose from 'cytoscape-fcose'
 import { useGameDataStore } from '@/stores/gameData'
 import { useConfigurationStore } from '@/stores/configuration'
 import { buildGraphElements, addMaterialEdges, runAllAutomatedTests } from '@/utils/graphBuilder'
-import { debugMonitor, updateDebugConfig as updateDebugMonitorConfig, exportMonitoringData, generateVisualBoundaryElements } from '@/utils/debugMonitor'
-import { getPerformanceMonitor, initializePerformanceMonitor, cleanupPerformanceMonitor, withPerformanceTracking } from '@/utils/performanceMonitor'
-import { getOptimizedPositioningEngine, cleanupOptimizedPositioning } from '@/utils/optimizedPositioning'
 import EditItemModal from '@/components/GameConfiguration/EditItemModal.vue'
 import type { GameDataItem } from '@/types/game-data'
 
@@ -521,47 +249,10 @@ const filteredItemsCount = computed(() => {
   ).length
 })
 
-// Debug computed properties
-const activeLaneCount = computed(() => {
-  if (!assignmentStats.value) return 0
-  return Array.from(assignmentStats.value.assignmentsByLane.values()).filter(count => count > 0).length
-})
-
-const sortedLaneAssignments = computed(() => {
-  if (!assignmentStats.value) return []
-  return Array.from(assignmentStats.value.assignmentsByLane.entries())
-    .filter(([_, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1])
-})
-
 const graphStats = ref<{ nodes: number, edges: number, lanes: number } | null>(null)
 const validationResults = ref<any[]>([])
 const validationSummary = ref<any | null>(null)
 const showValidationPanel = ref(false)
-
-// Debug monitoring state
-const showDebugPanel = ref(false)
-const showDebugBoundaries = ref(false)
-const assignmentStats = ref<any | null>(null)
-const debugReport = ref<any | null>(null)
-const debugConfig = ref({
-  enableConsoleLogging: true,
-  enableVisualBoundaries: false,
-  enableAssignmentStats: true,
-  enablePositionMonitoring: false,
-  enableDetailedCalculations: false,
-  logLevel: 'standard' as 'minimal' | 'standard' | 'verbose' | 'debug'
-})
-
-// Performance monitoring state
-const performanceReport = ref<any | null>(null)
-const showPerformancePanel = ref(false)
-const performanceMonitor = ref<any | null>(null)
-
-// Check if performance monitoring is enabled
-const isPerformanceMonitoringEnabled = computed(() => {
-  return typeof window !== 'undefined' && (window as any).ENABLE_PERFORMANCE_MONITORING === true
-})
 
 // Cytoscape graph methods  
 const zoomIn = () => {
@@ -730,156 +421,17 @@ const runValidationTests = async () => {
   }
 }
 
-// Debug methods
-const updateDebugConfig = () => {
-  updateDebugMonitorConfig(debugConfig.value)
-  
-  // Update visual boundaries if enabled
-  if (debugConfig.value.enableVisualBoundaries !== showDebugBoundaries.value) {
-    showDebugBoundaries.value = debugConfig.value.enableVisualBoundaries
-    toggleDebugBoundaries()
-  }
-}
-
-const toggleDebugBoundaries = () => {
-  debugConfig.value.enableVisualBoundaries = showDebugBoundaries.value
-  updateDebugMonitorConfig(debugConfig.value)
-  
-  if (cy) {
-    // Remove existing boundary elements
-    cy.nodes('[type="boundary"], [type="boundary-label"]').remove()
-    
-    if (showDebugBoundaries.value) {
-      // Add visual boundary elements
-      const boundaryElements = generateVisualBoundaryElements()
-      if (boundaryElements.length > 0) {
-        cy.add(boundaryElements)
-        console.log(`🔍 Added ${boundaryElements.length} debug boundary elements`)
-      }
-    }
-  }
-}
-
-const exportDebugData = () => {
-  try {
-    const debugData = exportMonitoringData()
-    const blob = new Blob([debugData], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `swimlane-debug-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
-    console.log('📄 Debug data exported successfully')
-  } catch (error) {
-    console.error('❌ Error exporting debug data:', error)
-  }
-}
-
-// Performance monitoring methods
-const runPerformanceProfile = () => {
-  if (!isPerformanceMonitoringEnabled.value) {
-    console.log('Performance monitoring is disabled. Enable with window.ENABLE_PERFORMANCE_MONITORING = true')
-    return
-  }
-  
-  console.log('🔍 Running performance profile...')
-  
-  const monitor = getPerformanceMonitor()
-  monitor.startMetric('performance-profile')
-  
-  // Trigger a full rebuild to measure performance
-  rebuildGraph().then(() => {
-    monitor.endMetric('performance-profile')
-    performanceReport.value = monitor.generatePerformanceReport()
-    showPerformancePanel.value = true
-    
-    console.log('📊 Performance profile completed')
-  })
-}
-
-const optimizePerformance = () => {
-  if (!isPerformanceMonitoringEnabled.value) {
-    console.log('Performance monitoring is disabled. Enable with window.ENABLE_PERFORMANCE_MONITORING = true')
-    return
-  }
-  
-  console.log('⚡ Optimizing performance...')
-  
-  const monitor = getPerformanceMonitor()
-  const engine = getOptimizedPositioningEngine()
-  
-  // Clear caches and optimize memory
-  monitor.clearCache()
-  engine.optimizeMemoryUsage()
-  
-  // Force garbage collection if available
-  if ('gc' in window && typeof (window as any).gc === 'function') {
-    (window as any).gc()
-  }
-  
-  // Update performance report
-  performanceReport.value = monitor.generatePerformanceReport()
-  
-  console.log('✅ Performance optimization completed')
-}
-
-const exportPerformanceData = () => {
-  try {
-    if (!performanceReport.value) {
-      console.warn('No performance data available')
-      return
-    }
-    
-    const data = JSON.stringify(performanceReport.value, null, 2)
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `performance-report-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
-    console.log('📄 Performance data exported successfully')
-  } catch (error) {
-    console.error('❌ Error exporting performance data:', error)
-  }
-}
-
-// Cleanup function for component unmount
-const cleanup = () => {
-  if (isPerformanceMonitoringEnabled.value) {
-    cleanupPerformanceMonitor()
-    cleanupOptimizedPositioning()
-  }
-}
-
 const rebuildGraph = async () => {
   if (!cy || !cyContainer.value) return
   
-  // Build new elements with validation and debug monitoring
-  const { 
-    nodes, 
-    edges, 
-    laneHeights, 
-    validationResults: newValidationResults, 
-    validationSummary: newValidationSummary,
-    assignmentStats: newAssignmentStats,
-    debugReport: newDebugReport
-  } = buildGraphElements(gameData.items)
+  // Remove verbose rebuild logging
+  
+  // Build new elements with validation
+  const { nodes, edges, laneHeights, validationResults: newValidationResults, validationSummary: newValidationSummary } = buildGraphElements(gameData.items)
   
   // Update validation state
   validationResults.value = newValidationResults || []
   validationSummary.value = newValidationSummary || null
-  
-  // Update debug state
-  assignmentStats.value = newAssignmentStats || null
-  debugReport.value = newDebugReport || null
   
   // Add material edges if enabled
   if (showMaterialEdges.value) {
@@ -899,14 +451,6 @@ const rebuildGraph = async () => {
   
   // Re-add swim lane visuals
   addSwimLaneVisuals()
-  
-  // Add debug boundary elements if enabled
-  if (showDebugBoundaries.value) {
-    const boundaryElements = generateVisualBoundaryElements()
-    if (boundaryElements.length > 0) {
-      cy.add(boundaryElements)
-    }
-  }
   
   // Re-setup event handlers
   setupEventHandlers()
@@ -1001,10 +545,7 @@ const addSwimLaneVisuals = () => {
       return
     }
     
-    // Only log swimlane creation in debug mode
-    if (debugConfig.value.logLevel === 'debug') {
-      console.log(`📏 Creating swimlane backgrounds for ${allGameNodes.length} nodes`)
-    }
+    console.log(`📏 Creating swimlane backgrounds for ${allGameNodes.length} nodes`)
     
     // Calculate graph bounds for background sizing
     const graphBounds = allGameNodes.boundingBox()
@@ -1651,10 +1192,9 @@ const initializeGraph = async () => {
     const edgeCount = cy.edges().length
     const nodeCount = cy.nodes('.game-node').length
     
-    // Only log graph summary in debug mode
-    if (debugConfig.value.logLevel === 'debug') {
-      console.log(`🗺️ GRAPH SUMMARY: ${nodeCount} nodes, ${edgeCount} edges`)
-    }
+    console.log(`🗺️ GRAPH SUMMARY:`)
+    console.log(`- Total nodes: ${nodeCount}`)
+    console.log(`- Total edges: ${edgeCount}`)
     
     if (edgeCount === 0) {
       console.error('❌ NO EDGES CREATED! Running comprehensive diagnostics...')
@@ -1805,11 +1345,9 @@ const setupEventHandlers = () => {
 }
 
 onMounted(async () => {
-  // Initialize debug monitor configuration
-  updateDebugMonitorConfig(debugConfig.value)
-  
   // Ensure data is loaded
   if (gameData.items.length === 0) {
+    // Remove verbose data loading log
     await gameData.loadGameData()
   }
   
@@ -1817,23 +1355,6 @@ onMounted(async () => {
   
   // Initialize graph
   await initializeGraph()
-  
-  // Initialize performance monitoring only if explicitly enabled
-  if (isPerformanceMonitoringEnabled.value) {
-    performanceMonitor.value = initializePerformanceMonitor({
-      enableCaching: true,
-      enableBatching: true,
-      enableMemoryOptimization: true,
-      profileMemoryUsage: true,
-      trackRenderTimes: true
-    })
-    performanceReport.value = performanceMonitor.value.generatePerformanceReport()
-  }
-})
-
-onUnmounted(() => {
-  // Cleanup performance monitoring and optimized positioning
-  cleanup()
 })
 </script>
 

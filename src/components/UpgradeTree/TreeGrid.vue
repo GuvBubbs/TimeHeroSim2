@@ -1,17 +1,5 @@
 <template>
   <div class="tree-grid-container">
-    <!-- Swimlane labels (fixed position on left) -->
-    <div class="swimlane-labels">
-      <div 
-        v-for="swimlane in swimlanes"
-        :key="swimlane.id"
-        class="swimlane-label"
-        :style="getSwimlaneLabel(swimlane)"
-      >
-        {{ swimlane.label }}
-      </div>
-    </div>
-    
     <!-- Scrollable grid area -->
     <div class="tree-grid-scroll">
       <div 
@@ -19,12 +7,31 @@
         :style="gridStyle"
         @click="handleBackgroundClick"
       >
-        <!-- Swimlane backgrounds -->
-        <div 
+        <!-- Grid lines -->
+        <div class="grid-lines">
+          <!-- Vertical lines -->
+          <div 
+            v-for="col in maxColumns"
+            :key="`col-${col}`"
+            class="grid-line-vertical"
+            :style="getVerticalLineStyle(col)"
+          />
+          <!-- Horizontal lines -->
+          <div 
+            v-for="(line, index) in horizontalLines"
+            :key="`row-${index}`"
+            class="grid-line-horizontal"
+            :style="line"
+          />
+        </div>
+        <!-- Swimlanes -->
+        <SwimLaneComponent
           v-for="swimlane in swimlanes"
-          :key="`bg-${swimlane.id}`"
-          class="swimlane-background"
-          :style="getSwimlaneBackgroundStyle(swimlane)"
+          :key="swimlane.id"
+          :swimlane="swimlane"
+          :start-y="getSwimlaneStartY(swimlane.id)"
+          :height="getSwimlaneHeight(swimlane)"
+          :grid-config="gridConfig"
         />
         
         <!-- Tree nodes -->
@@ -47,7 +54,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { TreeNode, Swimlane } from '@/types/upgrade-tree'
-import TreeNodeComponent from './TreeNode.vue'
+import TreeNodeComponent from '@/components/UpgradeTree/TreeNode.vue'
+import SwimLaneComponent from '@/components/UpgradeTree/SwimLane.vue'
 
 interface Props {
   nodes: TreeNode[]
@@ -78,21 +86,20 @@ const gridStyle = computed(() => {
     const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
     
     if (swimlaneNodes.length === 0) {
-      // Empty swimlane - minimal height
-      totalHeight += props.gridConfig.swimlanePadding * 2 + props.gridConfig.rowHeight
+      // Empty swimlane - use single row height for grid alignment
+      totalHeight += props.gridConfig.rowHeight + props.gridConfig.rowGap
     } else {
       // Find the maximum row number (could be fractional from spacing)
       const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
       
-      // Calculate height: (maxRow + 1) * row spacing + padding
+      // Calculate height: (maxRow + 1) * row spacing (no extra padding)
       const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
-      const swimlaneHeight = rowSpace + (props.gridConfig.swimlanePadding * 2)
-      totalHeight += swimlaneHeight
+      totalHeight += rowSpace
     }
   })
   
-  // Add some bottom padding
-  totalHeight += props.gridConfig.swimlanePadding
+  // Add minimal bottom padding
+  totalHeight += props.gridConfig.rowGap
   
   return {
     width: `${totalWidth}px`,
@@ -101,17 +108,63 @@ const gridStyle = computed(() => {
   }
 })
 
+// Generate aligned grid lines
+const maxColumns = computed(() => {
+  return Math.max(0, ...props.nodes.map(n => n.column || 0)) + 2
+})
+
+const horizontalLines = computed(() => {
+  const lines: Array<{ top: string; left: string; width: string; height: string }> = []
+  
+  // Create regular grid lines instead of swimlane-based lines
+  const totalGridHeight = parseInt(gridStyle.value.height?.toString() || '0')
+  const lineSpacing = props.gridConfig.rowHeight + props.gridConfig.rowGap // 60px
+  
+  for (let y = 0; y < totalGridHeight; y += lineSpacing) {
+    lines.push({
+      top: `${y}px`,
+      left: '0',
+      width: '100%',
+      height: '1px'
+    })
+  }
+  
+  return lines
+})
+
+function getVerticalLineStyle(col: number) {
+  const x = props.gridConfig.labelWidth + (col * (props.gridConfig.columnWidth + props.gridConfig.columnGap))
+  return {
+    position: 'absolute' as const,
+    top: '0',
+    left: `${x}px`,
+    width: '1px',
+    height: '100%'
+  }
+}
+
 // Get style for individual nodes
 function getNodeStyle(node: TreeNode) {
   if (node.column === undefined || node.row === undefined) {
     return { display: 'none' }
   }
   
-  const x = props.gridConfig.labelWidth + 
-           (node.column * (props.gridConfig.columnWidth + props.gridConfig.columnGap))
-  const y = props.getSwimlaneStartY(node.swimlane) + 
-           (node.row * (props.gridConfig.rowHeight + props.gridConfig.rowGap))
+  // Calculate base grid position
+  const baseX = props.gridConfig.labelWidth + 
+               (node.column * (props.gridConfig.columnWidth + props.gridConfig.columnGap))
+  const baseY = props.getSwimlaneStartY(node.swimlane) + 
+               (node.row * (props.gridConfig.rowHeight + props.gridConfig.rowGap))
   
+  // Add centering offsets to position node in center of grid cell
+  // Grid cell is 220px wide, node is 180px wide
+  // But we need to center the VISUAL CONTENT, not just the box
+  // The visual content is offset by padding (8px) from the box edges
+  const centerOffsetX = (props.gridConfig.columnWidth - props.gridConfig.nodeWidth) / 2 + 16 // Fine-tuned for perfect horizontal centering
+  const centerOffsetY = (props.gridConfig.rowHeight - props.gridConfig.nodeHeight) / 2 + 5 // Fine-tuned for perfect vertical centering
+  
+  const x = baseX + centerOffsetX
+  const y = baseY + centerOffsetY
+
   return {
     position: 'absolute' as const,
     left: `${x}px`,
@@ -122,65 +175,18 @@ function getNodeStyle(node: TreeNode) {
   }
 }
 
-// Get swimlane background style
-function getSwimlaneBackgroundStyle(swimlane: Swimlane) {
-  const startY = props.getSwimlaneStartY(swimlane.id)
+// Get swimlane height
+function getSwimlaneHeight(swimlane: Swimlane): number {
   const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
   
-  let height: number
   if (swimlaneNodes.length === 0) {
-    // Empty swimlane - minimal height
-    height = props.gridConfig.swimlanePadding * 2 + props.gridConfig.rowHeight
+    // Empty swimlane - use single row height for grid alignment
+    return props.gridConfig.rowHeight + props.gridConfig.rowGap
   } else {
     // Calculate height based on actual row usage (matching store logic)
     const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
     const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
-    height = rowSpace + (props.gridConfig.swimlanePadding * 2)
-  }
-  
-  // Convert hex color to RGB for opacity
-  const hex = swimlane.color.replace('#', '')
-  const r = parseInt(hex.substr(0, 2), 16)
-  const g = parseInt(hex.substr(2, 2), 16)
-  const b = parseInt(hex.substr(4, 2), 16)
-  
-  return {
-    position: 'absolute' as const,
-    left: '0',
-    top: `${startY - props.gridConfig.swimlanePadding}px`,
-    width: '100%',
-    height: `${height}px`,
-    background: `linear-gradient(to right, rgba(${r}, ${g}, ${b}, 0.15), rgba(${r}, ${g}, ${b}, 0.05))`,
-    borderLeft: `4px solid ${swimlane.color}`,
-    zIndex: 0
-  }
-}
-
-// Get swimlane label style
-function getSwimlaneLabel(swimlane: Swimlane) {
-  const startY = props.getSwimlaneStartY(swimlane.id)
-  const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
-  
-  let height: number
-  if (swimlaneNodes.length === 0) {
-    // Empty swimlane - minimal height
-    height = props.gridConfig.swimlanePadding * 2 + props.gridConfig.rowHeight
-  } else {
-    // Calculate height based on actual row usage (matching store logic)
-    const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
-    const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
-    height = rowSpace + (props.gridConfig.swimlanePadding * 2)
-  }
-  
-  return {
-    position: 'absolute' as const,
-    left: '0',
-    top: `${startY - props.gridConfig.swimlanePadding}px`,
-    width: `${props.gridConfig.labelWidth}px`,
-    height: `${height}px`,
-    color: swimlane.color,
-    borderRight: `1px solid rgba(255, 255, 255, 0.1)`,
-    zIndex: 1
+    return rowSpace
   }
 }
 
@@ -210,28 +216,10 @@ function handleBackgroundClick(event: MouseEvent) {
 <style scoped>
 .tree-grid-container {
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
-  position: relative;
   background: #1a1a1a; /* Dark background */
-}
-
-.swimlane-labels {
-  flex-shrink: 0;
-  position: relative;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 3;
-}
-
-.swimlane-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.875rem;
-  text-align: center;
-  padding: 0.5rem;
-  writing-mode: horizontal-tb;
 }
 
 .tree-grid-scroll {
@@ -243,32 +231,28 @@ function handleBackgroundClick(event: MouseEvent) {
 .tree-grid {
   min-height: 100%;
   background: transparent;
+  position: relative;
 }
 
-.swimlane-background {
-  pointer-events: none;
-}
-
-/* Show grid lines in development mode */
-.show-grid .tree-grid::before {
-  content: '';
+.grid-lines {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
-    repeating-linear-gradient(0deg, 
-      rgba(255,255,255,0.05) 0px, 
-      rgba(255,255,255,0.05) 1px, 
-      transparent 1px, 
-      transparent 60px),
-    repeating-linear-gradient(90deg, 
-      rgba(255,255,255,0.05) 0px, 
-      rgba(255,255,255,0.05) 1px, 
-      transparent 1px, 
-      transparent 220px);
   pointer-events: none;
   z-index: 1;
+}
+
+.grid-line-vertical {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.grid-line-horizontal {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.03);
+  pointer-events: none;
 }
 </style>

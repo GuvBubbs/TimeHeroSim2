@@ -85,7 +85,7 @@ export const GRID_CONFIG: GridConfig = {
   rowHeight: 50,         // Height of each row (reduced from 60)
   columnGap: 40,         // Horizontal gap between nodes (for arrows)
   rowGap: 10,            // Vertical gap between nodes (reduced from 20)
-  swimlanePadding: 12,   // Padding inside swimlanes (reduced from 16)
+  swimlanePadding: 0,    // No padding - use grid alignment instead
   labelWidth: 120,       // Width reserved for swimlane labels
   
   // Node dimensions

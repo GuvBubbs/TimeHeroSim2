@@ -1,5 +1,6 @@
 <template>
   <div 
+    ref="nodeRef"
     class="tree-node"
     :class="{ 
       highlighted: highlighted,
@@ -30,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { TreeNode } from '@/types/upgrade-tree'
 
 interface Props {
@@ -46,6 +47,8 @@ defineEmits<{
   'node-click': []
   'edit-click': []
 }>()
+
+const nodeRef = ref<HTMLElement>()
 
 // Compute node border color based on swimlane
 const nodeStyle = computed(() => ({
@@ -66,10 +69,10 @@ const nodeStyle = computed(() => ({
   grid-template-columns: 24px 1fr 24px;
   align-items: center;
   gap: 0.5rem;
-  height: 36px;
-  width: 180px;
+  /* Remove fixed dimensions - let parent control via inline styles */
   position: relative;
   color: white;
+  box-sizing: border-box; /* Ensure consistent box model */
 }
 
 .node-icon {

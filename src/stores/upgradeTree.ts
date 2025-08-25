@@ -79,21 +79,20 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
       // Calculate height for this swimlane based on actual row usage
       const swimlaneNodesInThisLane = swimlaneNodes.value[swimlane.id] || []
       if (swimlaneNodesInThisLane.length === 0) {
-        // Empty swimlane - minimal height
-        y += gridConfig.value.swimlanePadding * 2 + gridConfig.value.rowHeight
+        // Empty swimlane - use single row height for grid alignment
+        y += gridConfig.value.rowHeight + gridConfig.value.rowGap
         continue
       }
       
       // Find the maximum row number (could be fractional)
       const maxRow = Math.max(0, ...swimlaneNodesInThisLane.map(n => n.row || 0))
       
-      // Calculate height: (maxRow + 1) * row spacing + padding
+      // Calculate height: (maxRow + 1) * row spacing (no extra padding)
       const rowSpace = (maxRow + 1) * (gridConfig.value.rowHeight + gridConfig.value.rowGap)
-      const swimlaneHeight = rowSpace + (gridConfig.value.swimlanePadding * 2)
-      y += swimlaneHeight
+      y += rowSpace
     }
     
-    return y + gridConfig.value.swimlanePadding
+    return y
   }
 
   // Helper to get swimlane by node type/category

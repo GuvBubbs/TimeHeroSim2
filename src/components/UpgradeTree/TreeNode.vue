@@ -18,19 +18,6 @@
       {{ node.name }}
     </div>
     
-    <!-- Material costs (if any) -->
-    <div class="node-materials" v-if="hasMaterials">
-      <span 
-        v-for="(amount, material) in node.cost.materials" 
-        :key="material"
-        class="material-cost"
-        :title="`${material}: ${amount}`"
-      >
-        <i :class="getMaterialIcon(material)"></i>
-        <span class="material-amount">{{ amount }}</span>
-      </span>
-    </div>
-    
     <!-- Edit button on right -->
     <button 
       class="node-edit-btn"
@@ -65,28 +52,6 @@ const nodeStyle = computed(() => ({
   '--node-color': props.swimlaneColor,
   borderColor: props.highlighted ? '#fbbf24' : props.swimlaneColor
 }))
-
-// Check if node has material costs
-const hasMaterials = computed(() => {
-  return props.node.cost.materials && 
-         Object.keys(props.node.cost.materials).length > 0
-})
-
-// Map materials to Font Awesome icons
-function getMaterialIcon(material: string): string {
-  const iconMap: Record<string, string> = {
-    'Wood': 'fa fa-tree',
-    'Stone': 'fa fa-cube',
-    'Iron': 'fa fa-hammer',
-    'Copper': 'fa fa-coins',
-    'Silver': 'fa fa-gem',
-    'Gold': 'fa fa-coins',
-    'Crystal': 'fa fa-diamond',
-    'Mythril': 'fa fa-star',
-    'Obsidian': 'fa fa-circle'
-  }
-  return iconMap[material] || 'fa fa-box'
-}
 </script>
 
 <style scoped>
@@ -98,10 +63,10 @@ function getMaterialIcon(material: string): string {
   cursor: pointer;
   transition: all 0.2s;
   display: grid;
-  grid-template-columns: 24px 1fr auto 24px;
+  grid-template-columns: 24px 1fr 24px;
   align-items: center;
   gap: 0.5rem;
-  height: 40px;
+  height: 36px;
   width: 180px;
   position: relative;
   color: white;
@@ -125,27 +90,6 @@ function getMaterialIcon(material: string): string {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: white;
-}
-
-.node-materials {
-  display: flex;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-}
-
-.material-cost {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.material-cost i {
-  font-size: 10px;
-}
-
-.material-amount {
-  font-size: 10px;
 }
 
 .node-edit-btn {

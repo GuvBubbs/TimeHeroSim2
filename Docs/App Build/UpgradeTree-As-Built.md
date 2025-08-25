@@ -47,10 +47,12 @@ UpgradeTreeView.vue (Main Container)
 - **Data loading** from existing gameData store
 - **Basic node display** with swimlane organization
 
-### 🔄 Phase 2: Layout Algorithm (PLANNED)
-- Topological sort for column assignment
-- Grouping logic for rows within swimlanes
-- Swimlane height calculation
+### ✅ Phase 2: Layout Algorithm (COMPLETED)
+- **Topological sort** for proper dependency-based column assignment
+- **Grouping logic** for rows within swimlanes (type → category → column)
+- **Swimlane height calculation** with dynamic sizing
+- **Circular dependency detection** with console warnings
+- **Debug logging** for layout validation
 
 ### 🔄 Phase 3: Node Components (PLANNED)  
 - Enhanced TreeNode styling with swimlane colors
@@ -193,17 +195,37 @@ function getSwimlaneForNode(gameItem: GameDataItem): string {
 }
 ```
 
-### Layout System (Current: Basic Grid)
+### Layout System (Current: Topological Sort + Grouping)
 
-**Phase 1 Implementation** (Temporary):
+**Phase 2 Implementation** (Current):
+- **Topological Sort Algorithm**: Kahn's algorithm for dependency-based column assignment
+- **Row Grouping Logic**: Type → Category → Column organization within swimlanes  
+- **Circular Dependency Detection**: DFS-based cycle detection with console warnings
+- **Dynamic Height Calculation**: Swimlanes adjust to actual content requirements
+
+**Algorithm Details**:
+```typescript
+// Column assignment using topological sort (Kahn's algorithm)
+function assignColumns(treeNodes: TreeNode[]): void {
+  // 1. Build dependency graph with in-degrees and adjacency list
+  // 2. Find all nodes with no dependencies (in-degree = 0)
+  // 3. Process nodes level by level, updating dependent levels
+  // 4. Assign computed levels as columns
+}
+
+// Row assignment within swimlanes
+function assignRows(treeNodes: TreeNode[]): void {
+  // 1. Group nodes by swimlane
+  // 2. Within each swimlane: group by type, then by category
+  // 3. Assign sequential rows to categories
+  // 4. Add spacing between type groups
+}
+```
+
+**Phase 1 Implementation** (Legacy):
 - Simple incremental positioning within swimlanes
 - 5-column wrapping (column = count % 5)
 - Row calculation via Math.floor(count / 5)
-
-**Phase 2 Implementation** (Planned):
-- Topological sort for proper dependency ordering
-- Column assignment based on dependency depth
-- Intelligent row grouping by type/category within swimlanes
 
 ## Component Details
 
@@ -506,26 +528,34 @@ src/
 
 **Total Implementation**: ~905 lines of well-structured, documented code
 
-## Next Steps (Phase 2)
+## Next Steps (Phase 3)
 
 ### Immediate Tasks
 
-1. **Topological Sort Algorithm**: 
-   - Implement proper dependency-based column assignment
-   - Handle circular dependency detection
-   - Ensure left-to-right prerequisite flow
+1. **Enhanced Node Components**: 
+   - Improve TreeNode visual styling with better swimlane color integration
+   - Add hover effects and visual feedback improvements
+   - Optimize node layout for better information density
 
-2. **Row Grouping Logic**:
-   - Group by type within swimlanes  
-   - Group by category within types
-   - Maintain consistent row alignment
+2. **SwimLane Component Optimization**:
+   - Create dedicated SwimLane component for better encapsulation
+   - Improve swimlane header styling and information display
+   - Add swimlane-level interaction capabilities
 
-3. **Layout Algorithm Testing**:
-   - Test with real CSV data dependencies
-   - Validate proper ordering and spacing
-   - Handle edge cases (orphan nodes, long chains)
+3. **Visual Design Implementation**:
+   - Implement complete color scheme per design document
+   - Add smooth transitions and animations
+   - Improve overall visual hierarchy and readability
 
-### Success Criteria for Phase 2
+### Success Criteria for Phase 3
+
+- ✅ Enhanced visual design with proper color scheme
+- ✅ Improved node styling and readability
+- ✅ Better component organization and maintainability
+- ✅ Smooth animations and visual feedback
+- ✅ Consistent styling with rest of application
+
+### Previous Success Criteria (Phase 2) - ✅ COMPLETED
 
 - ✅ All prerequisites appear left of their dependents
 - ✅ No node overlap or collision
@@ -535,6 +565,7 @@ src/
 
 ---
 
-*Document created: {{ new Date().toISOString() }}*  
+*Document updated: {{ new Date().toISOString() }}*  
 *Phase 1 Status: ✅ COMPLETE*  
-*Current Phase: Ready for Phase 2 Implementation*
+*Phase 2 Status: ✅ COMPLETE*  
+*Current Phase: Ready for Phase 3 Implementation*

@@ -82,15 +82,15 @@ export const SWIMLANES: Swimlane[] = [
 // Grid configuration from design document
 export const GRID_CONFIG: GridConfig = {
   columnWidth: 220,      // Width of each column
-  rowHeight: 60,         // Height of each row
+  rowHeight: 50,         // Height of each row (reduced from 60)
   columnGap: 40,         // Horizontal gap between nodes (for arrows)
-  rowGap: 20,            // Vertical gap between nodes
-  swimlanePadding: 16,   // Padding inside swimlanes
+  rowGap: 10,            // Vertical gap between nodes (reduced from 20)
+  swimlanePadding: 12,   // Padding inside swimlanes (reduced from 16)
   labelWidth: 120,       // Width reserved for swimlane labels
   
   // Node dimensions
   nodeWidth: 180,
-  nodeHeight: 40,
+  nodeHeight: 36,        // Node height (reduced from 40)
   
   // Arrow routing
   arrowPadding: 8,       // Space between arrow and node edge

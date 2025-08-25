@@ -76,10 +76,20 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
         break
       }
       
-      // Add height for this swimlane
-      const swimlaneNodeCount = swimlaneNodes.value[swimlane.id]?.length || 0
-      const maxRow = Math.max(0, ...swimlaneNodes.value[swimlane.id]?.map(n => n.row || 0) || [0])
-      const swimlaneHeight = (maxRow + 1) * (gridConfig.value.rowHeight + gridConfig.value.rowGap) + (gridConfig.value.swimlanePadding * 2)
+      // Calculate height for this swimlane based on actual row usage
+      const swimlaneNodesInThisLane = swimlaneNodes.value[swimlane.id] || []
+      if (swimlaneNodesInThisLane.length === 0) {
+        // Empty swimlane - minimal height
+        y += gridConfig.value.swimlanePadding * 2 + gridConfig.value.rowHeight
+        continue
+      }
+      
+      // Find the maximum row number (could be fractional)
+      const maxRow = Math.max(0, ...swimlaneNodesInThisLane.map(n => n.row || 0))
+      
+      // Calculate height: (maxRow + 1) * row spacing + padding
+      const rowSpace = (maxRow + 1) * (gridConfig.value.rowHeight + gridConfig.value.rowGap)
+      const swimlaneHeight = rowSpace + (gridConfig.value.swimlanePadding * 2)
       y += swimlaneHeight
     }
     
@@ -227,9 +237,8 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
       // Build connections
       connections.value = buildConnections(treeNodes)
       
-      // TODO: In Phase 2, we'll add the layout algorithm here
-      // For now, just set basic positions
-      assignBasicPositions(treeNodes)
+      // Apply Phase 2 layout algorithm
+      assignLayoutPositions(treeNodes)
       
     } catch (error) {
       loadError.value = error instanceof Error ? error.message : 'Failed to load tree data'
@@ -262,6 +271,249 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     })
     
     return connections
+  }
+
+  // Phase 2: Proper layout algorithm with topological sort and grouping
+  function assignLayoutPositions(treeNodes: TreeNode[]): void {
+    // Validate for circular dependencies first
+    const circularDeps = detectCircularDependencies(treeNodes)
+    if (circularDeps.length > 0) {
+      console.warn('Circular dependencies detected:', circularDeps)
+      // For now, continue with layout but log the issues
+    }
+    
+    // Phase 1: Assign columns using topological sort
+    assignColumns(treeNodes)
+    
+    // Phase 2: Assign rows within swimlanes using grouping logic
+    assignRows(treeNodes)
+    
+    // Debug logging
+    console.log('Layout complete:', {
+      totalNodes: treeNodes.length,
+      maxColumn: Math.max(0, ...treeNodes.map(n => n.column || 0)),
+      swimlaneBreakdown: getSwimlaneBreakdown(treeNodes),
+      sampleNodePositions: treeNodes.slice(0, 3).map(n => ({
+        id: n.id,
+        name: n.name,
+        swimlane: n.swimlane,
+        column: n.column,
+        row: n.row
+      }))
+    })
+  }
+
+  // Detect circular dependencies
+  function detectCircularDependencies(treeNodes: TreeNode[]): string[][] {
+    const nodeMap = new Map<string, TreeNode>()
+    treeNodes.forEach(node => nodeMap.set(node.id, node))
+    
+    const visited = new Set<string>()
+    const recursionStack = new Set<string>()
+    const cycles: string[][] = []
+    
+    function dfs(nodeId: string, path: string[]): void {
+      if (recursionStack.has(nodeId)) {
+        // Found a cycle
+        const cycleStart = path.indexOf(nodeId)
+        cycles.push(path.slice(cycleStart).concat(nodeId))
+        return
+      }
+      
+      if (visited.has(nodeId)) return
+      
+      visited.add(nodeId)
+      recursionStack.add(nodeId)
+      path.push(nodeId)
+      
+      const node = nodeMap.get(nodeId)
+      if (node) {
+        node.prerequisites.forEach(prereqId => {
+          if (nodeMap.has(prereqId)) {
+            dfs(prereqId, [...path])
+          }
+        })
+      }
+      
+      recursionStack.delete(nodeId)
+      path.pop()
+    }
+    
+    treeNodes.forEach(node => {
+      if (!visited.has(node.id)) {
+        dfs(node.id, [])
+      }
+    })
+    
+    return cycles
+  }
+
+  // Get breakdown of nodes by swimlane for debugging
+  function getSwimlaneBreakdown(treeNodes: TreeNode[]): Record<string, number> {
+    const breakdown: Record<string, number> = {}
+    treeNodes.forEach(node => {
+      breakdown[node.swimlane] = (breakdown[node.swimlane] || 0) + 1
+    })
+    return breakdown
+  }
+
+  // Topological sort for column assignment (dependency depth)
+  function assignColumns(treeNodes: TreeNode[]): void {
+    const nodeMap = new Map<string, TreeNode>()
+    const inDegree = new Map<string, number>()
+    const adjList = new Map<string, string[]>()
+    
+    // Build graph structures
+    treeNodes.forEach(node => {
+      nodeMap.set(node.id, node)
+      inDegree.set(node.id, 0)
+      adjList.set(node.id, [])
+    })
+    
+    // Calculate in-degrees and adjacency list
+    treeNodes.forEach(node => {
+      node.prerequisites.forEach(prereqId => {
+        if (nodeMap.has(prereqId)) {
+          // prereqId -> node.id (dependency edge)
+          const adj = adjList.get(prereqId) || []
+          adj.push(node.id)
+          adjList.set(prereqId, adj)
+          
+          // Increase in-degree for dependent node
+          inDegree.set(node.id, (inDegree.get(node.id) || 0) + 1)
+        }
+      })
+    })
+    
+    // Topological sort using Kahn's algorithm
+    const queue: string[] = []
+    const levels = new Map<string, number>()
+    
+    // Find all nodes with no dependencies (in-degree = 0)
+    for (const [nodeId, degree] of inDegree.entries()) {
+      if (degree === 0) {
+        queue.push(nodeId)
+        levels.set(nodeId, 0)
+      }
+    }
+    
+    // Process nodes level by level
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      const currentLevel = levels.get(currentId)!
+      
+      // Process all dependents
+      const dependents = adjList.get(currentId) || []
+      dependents.forEach(dependentId => {
+        // Reduce in-degree
+        const newInDegree = (inDegree.get(dependentId) || 0) - 1
+        inDegree.set(dependentId, newInDegree)
+        
+        // Update level (max of all prerequisite levels + 1)
+        const currentDependentLevel = levels.get(dependentId) || 0
+        const newLevel = Math.max(currentDependentLevel, currentLevel + 1)
+        levels.set(dependentId, newLevel)
+        
+        // If all prerequisites processed, add to queue
+        if (newInDegree === 0) {
+          queue.push(dependentId)
+        }
+      })
+    }
+    
+    // Assign computed levels as columns
+    treeNodes.forEach(node => {
+      node.column = levels.get(node.id) || 0
+    })
+    
+    // Handle orphan nodes (not in dependency graph)
+    treeNodes.forEach(node => {
+      if (node.column === undefined) {
+        node.column = 0
+      }
+    })
+  }
+
+  // Row assignment within swimlanes using grouping logic
+  function assignRows(treeNodes: TreeNode[]): void {
+    // Group nodes by swimlane
+    const swimlaneGroups = new Map<string, TreeNode[]>()
+    
+    treeNodes.forEach(node => {
+      const swimlane = node.swimlane
+      if (!swimlaneGroups.has(swimlane)) {
+        swimlaneGroups.set(swimlane, [])
+      }
+      swimlaneGroups.get(swimlane)!.push(node)
+    })
+    
+    // Process each swimlane independently
+    swimlaneGroups.forEach((nodes, swimlaneId) => {
+      assignRowsInSwimlane(nodes, swimlaneId)
+    })
+  }
+
+  // Assign rows within a single swimlane
+  function assignRowsInSwimlane(nodes: TreeNode[], swimlaneId: string): void {
+    // Group by type, then by category, then by column
+    const typeGroups = new Map<string, TreeNode[]>()
+    
+    nodes.forEach(node => {
+      const type = node.type || 'unknown'
+      if (!typeGroups.has(type)) {
+        typeGroups.set(type, [])
+      }
+      typeGroups.get(type)!.push(node)
+    })
+    
+    let currentRow = 0
+    
+    // Process each type group
+    typeGroups.forEach((typeNodes, type) => {
+      // Group by category within type
+      const categoryGroups = new Map<string, TreeNode[]>()
+      
+      typeNodes.forEach(node => {
+        const category = node.category || 'unknown'
+        if (!categoryGroups.has(category)) {
+          categoryGroups.set(category, [])
+        }
+        categoryGroups.get(category)!.push(node)
+      })
+      
+      // Process each category group
+      categoryGroups.forEach((categoryNodes, category) => {
+        // Sort by column to maintain left-to-right reading order
+        categoryNodes.sort((a, b) => (a.column || 0) - (b.column || 0))
+        
+        // Group by column for same-row placement
+        const columnGroups = new Map<number, TreeNode[]>()
+        categoryNodes.forEach(node => {
+          const column = node.column || 0
+          if (!columnGroups.has(column)) {
+            columnGroups.set(column, [])
+          }
+          columnGroups.get(column)!.push(node)
+        })
+        
+        // Assign rows: nodes in same column of same category share the same row
+        columnGroups.forEach((columnNodes, column) => {
+          columnNodes.forEach(node => {
+            node.row = currentRow
+          })
+        })
+        
+        // Move to next row for next category
+        currentRow++
+      })
+      
+      // Add one row spacing between type groups (only if we have more types coming)
+      const typeEntries = Array.from(typeGroups.entries())
+      const currentTypeIndex = typeEntries.findIndex(([t]) => t === type)
+      if (currentTypeIndex < typeEntries.length - 1) {
+        currentRow++ // One full row gap between different types
+      }
+    })
   }
 
   // Temporary basic positioning (Phase 2 will replace this with proper algorithm)

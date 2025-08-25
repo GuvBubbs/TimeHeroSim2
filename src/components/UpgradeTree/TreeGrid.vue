@@ -70,17 +70,29 @@ const emit = defineEmits<{
 const gridStyle = computed(() => {
   const maxColumn = Math.max(0, ...props.nodes.map(n => n.column || 0))
   const totalWidth = props.gridConfig.labelWidth + 
-                    (maxColumn + 1) * (props.gridConfig.columnWidth + props.gridConfig.columnGap)
+                    (maxColumn + 2) * (props.gridConfig.columnWidth + props.gridConfig.columnGap) // +2 for padding
   
-  // Calculate total height by adding up all swimlane heights
+  // Calculate total height by adding up all swimlane heights (matching store logic)
   let totalHeight = 0
   props.swimlanes.forEach(swimlane => {
     const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
-    const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
-    const swimlaneHeight = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap) + 
-                          (props.gridConfig.swimlanePadding * 2)
-    totalHeight += swimlaneHeight
+    
+    if (swimlaneNodes.length === 0) {
+      // Empty swimlane - minimal height
+      totalHeight += props.gridConfig.swimlanePadding * 2 + props.gridConfig.rowHeight
+    } else {
+      // Find the maximum row number (could be fractional from spacing)
+      const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
+      
+      // Calculate height: (maxRow + 1) * row spacing + padding
+      const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
+      const swimlaneHeight = rowSpace + (props.gridConfig.swimlanePadding * 2)
+      totalHeight += swimlaneHeight
+    }
   })
+  
+  // Add some bottom padding
+  totalHeight += props.gridConfig.swimlanePadding
   
   return {
     width: `${totalWidth}px`,
@@ -114,9 +126,17 @@ function getNodeStyle(node: TreeNode) {
 function getSwimlaneBackgroundStyle(swimlane: Swimlane) {
   const startY = props.getSwimlaneStartY(swimlane.id)
   const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
-  const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
-  const height = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap) + 
-                (props.gridConfig.swimlanePadding * 2)
+  
+  let height: number
+  if (swimlaneNodes.length === 0) {
+    // Empty swimlane - minimal height
+    height = props.gridConfig.swimlanePadding * 2 + props.gridConfig.rowHeight
+  } else {
+    // Calculate height based on actual row usage (matching store logic)
+    const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
+    const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
+    height = rowSpace + (props.gridConfig.swimlanePadding * 2)
+  }
   
   // Convert hex color to RGB for opacity
   const hex = swimlane.color.replace('#', '')
@@ -140,9 +160,17 @@ function getSwimlaneBackgroundStyle(swimlane: Swimlane) {
 function getSwimlaneLabel(swimlane: Swimlane) {
   const startY = props.getSwimlaneStartY(swimlane.id)
   const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
-  const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
-  const height = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap) + 
-                (props.gridConfig.swimlanePadding * 2)
+  
+  let height: number
+  if (swimlaneNodes.length === 0) {
+    // Empty swimlane - minimal height
+    height = props.gridConfig.swimlanePadding * 2 + props.gridConfig.rowHeight
+  } else {
+    // Calculate height based on actual row usage (matching store logic)
+    const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
+    const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
+    height = rowSpace + (props.gridConfig.swimlanePadding * 2)
+  }
   
   return {
     position: 'absolute' as const,

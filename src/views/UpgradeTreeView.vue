@@ -60,22 +60,45 @@
       />
     </div>
     
-    <!-- Edit modal (reused from Configuration screen) -->
-    <!-- TODO: In Phase 6, we'll add the edit modal integration -->
+    <!-- Phase 6: Edit Modal Integration -->
+    <EditItemModal 
+      :show="!!editingNode"
+      :item="editingNodeData"
+      @save="handleSaveNode"
+      @close="handleCloseEdit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref, nextTick } from 'vue'
 import { useUpgradeTreeStore } from '@/stores/upgradeTree'
+import { useGameDataStore } from '@/stores/gameData'
 import type { TreeNode, Connection } from '@/types/upgrade-tree'
+import type { GameDataItem } from '@/types/game-data'
 import TreeGrid from '@/components/UpgradeTree/TreeGrid.vue'
+import EditItemModal from '@/components/GameConfiguration/EditItemModal.vue'
 
 const treeStore = useUpgradeTreeStore()
+const gameDataStore = useGameDataStore()
+
+// Phase 6: Edit modal state
+const editingNode = ref<TreeNode | null>(null)
+const editingNodeData = ref<GameDataItem | null>(null)
 
 // Load data when component mounts
 onMounted(async () => {
   await treeStore.loadTreeData()
+  
+  // Debug: Log some sample data to help troubleshoot
+  console.log('Tree loaded with nodes:', treeStore.nodes.length)
+  if (treeStore.nodes.length > 0) {
+    console.log('Sample node:', treeStore.nodes[0])
+  }
+  console.log('GameData items loaded:', gameDataStore.items.length)
+  if (gameDataStore.items.length > 0) {
+    console.log('Sample gameData item:', gameDataStore.items[0])
+  }
 })
 
 // Handle node body click (enhanced with modifier key support)
@@ -101,10 +124,102 @@ function handleNodeClick(node: TreeNode, event?: MouseEvent) {
   }
 }
 
-// Handle edit button click
-function handleEditClick(node: TreeNode) {
-  // TODO: In Phase 6, implement edit modal
-  console.log('Edit node:', node)
+// Handle edit click from tree nodes
+async function handleEditClick(node: TreeNode) {
+  console.log('Edit clicked for node:', node.id)
+  
+  // Find the original item data for editing
+  const originalItem = treeStore.findOriginalGameDataItem(node)
+  
+  if (!originalItem) {
+    console.error('Could not find original data for node:', node.id)
+    return
+  }
+
+  // Set up modal with the original data
+  editingNodeData.value = { ...originalItem } // Set data first
+  
+  // Use nextTick to ensure data is set before showing modal
+  nextTick(() => {
+    editingNode.value = node // This triggers the modal to show
+  })
+}
+
+// Handle modal save
+async function handleSaveNode(updatedItem: GameDataItem | Record<string, any>) {
+  if (!editingNode.value) return
+  
+  // Ensure we have a GameDataItem (cast if needed)
+  const gameItem = updatedItem as GameDataItem
+  
+  const fileName = treeStore.getSourceFileForNode(editingNode.value)
+  
+  try {
+    // Find the original item and update it in the gameData store
+    const originalItem = treeStore.findOriginalGameDataItem(editingNode.value)
+    if (!originalItem) {
+      throw new Error(`Original item not found for ${editingNode.value.id}`)
+    }
+    
+    // Update the item in the gameData store items array
+    const itemIndex = gameDataStore.items.findIndex(item => 
+      item.id === originalItem.id && item.sourceFile === originalItem.sourceFile
+    )
+    
+    if (itemIndex === -1) {
+      throw new Error(`Item not found in gameData store: ${originalItem.id}`)
+    }
+    
+    // Replace the item with updated data
+    gameDataStore.items[itemIndex] = { ...gameItem }
+    
+    // Close modal
+    handleCloseEdit()
+    
+    // Reload tree data to reflect changes
+    await treeStore.reloadAfterEdit()
+    
+    console.log('✅ Node updated successfully:', gameItem.id)
+    
+  } catch (error) {
+    console.error('❌ Failed to save node changes:', error)
+    // TODO: Add user-facing error notification
+    alert(`Failed to save changes: ${error}`)
+  }
+}
+
+// Handle modal close/cancel
+function handleCloseEdit() {
+  editingNode.value = null
+  editingNodeData.value = null
+}
+
+// Debug function to test data availability
+function debugData() {
+  console.log('=== DEBUG DATA ===')
+  console.log('GameData items:', gameDataStore.items.length)
+  console.log('Tree nodes:', treeStore.nodes.length)
+  
+  if (gameDataStore.items.length > 0) {
+    console.log('Sample gameData item:', gameDataStore.items[0])
+  }
+  
+  if (treeStore.nodes.length > 0) {
+    console.log('Sample tree node:', treeStore.nodes[0])
+    
+    // Test the mapping for first node
+    const firstNode = treeStore.nodes[0]
+    const sourceFile = treeStore.getSourceFileForNode(firstNode)
+    const foundItem = gameDataStore.items.find(item => 
+      item.id === firstNode.id && item.sourceFile === sourceFile
+    )
+    console.log('Can find first node in gameData?', foundItem ? 'YES' : 'NO')
+    console.log('First node ID:', firstNode.id)
+    console.log('Source file:', sourceFile)
+    console.log('Found item:', foundItem)
+  }
+  
+  console.log('=== END DEBUG ===')
 }
 
 // Handle clicking on background (exit highlight mode)

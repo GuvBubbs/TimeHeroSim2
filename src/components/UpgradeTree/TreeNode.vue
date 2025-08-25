@@ -21,7 +21,7 @@
     <!-- Edit button centered -->
     <button 
       class="node-edit-btn"
-      @click.stop="$emit('edit-click')"
+      @click.stop="$emit('edit-click', node)"
       title="Edit"
     >
       <i class="fa fa-edit"></i>
@@ -50,7 +50,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 defineEmits<{
   'node-click': [event: MouseEvent]
-  'edit-click': []
+  'edit-click': [node: TreeNode]
   'node-hover': [isHovering: boolean]
 }>()
 

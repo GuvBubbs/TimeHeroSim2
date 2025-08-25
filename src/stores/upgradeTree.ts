@@ -922,6 +922,87 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     return highlightedNodes.value.has(nodeId)
   }
 
+  // Phase 6: Edit Integration Methods
+  
+  // Get source CSV file for a tree node (reverse of getSwimlaneForNode)
+  function getSourceFileForNode(node: TreeNode): string {
+    const swimlane = node.swimlane
+    
+    // Map swimlanes back to their source files (must match exactly with CSV_FILE_LIST)
+    switch (swimlane) {
+      case 'farm': return 'farm_actions.csv'
+      case 'forge': return 'forge_actions.csv'
+      case 'tower': return 'tower_actions.csv'
+      case 'town-vendors': return 'vendors.csv'
+      case 'town-blacksmith': return 'town_blacksmith.csv'
+      case 'town-agronomist': return 'town_agronomist.csv'
+      case 'town-carpenter': return 'town_carpenter.csv'
+      case 'town-land': return 'town_land_steward.csv'
+      case 'town-trader': return 'town_material_trader.csv'  // This was the key issue!
+      case 'town-skills': return 'town_skills_trainer.csv'
+      case 'adventure': return 'adventures.csv'
+      case 'mining': return 'mining.csv'
+      default:
+        console.warn(`Unknown swimlane for file mapping: ${swimlane}`)
+        return 'farm_actions.csv' // fallback
+    }
+  }
+
+  // Find the original GameDataItem for a TreeNode
+  function findOriginalGameDataItem(node: TreeNode): GameDataItem | null {
+    const gameDataStore = useGameDataStore()
+    const sourceFile = getSourceFileForNode(node)
+    
+    console.log('Finding original item for:', { nodeId: node.id, sourceFile, totalItems: gameDataStore.items.length })
+    
+    // Find item by ID in the appropriate source file
+    const item = gameDataStore.items.find(item => 
+      item.id === node.id && item.sourceFile === sourceFile
+    )
+    
+    if (!item) {
+      console.log('Item not found. Available items in source file:', 
+        gameDataStore.items.filter(i => i.sourceFile === sourceFile).map(i => i.id).slice(0, 10)
+      )
+    }
+    
+    return item || null
+  }
+
+  // Reload tree data while preserving highlight state
+  async function reloadAfterEdit(): Promise<void> {
+    // Store current state
+    const wasHighlighted = highlightMode.value
+    const selectedId = selectedNodeId.value
+    const wasMultiSelect = multiSelectMode.value
+    const currentSelectedNodes = new Set(selectedNodes.value)
+    
+    // Reload tree data
+    await loadTreeData()
+    
+    // Restore highlight state if nodes still exist
+    if (wasHighlighted && selectedId) {
+      const nodeExists = nodes.value.some(n => n.id === selectedId)
+      if (nodeExists) {
+        if (wasMultiSelect && currentSelectedNodes.size > 1) {
+          // Restore multi-select mode
+          enterHighlightMode(selectedId)
+          toggleMultiSelectMode(true)
+          
+          // Re-select all nodes that still exist
+          currentSelectedNodes.forEach((nodeId: string) => {
+            if (nodes.value.some(n => n.id === nodeId) && nodeId !== selectedId) {
+              enterHighlightMode(nodeId, true)
+            }
+          })
+        } else {
+          // Restore single selection
+          enterHighlightMode(selectedId)
+        }
+      }
+    }
+  }
+
   return {
     // State
     nodes,
@@ -964,6 +1045,11 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     getNodeConnectionType,
     buildDependencyTree,
     findAllPrerequisites,
-    findAllDependents
+    findAllDependents,
+    
+    // Phase 6: Edit integration
+    getSourceFileForNode,
+    findOriginalGameDataItem,
+    reloadAfterEdit
   }
 })

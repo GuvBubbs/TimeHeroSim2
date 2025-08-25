@@ -417,7 +417,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, watchEffect } from 'vue'
 import { useConfigurationStore } from '@/stores/configuration'
 import type { GameDataItem } from '@/types/game-data'
 
@@ -651,7 +651,7 @@ watch(() => formData.value.materialsGainArray, (newArray) => {
 
 // Watch for prop changes
 watch(() => props.show, (newShow) => {
-  if (newShow) {
+  if (newShow && props.item) {
     initializeForm()
     nextTick(() => {
       // Focus first input
@@ -660,6 +660,12 @@ watch(() => props.show, (newShow) => {
         (firstInput as HTMLElement).focus()
       }
     })
+  }
+})
+
+watch(() => props.item, (newItem) => {
+  if (props.show && newItem) {
+    initializeForm()
   }
 })
 

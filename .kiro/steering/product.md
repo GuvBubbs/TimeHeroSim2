@@ -1,4 +1,4 @@
-@# Time Hero Simulator - Product Overview
+# Time Hero Simulator - Product Overview
 
 ## What is this?
 The Time Hero Simulator is a web-based game balance testing tool for Time Hero, an idle farming game for the Playdate console. It validates the game economy through statistical simulation, helping identify bottlenecks and optimize the 3-4 week player journey from tutorial to endgame.

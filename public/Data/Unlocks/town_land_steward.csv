@@ -1,4 +1,4 @@
 id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-homestead_deed,Homestead Deed,farm_stage_2,deed,land_deed,1500,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Expands plots 20->40; unlocks Stage 3 cleanups
-manor_grounds_deed,Manor Grounds Deed,farm_stage_3,deed,land_deed,6000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Expands plots 40->65; unlocks Stage 4 cleanups
-great_estate_deed,Great Estate Deed,farm_stage_4,deed,land_deed,20000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Expands plots 65->90; unlocks Stage 5 cleanups
+homestead_deed,Homestead Deed,farm_stage_2,town,land_deed,1500,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Expands plots 20->40; unlocks Stage 3 cleanups
+manor_grounds_deed,Manor Grounds Deed,farm_stage_3,town,land_deed,6000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Expands plots 40->65; unlocks Stage 4 cleanups
+great_estate_deed,Great Estate Deed,farm_stage_4,town,land_deed,20000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Expands plots 65->90; unlocks Stage 5 cleanups

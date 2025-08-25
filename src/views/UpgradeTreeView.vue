@@ -74,12 +74,6 @@
                  class="accent-sim-accent">
           <span><i class="fas fa-border-style mr-1 text-xs"></i>Lane Boundaries</span>
         </label>
-        <!-- PHASE 2: Grouping Toggle -->
-        <label class="flex items-center space-x-2 text-sm cursor-pointer mt-1">
-          <input type="checkbox" v-model="configStore.groupingEnabled" @change="onGroupingToggle" 
-                 class="accent-sim-accent">
-          <span><i class="fas fa-layer-group mr-1 text-xs"></i>Type Grouping</span>
-        </label>
         <button @click="showDebugPanel = !showDebugPanel"
                 class="w-full mt-1 px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-xs transition-colors">
           <i class="fas fa-bug mr-1"></i>Debug Panel
@@ -618,12 +612,6 @@ const toggleMaterialEdges = () => {
   rebuildGraph()
 }
 
-// PHASE 2: Handle grouping toggle
-const onGroupingToggle = () => {
-  configStore.toggleGrouping()
-  rebuildGraph()
-}
-
 // Enhanced search functionality with smooth transitions
 const filterNodes = () => {
   if (!cy) return
@@ -1097,7 +1085,7 @@ const rebuildGraph = async () => {
     validationSummary: newValidationSummary,
     assignmentStats: newAssignmentStats,
     debugReport: newDebugReport
-  } = buildGraphElements(gameData.items, { groupingEnabled: configStore.groupingEnabled })
+  } = buildGraphElements(gameData.items)
   
   // Update validation state
   validationResults.value = newValidationResults || []
@@ -1501,7 +1489,7 @@ const initializeGraph = async () => {
     // Remove verbose initialization logging
     
     // Build elements from game data with validation
-    const { nodes, edges, laneHeights, validationResults: initialValidationResults, validationSummary: initialValidationSummary } = buildGraphElements(gameData.items, { groupingEnabled: configStore.groupingEnabled })
+    const { nodes, edges, laneHeights, validationResults: initialValidationResults, validationSummary: initialValidationSummary } = buildGraphElements(gameData.items)
     
     // Store validation results
     validationResults.value = initialValidationResults || []

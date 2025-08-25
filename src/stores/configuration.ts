@@ -26,14 +26,6 @@ export const useConfigurationStore = defineStore('configuration', () => {
   const savedSets = ref<ConfigurationSet[]>([])
   const activeSetId = ref<string | null>(null)
 
-  // PHASE 2: Grouping feature flag (DEFAULT TO FALSE - CRITICAL!)
-  const groupingEnabled = ref(false)
-  const groupingOptions = ref({
-    typeSpacing: 40,        // Pixels between type groups
-    categorySpacing: 20,    // Pixels between category rows  
-    maintainTierOrder: true // Keep left-to-right prerequisite flow
-  })
-
   // Computed
   const hasChanges = computed(() => Object.keys(activeChanges.value).length > 0)
   
@@ -209,16 +201,6 @@ export const useConfigurationStore = defineStore('configuration', () => {
     }
   }
 
-  // PHASE 2: Grouping actions
-  const toggleGrouping = () => {
-    groupingEnabled.value = !groupingEnabled.value
-    console.log(`🎯 Grouping ${groupingEnabled.value ? 'ENABLED' : 'DISABLED'}`)
-  }
-
-  const setGroupingOptions = (options: Partial<typeof groupingOptions.value>) => {
-    groupingOptions.value = { ...groupingOptions.value, ...options }
-  }
-
   // Persistence
   const saveToLocalStorage = () => {
     try {
@@ -263,8 +245,6 @@ export const useConfigurationStore = defineStore('configuration', () => {
     changeHistory,
     savedSets,
     activeSetId,
-    groupingEnabled,
-    groupingOptions,
 
     // Computed
     hasChanges,
@@ -290,10 +270,6 @@ export const useConfigurationStore = defineStore('configuration', () => {
     // Import/Export
     exportConfiguration,
     importConfiguration,
-
-    // Grouping
-    toggleGrouping,
-    setGroupingOptions,
 
     // Persistence
     saveToLocalStorage,

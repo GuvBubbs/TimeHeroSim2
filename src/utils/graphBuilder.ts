@@ -588,16 +588,9 @@ function runAllAutomatedTests(items: GameDataItem[]): ValidationResult[] {
   return results
 }
 
-export function buildGraphElements(
-  items: GameDataItem[],
-  options?: { groupingEnabled?: boolean }  // Add options parameter
-) {
+export function buildGraphElements(items: GameDataItem[]) {
   const nodes: any[] = []
   const edges: any[] = []
-  
-  // PHASE 2: Extract grouping flag with safety default
-  const groupingEnabled = options?.groupingEnabled ?? false;
-  console.log(`🎯 Building graph with grouping: ${groupingEnabled ? 'ENABLED' : 'DISABLED'}`);
   
   // PHASE 1: Test logging for type/category extraction (TEMPORARY - will be removed)
   // Uncomment the next 4 lines to test hierarchy extraction in browser console
@@ -666,7 +659,7 @@ export function buildGraphElements(
     const tier = calculatePrerequisiteDepth(item, treeItems)
     
     // Calculate initial position
-    let position = calculateNodePosition(item, swimLane, sortedItems, laneHeights, laneBoundaries, groupingEnabled)
+    let position = calculateNodePosition(item, swimLane, sortedItems, laneHeights, laneBoundaries)
     
     // Enforce boundary constraints with error handling
     position = enforceBoundaryConstraints(position, swimLane, laneBoundaries, item.id)
@@ -2892,8 +2885,7 @@ function calculateNodePosition(
   swimLane: string, 
   allItems: GameDataItem[],
   laneHeights: Map<string, number>,
-  laneBoundaries?: Map<string, LaneBoundary>,
-  groupingEnabled: boolean = false  // NEW PARAMETER - DEFAULT FALSE
+  laneBoundaries?: Map<string, LaneBoundary>
 ): { x: number, y: number } {
   const startTime = performance.now()
   const shouldRecordSteps = (typeof window !== 'undefined' && (window as any).ENABLE_COMPREHENSIVE_VALIDATION === true)
@@ -3147,70 +3139,7 @@ function calculateNodePosition(
     )
   }
   
-  // PHASE 2: Apply grouping adjustment if enabled
-  if (groupingEnabled && item.type && item.categories) {
-    const adjustedPosition = applyGroupingAdjustment(
-      item,
-      calculatedPosition, // Use the position calculated by existing logic
-      swimLane,
-      allItems,
-      laneHeights
-    );
-    return adjustedPosition;
-  }
-  
   return calculatedPosition
-}
-
-/**
- * PHASE 2: Apply grouping adjustment to position nodes by type/category
- * This modifies Y position to group items while preserving tier-based X positioning
- */
-function applyGroupingAdjustment(
-  item: GameDataItem,
-  basePosition: { x: number, y: number },
-  swimLane: string,
-  allItems: GameDataItem[],
-  laneHeights: Map<string, number>
-): { x: number, y: number } {
-  const hierarchy = getOrBuildHierarchy(allItems);
-  const type = normalizeGroupString(item.type || 'ungrouped');
-  const category = normalizeGroupString(item.categories?.[0] || 'uncategorized');
-  
-  // Find which type group this item belongs to
-  const laneTypes = Object.keys(hierarchy[swimLane] || {});
-  const typeIndex = laneTypes.indexOf(type);
-  
-  // Find which category row within the type
-  const typeCategories = Object.keys(hierarchy[swimLane]?.[type] || {});
-  const categoryIndex = typeCategories.indexOf(category);
-  
-  // Calculate lane start Y using existing logic
-  let laneStartY = LAYOUT_CONSTANTS.LANE_PADDING;
-  for (const lane of SWIM_LANES) {
-    if (lane === swimLane) break;
-    const laneHeight = laneHeights.get(lane) || LAYOUT_CONSTANTS.MIN_LANE_HEIGHT;
-    laneStartY += laneHeight + LAYOUT_CONSTANTS.LANE_PADDING;
-  }
-  
-  const laneHeight = laneHeights.get(swimLane) || LAYOUT_CONSTANTS.MIN_LANE_HEIGHT;
-  
-  // Simple positioning for now - will refine in Phase 3
-  const typeGroupHeight = laneHeight / Math.max(laneTypes.length, 1);
-  const categoryRowHeight = typeGroupHeight / Math.max(typeCategories.length, 1);
-  
-  const groupedY = laneStartY + 
-    (typeIndex * typeGroupHeight) + 
-    (categoryIndex * categoryRowHeight) +
-    (LAYOUT_CONSTANTS.NODE_HEIGHT / 2);
-  
-  // Keep X based on tier (prerequisite depth) - DO NOT CHANGE
-  const finalPosition = { 
-    x: basePosition.x,  // Maintain tier-based horizontal position
-    y: Math.min(groupedY, laneStartY + laneHeight - LAYOUT_CONSTANTS.NODE_HEIGHT) // Enforce boundary
-  };
-  
-  return finalPosition;
 }
 
 // Add this helper function to calculate prerequisite depth
@@ -3248,25 +3177,6 @@ function calculatePrerequisiteDepth(item: GameDataItem, allItems: GameDataItem[]
  * These functions extract and organize items by type and category for future grouping enhancements
  * They DO NOT modify existing positioning logic - they are for data analysis only
  */
-
-/**
- * PHASE 2: Cache to avoid recalculating hierarchy 
- */
-// Cache to avoid recalculating hierarchy
-let cachedHierarchy: GroupHierarchy | null = null;
-let cachedItemsHash: string | null = null;
-
-function getOrBuildHierarchy(items: GameDataItem[]): GroupHierarchy {
-  const itemsHash = items.map(i => `${i.id}:${i.type}:${i.categories}`).join('|');
-  
-  if (cachedHierarchy && cachedItemsHash === itemsHash) {
-    return cachedHierarchy;
-  }
-  
-  cachedHierarchy = extractTypeCategories(items);
-  cachedItemsHash = itemsHash;
-  return cachedHierarchy;
-}
 
 /**
  * Extract type/category hierarchy from game data items

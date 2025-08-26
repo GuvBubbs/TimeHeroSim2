@@ -1,6 +1,6 @@
 id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
 sell_stone,Sell Stone,depth_1,town,material_trades,,,,,,,,,,,2,10,,,,,,,,,,,,,,,,,,TRUE,Common excess
-sell_wood,Sell Wood,,town,material_trades,,,,,,,,,,,3,10,,,,,,,,,,,,,,,,,,TRUE,Valuable early
+sell_wood,Sell Wood,farm_stage_2,town,material_trades,,,,,,,,,,,3,10,,,,,,,,,,,,,,,,,,TRUE,Valuable early
 sell_copper,Sell Copper,depth_2,town,material_trades,,,,,,,,,,,5,5,,,,,,,,,,,,,,,,,,TRUE,
 sell_iron,Sell Iron,depth_3,town,material_trades,,,,,,,,,,,10,5,,,,,,,,,,,,,,,,,,TRUE,
 sell_silver,Sell Silver,depth_5,town,material_trades,,,,,,,,,,,25,3,,,,,,,,,,,,,,,,,,TRUE,

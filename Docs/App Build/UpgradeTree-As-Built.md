@@ -1,4 +1,44 @@
-# Upgrade Tree As-Built Documentation - TimeHero ### ConnectionLayer.vue (SVG Connection Rendering)
+# Upgrade Tree As-Built Documentation - TimeHero ### PhaseHeader.vue (Game Phase Headers)
+
+**Responsibilities**:
+- Civilization V-style phase header visualization for game progression timeline
+- Dynamic phase boundary calculation and visual representation
+- Unique texture patterns for each phase background
+- Horizontal scrolling coordination with grid content
+- Vertical boundary line rendering with SVG overlay
+
+**Key Features**:
+```vue
+<!-- Sticky phase header with horizontal scroll -->
+<div class="phase-header-wrapper">
+  <div class="phase-header-row">
+    <!-- Dynamic phase cells with unique textures -->
+    <div v-for="phase in visiblePhases" 
+         class="phase-cell"
+         :style="getPhaseCellStyle(phase)">
+      <span class="phase-name">{{ phase.name }}</span>
+    </div>
+  </div>
+  
+  <!-- Vertical boundary lines spanning full grid height -->
+  <svg class="phase-boundary-lines" :style="svgStyle">
+    <line v-for="boundary in phaseBoundaries"
+          :x1="boundary" :y1="0" 
+          :x2="boundary" :y2="gridHeight"
+          stroke="#000000" stroke-width="3" />
+  </svg>
+</div>
+```
+
+**Phase Texture Patterns**:
+- **Tutorial**: Subtle circles (opacity 0.03) for introductory content
+- **Early Game**: Diamond shapes (opacity 0.04) for basic progression  
+- **Mid Game**: Square patterns (opacity 0.04) for structured advancement
+- **Late Game**: Complex nested diamonds (opacity 0.05) for advanced content
+- **Endgame**: Double nested diamonds (opacity 0.05) for expert challenges
+- **Post-game**: Triple nested diamonds (opacity 0.06) for ultimate content
+
+**Dynamic Sizing**: SVG width automatically calculated based on phase boundaries (up to 6240+ pixels)
 
 **Responsibilities**:
 - SVG overlay positioning to match TreeGrid coordinate system
@@ -109,6 +149,7 @@ UpgradeTreeView.vue (Main Container)
 - `src/components/UpgradeTree/TreeGrid.vue` - Grid layout manager
 - `src/components/UpgradeTree/TreeNode.vue` - Individual nodes
 - `src/components/UpgradeTree/ConnectionLayer.vue` - **SVG connection rendering** ⭐
+- `src/components/UpgradeTree/PhaseHeader.vue` - **Game phase headers** ⭐
 - `src/stores/upgradeTree.ts` - State management
 - `src/types/upgrade-tree.ts` - Type definitions
 
@@ -276,6 +317,38 @@ UpgradeTreeView.vue (Main Container)
 - **Dynamic Swimlane Filtering**: Only visible swimlanes rendered in focus mode
 - **State Management**: Clean focus mode state with `focusMode`, `focusedNodeId`, and `visibleNodeIds`
 - **Layout Recalculation**: TreeGrid component intelligently handles height calculations for both modes
+
+### ✅ Phase 9: Game Phase Headers (COMPLETED)
+- **Civilization V-Style Phase Headers**: Visual segmentation of progression timeline into distinct game phases
+  - Tutorial, Early Game, Mid Game, Late Game, Endgame, Post-game headers
+  - Sticky positioning that scrolls horizontally with grid content
+  - Automatic phase boundary calculation based on prerequisite node positions
+- **Dynamic Phase Width Calculation**: Intelligent column span calculation for each phase
+  - Boundary detection using key milestone nodes (homestead_deed, manor_grounds_deed, etc.)
+  - Automatic width distribution for phases without clear boundaries
+  - Responsive sizing based on actual grid content
+- **Unique Phase Textures**: Distinct visual styling for each game phase
+  - **Tutorial**: Subtle circles pattern for introductory content
+  - **Early Game**: Diamond shapes representing basic progression
+  - **Mid Game**: Square patterns for structured advancement
+  - **Late Game**: Complex nested diamonds for advanced content
+  - **Endgame**: Double nested diamonds for expert-level challenges
+  - **Post-game**: Triple nested diamonds for ultimate content
+- **Vertical Boundary Lines**: 3px black lines marking phase transitions
+  - Full-height SVG lines spanning entire grid
+  - Dynamic SVG width calculation to contain all boundaries
+  - Proper z-index layering above swimlanes, below nodes
+- **Smart Integration**: Seamless integration with existing focus mode and highlight systems
+  - Phase headers adapt to focus mode with filtered content
+  - Maintains performance with large datasets (379+ nodes)
+  - Background gradients with semi-transparent overlays
+
+**Key Technical Achievements**:
+- **Phase Calculation Algorithm**: `calculateGamePhases()` with boundary detection and fallback distribution
+- **Dynamic SVG Sizing**: Proper width calculation based on maximum boundary position (6240+ pixels)
+- **Unique Texture System**: `getPhaseTexture()` function with SVG data URI patterns
+- **Grid Integration**: PhaseHeader component integrated into TreeGrid with proper positioning
+- **State Management**: `gamePhases` state with complete phase metadata
 
 ## Data Model & Type System
 

@@ -9,11 +9,13 @@ import type {
   DependencyTree,
   ConnectionPath,
   HighlightState,
-  NodeHighlightInfo
+  NodeHighlightInfo,
+  GamePhase
 } from '@/types/upgrade-tree'
 import { SWIMLANES, GRID_CONFIG } from '@/types/upgrade-tree'
 import type { GameDataItem } from '@/types/game-data'
 import { useGameDataStore } from './gameData'
+import Papa from 'papaparse'
 
 export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
   // State
@@ -36,6 +38,9 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
   const focusMode = ref<boolean>(false)
   const focusedNodeId = ref<string | null>(null)
   const visibleNodeIds = ref<Set<string>>(new Set())
+
+  // Phase 9: Game phase headers
+  const gamePhases = ref<GamePhase[]>([])
 
   // Grid configuration (can be modified)
   const gridConfig = ref<GridConfig>({ ...GRID_CONFIG })
@@ -291,6 +296,108 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     return 'fa fa-cube'
   }
 
+  // Phase 9: Game phase calculation functions
+  
+  // Load phase transitions from CSV
+  async function loadPhaseData(): Promise<{ from_phase: string, to_phase: string, prerequisite: string }[]> {
+    try {
+      const response = await fetch('/TimeHeroSim2/Data/Data/phase_transitions.csv')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const text = await response.text()
+      
+      return new Promise((resolve, reject) => {
+        Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.errors.length > 0) {
+              console.warn('Phase transitions CSV parsing errors:', results.errors)
+            }
+            resolve(results.data as { from_phase: string, to_phase: string, prerequisite: string }[])
+          },
+          error: (error: any) => {
+            reject(error)
+          }
+        })
+      })
+    } catch (error) {
+      console.error('Failed to load phase transitions:', error)
+      return []
+    }
+  }
+
+  // Calculate game phases based on node positions
+  function calculateGamePhases(): void {
+    if (nodes.value.length === 0) {
+      gamePhases.value = []
+      return
+    }
+
+    // Define base phases in order with correct boundary logic
+    const basePhases: Omit<GamePhase, 'startColumn' | 'endColumn'>[] = [
+      { id: 'tutorial', name: 'Tutorial', prerequisites: [] },
+      { id: 'early-game', name: 'Early Game', prerequisites: ['clear_weeds_2', 'craft_hoe'] },
+      { id: 'mid-game', name: 'Mid Game', prerequisites: ['homestead_deed'] },
+      { id: 'late-game', name: 'Late Game', prerequisites: ['manor_grounds_deed'] },
+      { id: 'endgame', name: 'Endgame', prerequisites: ['great_estate_deed'] },
+      { id: 'post-game', name: 'Post-game', prerequisites: ['sacred_clearing'] }
+    ]
+    
+
+    const phases: GamePhase[] = []
+    const maxColumn = Math.max(...nodes.value.map(n => n.column || 0))
+    
+    // Calculate column ranges for each phase using boundaries
+    const boundaryColumns: number[] = []
+    
+    // Find actual boundary columns based on prerequisite nodes
+    for (const phase of basePhases) {
+      if (phase.prerequisites.length > 0) {
+        const boundaryNodes = nodes.value.filter(n => 
+          phase.prerequisites.includes(n.id)
+        )
+        if (boundaryNodes.length > 0) {
+          const maxBoundaryColumn = Math.max(...boundaryNodes.map(n => n.column || 0))
+          boundaryColumns.push(maxBoundaryColumn)
+        }
+      }
+    }
+    
+    // Sort boundary columns
+    boundaryColumns.sort((a, b) => a - b)
+    
+    // Create phases with calculated boundaries
+    for (let i = 0; i < basePhases.length; i++) {
+      const phase = basePhases[i]
+      let startColumn = 0
+      let endColumn = maxColumn
+      
+      if (i === 0) {
+        // First phase starts at 0
+        startColumn = 0
+        endColumn = boundaryColumns.length > 0 ? boundaryColumns[0] : Math.floor(maxColumn / basePhases.length)
+      } else {
+        // Subsequent phases start after previous boundary
+        startColumn = i <= boundaryColumns.length ? boundaryColumns[i - 1] + 1 : phases[i - 1].endColumn + 1
+        endColumn = i < boundaryColumns.length ? boundaryColumns[i] : maxColumn
+      }
+      
+      phases.push({
+        id: phase.id,
+        name: phase.name,
+        prerequisites: phase.prerequisites,
+        startColumn,
+        endColumn
+      })
+      
+    }
+
+    gamePhases.value = phases
+  }
+
   // Load tree data from game data store
   async function loadTreeData(): Promise<void> {
     try {
@@ -323,6 +430,10 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
           const hasPrerequisites = item.prerequisites.length > 0
           const isDependency = hasItemAsDependency(item.id, gameDataStore.items)
           const isRepeatable = (item as any).repeatable === 'TRUE' || (item as any).repeatable === true
+          
+          // Debug specific items we're looking for
+          if (['homestead_deed', 'manor_grounds_deed', 'great_estate_deed', 'sacred_clearing'].includes(item.id)) {
+          }
           
           return hasPrerequisites || isDependency || isRepeatable
         })
@@ -384,6 +495,9 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     
     // Phase 2: Assign rows within swimlanes using grouping logic
     assignRows(treeNodes)
+    
+    // Phase 3: Calculate game phases based on node positions
+    calculateGamePhases()
     
     // Check for node overlaps after layout
     detectNodeOverlaps()
@@ -1177,6 +1291,9 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     hoveredConnection,
     multiSelectMode,
     selectedNodes,
+    
+    // Phase 9: Game phases
+    gamePhases,
     
     // Computed
     nodePositions,

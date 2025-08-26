@@ -2,6 +2,16 @@
   <div class="tree-grid-container">
     <!-- Scrollable grid area -->
     <div class="tree-grid-scroll">
+      <!-- Phase Header (sticky at top, scrolls horizontally) -->
+      <PhaseHeader
+        v-if="showPhaseHeaders"
+        :phases="gamePhases || []"
+        :grid-config="gridConfig"
+        :grid-height="gridHeight"
+        :focus-mode="focusMode || false"
+        :visible-node-columns="visibleNodeColumns"
+      />
+      
       <div 
         class="tree-grid"
         :style="gridStyle"
@@ -77,10 +87,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { TreeNode, Swimlane, Connection } from '@/types/upgrade-tree'
+import type { TreeNode, Swimlane, Connection, GamePhase } from '@/types/upgrade-tree'
 import TreeNodeComponent from '@/components/UpgradeTree/TreeNode.vue'
 import SwimLaneComponent from '@/components/UpgradeTree/SwimLane.vue'
 import ConnectionLayerComponent from '@/components/UpgradeTree/ConnectionLayer.vue'
+import PhaseHeader from '@/components/UpgradeTree/PhaseHeader.vue'
 
 interface Props {
   nodes: TreeNode[]
@@ -103,6 +114,8 @@ interface Props {
   // Phase 8: Focus mode
   focusMode?: boolean
   focusedNodeId?: string | null
+  // Phase 9: Game phases
+  gamePhases?: GamePhase[]
 }
 
 const props = defineProps<Props>()
@@ -179,6 +192,28 @@ const horizontalLines = computed(() => {
   }
   
   return lines
+})
+
+// Phase 9: Phase header computed properties
+const showPhaseHeaders = computed(() => {
+  if (!props.gamePhases || props.gamePhases.length === 0) return false
+  if (!props.focusMode) return true
+  // In focus mode, only show if there are visible phases
+  return visibleNodeColumns.value.size > 0
+})
+
+const visibleNodeColumns = computed(() => {
+  const columns = new Set<number>()
+  props.nodes.forEach(node => {
+    if (node.column !== undefined) {
+      columns.add(node.column)
+    }
+  })
+  return columns
+})
+
+const gridHeight = computed(() => {
+  return parseInt(gridStyle.value.height?.toString() || '0')
 })
 
 function getVerticalLineStyle(col: number) {

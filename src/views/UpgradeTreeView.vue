@@ -53,6 +53,7 @@
         :is-connection-highlighted="treeStore.isConnectionHighlighted"
         :focus-mode="treeStore.focusMode"
         :focused-node-id="treeStore.focusedNodeId"
+        :game-phases="treeStore.gamePhases"
         @node-click="handleNodeClick"
         @edit-click="handleEditClick"
         @background-click="handleBackgroundClick"

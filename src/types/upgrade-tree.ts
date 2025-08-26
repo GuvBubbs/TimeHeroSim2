@@ -126,3 +126,11 @@ export const GRID_CONFIG: GridConfig = {
   arrowPadding: 8,       // Space between arrow and node edge
   cornerRadius: 8,       // Radius for 90° corners
 }
+
+export interface GamePhase {
+  id: string
+  name: string
+  startColumn: number
+  endColumn: number
+  prerequisites: string[]
+}

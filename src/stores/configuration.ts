@@ -187,7 +187,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
       }
       
       if (config.sets && Array.isArray(config.sets)) {
-        savedSets.value = config.sets.map(set => ({
+        savedSets.value = config.sets.map((set: any) => ({
           ...set,
           created: new Date(set.created),
           modified: new Date(set.modified)

@@ -146,6 +146,8 @@ interface ValidationIssue {
   lane?: string
   position?: { x: number, y: number }
   expectedPosition?: { x: number, y: number }
+  metrics?: Record<string, any>
+  timestamp?: number
 }
 
 // Interface for position calculation debug info
@@ -192,13 +194,13 @@ function calculateLaneBoundaries(laneHeights: Map<string, number>): Map<string, 
   }
   
   SWIM_LANES.forEach(lane => {
-    const height = laneHeights.get(lane) || LAYOUT_CONSTANTS.MIN_LANE_HEIGHT
+    const height = laneHeights.get(lane) || 0  // Use 0 for empty lanes instead of MIN_LANE_HEIGHT
     const wasUsingFallback = !laneHeights.has(lane)
     const startY = cumulativeY
     const endY = cumulativeY + height
     const centerY = startY + (height / 2)
-    const usableHeight = height - (2 * LAYOUT_CONSTANTS.LANE_BUFFER)
-    
+    const usableHeight = Math.max(0, height - (2 * LAYOUT_CONSTANTS.LANE_BUFFER))
+
     boundaries.set(lane, {
       lane,
       startY,
@@ -207,10 +209,11 @@ function calculateLaneBoundaries(laneHeights: Map<string, number>): Map<string, 
       height,
       usableHeight
     })
-    
-    // Remove individual boundary logs - they're too verbose
-    
-    cumulativeY += height + LAYOUT_CONSTANTS.LANE_PADDING
+
+    // Only add padding and advance Y position if the lane has height
+    if (height > 0) {
+      cumulativeY += height + LAYOUT_CONSTANTS.LANE_PADDING
+    }
   })
   
   if (showDetailedBoundaries) {
@@ -284,8 +287,8 @@ function calculateLaneHeights(items: GameDataItem[]): Map<string, number> {
   SWIM_LANES.forEach(lane => {
     const tierMap = nodesPerLaneTier.get(lane)
     if (!tierMap || tierMap.size === 0) {
-      // Empty lane: use minimum height
-      laneHeights.set(lane, LAYOUT_CONSTANTS.MIN_LANE_HEIGHT)
+      // Empty lane: allocate zero height to avoid empty rows
+      laneHeights.set(lane, 0)
       laneAnalysis.set(lane, { maxTier: -1, maxNodesInTier: 0, totalNodes: 0 })
       return
     }
@@ -964,7 +967,7 @@ function determineSwimLane(item: GameDataItem): string {
   // Only log if not already logged
   const cacheEntry = swimlaneCache.get(item.id)!
   if (!cacheEntry.logged) {
-    logSwimLaneAssignment(item, assignedLane, assignmentReason, item.sourceFile, gameFeature)
+    logSwimLaneAssignment(item.id, assignedLane, assignmentReason, item.sourceFile, gameFeature)
     cacheEntry.logged = true
   }
   
@@ -3119,24 +3122,23 @@ function calculateNodePosition(
     value: step.output,
     description: step.description
   }))
-  logPositionCalculation(item, swimLane, tier, calculatedPosition, calculatedPosition, debugSteps, calculationTime)
+  logPositionCalculation(item.id, swimLane, tier, calculatedPosition, calculatedPosition, debugSteps, calculationTime)
   
   // Record detailed debug information only if enabled
   const boundary = laneBoundaries?.get(swimLane)
   if (boundary && shouldRecordSteps) {
     const withinBounds = validatePositionWithinBounds(calculatedPosition, swimLane, laneBoundaries!).withinBounds
     
-    validationReporter.recordPositionCalculation(
-      item,
+    validationReporter.recordPositionCalculation({
+      item: item.id,
       swimLane,
       tier,
       calculationSteps,
       calculatedPosition,
-      calculatedPosition, // No adjustment at this stage
       boundary,
       withinBounds,
       calculationTime
-    )
+    })
   }
   
   return calculatedPosition

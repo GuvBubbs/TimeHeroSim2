@@ -17,11 +17,11 @@ export const useNavigationStore = defineStore('navigation', () => {
 
   // Getters
   const activeTab = computed(() => {
-    return navigationTabs.value.find(tab => tab.path === currentPath.value)
+    return navigationTabs.value.find((tab: NavigationTab) => tab.path === currentPath.value)
   })
 
   const activeTabIndex = computed(() => {
-    return navigationTabs.value.findIndex(tab => tab.path === currentPath.value)
+    return navigationTabs.value.findIndex((tab: NavigationTab) => tab.path === currentPath.value)
   })
 
   // Actions

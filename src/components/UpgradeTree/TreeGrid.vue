@@ -27,7 +27,7 @@
         <!-- Swimlanes -->
         <SwimLaneComponent
           v-for="swimlane in swimlanes"
-          :key="swimlane.id"
+          :key="`${swimlane.id}-${focusMode ? 'focus' : 'normal'}`"
           :swimlane="swimlane"
           :start-y="getSwimlaneStartY(swimlane.id)"
           :height="getSwimlaneHeight(swimlane)"
@@ -63,6 +63,8 @@
           :highlight-state="(getNodeHighlightState ? getNodeHighlightState(node.id) : 'none') as any"
           :depth="getNodeDepth ? getNodeDepth(node.id) : 0"
           :connection-type="getNodeConnectionType ? getNodeConnectionType(node.id) : undefined"
+          :focus-mode="focusMode || false"
+          :is-focused-node="focusedNodeId === node.id"
           :style="getNodeStyle(node)"
           @node-click="handleNodeClick(node, $event)"
           @edit-click="handleEditClick(node)"
@@ -98,6 +100,9 @@ interface Props {
   getNodeConnectionType?: (id: string) => 'prerequisite' | 'dependent' | undefined
   getConnectionDepth?: (connection: Connection) => number
   isConnectionHighlighted?: (connection: Connection) => boolean
+  // Phase 8: Focus mode
+  focusMode?: boolean
+  focusedNodeId?: string | null
 }
 
 const props = defineProps<Props>()
@@ -119,6 +124,7 @@ const gridStyle = computed(() => {
   
   // Calculate total height by adding up all swimlane heights (matching store logic)
   let totalHeight = 0
+  
   props.swimlanes.forEach(swimlane => {
     const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
     
@@ -126,17 +132,23 @@ const gridStyle = computed(() => {
       // Empty swimlane - use zero height to eliminate gaps
       // totalHeight += 0 (no need to add anything)
     } else {
-      // Find the maximum row number (could be fractional from spacing)
-      const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
-      
-      // Calculate height: (maxRow + 1) * row spacing (no extra padding)
-      const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
-      totalHeight += rowSpace
+      if (props.focusMode) {
+        // Focus mode: nodes have compressed sequential rows, calculate based on maxRow like normal mode
+        const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
+        const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
+        totalHeight += rowSpace
+      } else {
+        // Normal mode: use maxRow for sparse layouts
+        const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
+        const rowSpace = (maxRow + 1) * (props.gridConfig.rowHeight + props.gridConfig.rowGap)
+        totalHeight += rowSpace
+      }
     }
   })
   
   // Add minimal bottom padding
   totalHeight += props.gridConfig.rowGap
+  
   
   return {
     width: `${totalWidth}px`,
@@ -214,6 +226,7 @@ function getNodeStyle(node: TreeNode) {
 
 // Get swimlane height
 function getSwimlaneHeight(swimlane: Swimlane): number {
+  // Use only the nodes passed as props (filtered in focus mode)
   const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
   
   if (swimlaneNodes.length === 0) {

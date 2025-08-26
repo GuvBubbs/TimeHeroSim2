@@ -247,6 +247,36 @@ UpgradeTreeView.vue (Main Container)
   - Optimized performance for large datasets with 13 swimlanes
   - Complete visual hierarchy with gap-free layout system
 
+### ✅ Phase 8: Focus Mode Implementation (COMPLETED)
+- **Advanced Filtering System**: Revolutionary focus mode that filters the upgrade tree to show only relevant dependency family trees
+- **Smart Row Compression**: Intelligent algorithm that compresses visible nodes into compact rows while preserving logical groupings
+  - Nodes originally on the same row stay grouped together after compression
+  - Eliminates visual gaps left by hidden nodes for a clean, focused view
+  - Maintains swimlane organization with proper height calculations
+- **Family Tree Traversal**: Complete dependency family detection including all prerequisites and dependents
+  - Recursive traversal finding all connected nodes in dependency chain
+  - Includes both direct and indirect relationships across all swimlanes
+  - Efficient algorithms handling complex multi-level dependencies
+- **Dynamic Layout Recalculation**: Real-time grid recalculation optimized for focus mode
+  - Swimlane heights dynamically adjust to compressed content
+  - Grid container resizes appropriately for focused view
+  - Smooth transitions between normal and focus modes
+- **Enhanced User Experience**: Intuitive interaction patterns for dependency exploration
+  - Single-click node selection enters focus mode
+  - Background click or same-node re-click exits focus mode
+  - Visual feedback clearly indicating active focus state
+- **Performance Optimized**: Efficient rendering of filtered datasets
+  - Only processes visible nodes for position calculations
+  - Minimizes re-renders during mode transitions
+  - Maintains smooth performance even with large dependency trees
+
+**Key Technical Achievements**:
+- **Row Compression Algorithm**: `compressRowPositionsForFocus()` function preserving node groupings
+- **Family Tree Detection**: `getFamilyTreeNodes()` with complete dependency traversal
+- **Dynamic Swimlane Filtering**: Only visible swimlanes rendered in focus mode
+- **State Management**: Clean focus mode state with `focusMode`, `focusedNodeId`, and `visibleNodeIds`
+- **Layout Recalculation**: TreeGrid component intelligently handles height calculations for both modes
+
 ## Data Model & Type System
 
 ### Core Interfaces
@@ -325,9 +355,101 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
   const nodes = ref<TreeNode[]>([])
   const connections = ref<Connection[]>([])
   
-  // Interaction state
+  // Interaction state (Phase 5: Highlight Mode)
   const highlightMode = ref(false)
   const highlightedNodes = ref<Set<string>>(new Set())
+  const selectedNodeId = ref<string | null>(null)
+  const nodeHighlightInfo = ref<Map<string, NodeHighlightInfo>>(new Map())
+  const currentDependencyTree = ref<DependencyTree | null>(null)
+  const hoveredConnection = ref<Connection | null>(null)
+  const multiSelectMode = ref(false)
+  const selectedNodes = ref<Set<string>>(new Set())
+  
+  // Focus mode state (Phase 8: Focus Mode)
+  const focusMode = ref<boolean>(false)
+  const focusedNodeId = ref<string | null>(null)
+  const visibleNodeIds = ref<Set<string>>(new Set())
+  
+  // Loading state
+  const isLoading = ref(false)
+  const loadError = ref<string | null>(null)
+  
+  // Configuration
+  const gridConfig = ref<GridConfig>({ ...GRID_CONFIG })
+  const swimlanes = ref<Swimlane[]>([...SWIMLANES])
+})
+```
+
+### Focus Mode Functions (Phase 8)
+
+```typescript
+// Enter focus mode for a specific node
+function enterFocusMode(nodeId: string) {
+  const familyTreeNodeIds = getFamilyTreeNodes(nodeId)
+  visibleNodeIds.value = familyTreeNodeIds
+  compressRowPositionsForFocus()
+  focusMode.value = true
+  focusedNodeId.value = nodeId
+}
+
+// Exit focus mode and return to normal view
+function exitFocusMode() {
+  focusMode.value = false
+  focusedNodeId.value = null
+  visibleNodeIds.value.clear()
+}
+
+// Find all nodes in dependency family tree
+function getFamilyTreeNodes(nodeId: string): Set<string> {
+  const familyNodes = new Set<string>()
+  const visited = new Set<string>()
+  
+  function traverse(currentId: string) {
+    if (visited.has(currentId)) return
+    visited.add(currentId)
+    familyNodes.add(currentId)
+    
+    // Find all prerequisites and dependents
+    const node = nodes.value.find(n => n.id === currentId)
+    if (node) {
+      // Add prerequisites
+      node.prerequisites.forEach(prereqId => traverse(prereqId))
+      
+      // Add dependents (nodes that list this as prerequisite)
+      nodes.value.forEach(otherNode => {
+        if (otherNode.prerequisites.includes(currentId)) {
+          traverse(otherNode.id)
+        }
+      })
+    }
+  }
+  
+  traverse(nodeId)
+  return familyNodes
+}
+
+// Compress row positions for focused nodes
+function compressRowPositionsForFocus() {
+  const visibleNodes = nodes.value.filter(node => visibleNodeIds.value.has(node.id))
+  const swimlaneGroups = groupBy(visibleNodes, 'swimlane')
+  
+  Object.entries(swimlaneGroups).forEach(([swimlaneId, nodes]) => {
+    const uniqueRows = [...new Set(nodes.map(n => n.row || 0))]
+    uniqueRows.sort((a, b) => a - b)
+    
+    const rowMapping = new Map()
+    uniqueRows.forEach((originalRow, index) => {
+      rowMapping.set(originalRow, index)
+    })
+    
+    nodes.forEach(node => {
+      if (node.row !== undefined) {
+        node.compressedRow = rowMapping.get(node.row)
+      }
+    })
+  })
+}
+```
   const selectedNodeId = ref<string | null>(null)
   
   // Loading state
@@ -422,29 +544,51 @@ function assignRowsInSwimlane(swimlaneNodes: TreeNode[]): void {
 - Node positioning calculations
 - Event delegation for clicks
 - **ConnectionLayer integration** - passes all necessary data for SVG rendering
+- **Focus mode layout calculations** - dynamic height adjustment for filtered views
 
 **Key Features**:
 ```vue
 <!-- Grid with proper layering: swimlanes → connections → nodes -->
 <div class="tree-grid" :style="gridStyle" @click="handleBackgroundClick">
   <!-- Swimlane backgrounds with transparency gradients -->
-  <SwimLaneComponent />
+  <SwimLaneComponent v-for="swimlane in visibleSwimlanes" />
   
   <!-- Connection Layer (SVG arrows) - z-index: 1 -->
   <ConnectionLayerComponent 
     :connections="connections"
-    :highlight-mode="highlightMode" />
+    :highlight-mode="highlightMode"
+    :focus-mode="focusMode" />
   
   <!-- Tree nodes - z-index: 2 (highest) -->
-  <TreeNodeComponent />
+  <TreeNodeComponent v-for="node in visibleNodes" />
 </div>
 ```
+
+**Focus Mode Integration**:
+- **Dynamic Swimlane Filtering**: Only renders swimlanes containing visible nodes in focus mode
+- **Intelligent Height Calculation**: Compresses grid height based on actual visible content
+  ```typescript
+  // Focus mode height calculation
+  const gridStyle = computed(() => {
+    if (props.focusMode) {
+      // Calculate height based on compressed rows only
+      const visibleSwimlanes = props.swimlanes.filter(s => 
+        props.nodes.some(n => n.swimlane === s.id)
+      )
+      return calculateCompressedHeight(visibleSwimlanes)
+    }
+    return calculateNormalHeight()
+  })
+  ```
+- **Seamless Mode Transitions**: Smooth transitions between normal and focus views
+- **Preserved Layout Logic**: Same positioning algorithms work for both modes
 
 **Styling System**:
 - **Swimlane backgrounds**: 15% → 5% opacity gradient of swimlane color
 - **Fixed labels**: Left sidebar with 120px width reservation
 - **Responsive grid**: Auto-calculates total dimensions based on content
 - **Dark theme**: Semi-transparent overlays on dark background
+- **Focus mode styling**: Reduced visual noise with only relevant swimlanes visible
 
 ### TreeNode.vue (Individual Node Display)
 
@@ -591,16 +735,16 @@ function getNodeStyle(node: TreeNode) {
 
 ## Event System & Interactions
 
-### Current Event Handling (Phase 1)
+### Current Event Handling (All Phases Complete)
 
 **Node Interactions**:
 ```typescript
 // TreeNode events
-@node-click="handleNodeClick"    // Future: Enter highlight mode
-@edit-click="handleEditClick"    // Future: Open edit modal
+@node-click="handleNodeClick"    // ✅ IMPLEMENTED: Enter/exit focus mode
+@edit-click="handleEditClick"    // ✅ IMPLEMENTED: Open edit modal
 
 // TreeGrid events  
-@background-click="handleBackgroundClick"  // Future: Exit highlight mode
+@background-click="handleBackgroundClick"  // ✅ IMPLEMENTED: Exit focus/highlight mode
 ```
 
 **Background Click Detection**:
@@ -613,12 +757,74 @@ function handleBackgroundClick(event: MouseEvent) {
 }
 ```
 
-### Planned Event System (Future Phases)
+### ✅ Focus Mode System (Phase 8 - IMPLEMENTED)
+
+**Focus Mode Activation**:
+- **Node Click**: Single click on any node enters focus mode for that node's dependency family
+- **Family Tree Calculation**: Automatically finds all prerequisites and dependents recursively
+- **Smart Filtering**: Shows only nodes in the complete dependency chain
+- **Row Compression**: Compresses visible nodes into compact layout without gaps
+
+**Focus Mode Interaction Flow**:
+```typescript
+// 1. User clicks a node (e.g., "Well Pump I")
+handleNodeClick(nodeId: string) {
+  if (focusMode.value && focusedNodeId.value === nodeId) {
+    // Same node clicked - exit focus mode
+    exitFocusMode()
+  } else {
+    // Enter focus mode for this node
+    enterFocusMode(nodeId)
+  }
+}
+
+// 2. System calculates dependency family
+enterFocusMode(nodeId: string) {
+  const familyTree = getFamilyTreeNodes(nodeId)  // Recursive traversal
+  visibleNodeIds.value = familyTree
+  compressRowPositionsForFocus()  // Intelligent row compression
+  focusMode.value = true
+  focusedNodeId.value = nodeId
+}
+
+// 3. Background click exits focus mode
+handleBackgroundClick() {
+  exitFocusMode()  // Return to normal view
+}
+```
+
+**Row Compression Algorithm**:
+```typescript
+function compressRowPositionsForFocus() {
+  // Create mapping of original rows to compressed rows
+  const visibleNodes = nodes.value.filter(n => visibleNodeIds.value.has(n.id))
+  const uniqueRows = [...new Set(visibleNodes.map(n => n.row))]
+  uniqueRows.sort((a, b) => a - b)
+  
+  // Map original rows to compressed positions (preserving groupings)
+  const rowMapping = new Map()
+  uniqueRows.forEach((originalRow, index) => {
+    rowMapping.set(originalRow, index)
+  })
+  
+  // Apply compressed positions while maintaining node groupings
+  visibleNodes.forEach(node => {
+    if (node.row !== undefined) {
+      node.compressedRow = rowMapping.get(node.row)
+    }
+  })
+}
+```
+
+### ✅ Highlight Mode System (Phase 5 - IMPLEMENTED)
 
 **Highlight Mode (Phase 5)**:
 - Node click → Enter highlight mode → Family tree traversal
-- Background click → Exit highlight mode
+- Background click → Exit highlight mode  
 - Same node re-click → Toggle highlight off
+- Multi-select with Ctrl/Cmd + Click
+
+### ✅ Edit Integration (Phase 6 - IMPLEMENTED)
 
 **Edit Mode (Phase 6)**:
 - Edit button click → Open Configuration modal
@@ -802,6 +1008,16 @@ src/
 ---
 
 *Document updated: 2025-08-26*  
+*Phase 1 Status: ✅ COMPLETE*  
+*Phase 2 Status: ✅ COMPLETE*  
+*Phase 2.5 Status: ✅ COMPLETE - Perfect node centering achieved*  
+*Phase 3 Status: ✅ COMPLETE - Enhanced visual design implemented*  
+*Phase 4 Status: ✅ COMPLETE - SVG Connection Layer with intelligent routing*  
+*Phase 5 Status: ✅ COMPLETE - Enhanced Highlight Mode & Interactive Connections*  
+*Phase 6 Status: ✅ COMPLETE - Edit Integration with Configuration Modal*  
+*Phase 7 Status: ✅ COMPLETE - Gap Elimination & Swimlane Organization Overhaul*  
+*Phase 8 Status: ✅ COMPLETE - Focus Mode Implementation with Smart Row Compression*  
+*Current Status: 🎉 PRODUCTION READY - All phases complete with advanced focus mode functionality*  
 *Phase 1 Status: ✅ COMPLETE*  
 *Phase 2 Status: ✅ COMPLETE*  
 *Phase 2.5 Status: ✅ COMPLETE - Perfect node centering achieved*  

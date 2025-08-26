@@ -371,6 +371,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
 
   // Phase 2: Proper layout algorithm with topological sort and grouping
   function assignLayoutPositions(treeNodes: TreeNode[]): void {
+    console.log(`📐 Starting layout calculation for ${treeNodes.length} nodes`)
     
     // Validate for circular dependencies first
     const circularDeps = detectCircularDependencies(treeNodes)
@@ -446,6 +447,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
   // Detect node position overlaps
   function detectNodeOverlaps(): void {
     try {
+      console.log(`🔍 Overlap detection: nodePositions has ${nodePositions.value.size} entries`)
       
       if (nodePositions.value.size === 0) {
         console.log('⚠️ No node positions available for overlap detection')
@@ -460,6 +462,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
         nodeNames: string[]
       }> = []
 
+      console.log('🔍 Building position map...')
       
       // Build position map from nodePositions
       nodePositions.value.forEach((pos, nodeId) => {
@@ -471,6 +474,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
         positionMap.get(positionKey)!.push(nodeId)
       })
 
+      console.log(`🔍 Found ${positionMap.size} unique positions, checking for overlaps...`)
 
       // Find overlaps
       positionMap.forEach((nodeIds, positionKey) => {
@@ -490,6 +494,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
         }
       })
 
+      console.log(`🔍 Overlap analysis complete, found ${overlaps.length} overlaps`)
 
       // Simple one-line summary
       if (overlaps.length === 0) {
@@ -807,16 +812,27 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
   function updateNodeHighlightInfo(dependencyTree: DependencyTree): void {
     const info = new Map<string, NodeHighlightInfo>()
     
+    console.log('🔧 updateNodeHighlightInfo called, dependency tree:', {
+      selected: dependencyTree.selected,
+      directPrerequisites: dependencyTree.directPrerequisites.length,
+      directDependents: dependencyTree.directDependents.length,
+      indirectPrerequisites: dependencyTree.indirectPrerequisites.length,
+      indirectDependents: dependencyTree.indirectDependents.length
+    })
+    
     // Clear all first
     nodes.value.forEach(node => {
       info.set(node.id, { state: 'dimmed' })
     })
     
+    console.log('🔧 Set all nodes to dimmed, total nodes:', nodes.value.length)
     
     // Selected nodes - primary highlight
     dependencyTree.selected.forEach(nodeId => {
       info.set(nodeId, { state: 'selected' })
     })
+    
+    console.log('🔧 Set selected nodes:', dependencyTree.selected)
     
     // Direct dependencies
     dependencyTree.directPrerequisites.forEach(nodeId => {
@@ -833,6 +849,11 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
         depth: 1, 
         connectionType: 'dependent' 
       })
+    })
+    
+    console.log('🔧 Set direct dependencies:', {
+      prerequisites: dependencyTree.directPrerequisites.length,
+      dependents: dependencyTree.directDependents.length
     })
     
     // Indirect dependencies
@@ -860,6 +881,8 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
       }
     })
     
+    console.log('🔧 Final highlight info map size:', info.size)
+    console.log('🔧 Sample highlight states:', Array.from(info.entries()).slice(0, 5))
     
     nodeHighlightInfo.value = info
   }
@@ -877,6 +900,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     const dependencyTree = buildDependencyTree([nodeId])
     currentDependencyTree.value = dependencyTree
     
+    console.log('🌳 Dependencies found:', dependencyTree.directPrerequisites.length + dependencyTree.indirectPrerequisites.length, 'prereqs,', dependencyTree.directDependents.length + dependencyTree.indirectDependents.length, 'dependents')
     
     // Update highlight information for all nodes
     updateNodeHighlightInfo(dependencyTree)
@@ -920,6 +944,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     // Recalculate layout for the focused nodes
     recalculateLayoutForFocus()
     
+    console.log('🎯 Focus mode entered for node:', nodeId, 'showing', familyTreeNodeIds.size, 'nodes')
   }
 
   function exitFocusMode(): void {
@@ -930,22 +955,26 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     // Restore original layout by reloading
     loadTreeData()
     
+    console.log('🎯 Focus mode exited')
   }
 
   function recalculateLayoutForFocus(): void {
     if (!focusMode.value || visibleNodeIds.value.size === 0) return
     
-    // Compressing row positions for focus mode
+    console.log('🔍 FOCUS MODE LAYOUT - compressing row positions')
     
     // Get only the visible nodes
     const visibleNodes = nodes.value.filter(node => visibleNodeIds.value.has(node.id))
+    console.log(`📊 ${visibleNodes.length} visible nodes in focus mode`)
     
     // Compress row positions for each swimlane
     compressRowPositionsForFocus(visibleNodes)
     
     // Get visible swimlanes
     const visibleSwimlanes = getVisibleSwimlanes()
+    console.log(`🏊 ${visibleSwimlanes.length} visible swimlanes:`, visibleSwimlanes.map(s => s.id))
     
+    console.log('🎯 Row compression complete')
   }
 
   function compressRowPositionsForFocus(visibleNodes: TreeNode[]): void {
@@ -966,15 +995,10 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
       swimlaneNodes.sort((a, b) => (a.row || 0) - (b.row || 0))
       
       // Reassign sequential row numbers starting from 0
-      const originalRows = [...new Set(swimlaneNodes.map(node => node.row || 0))].sort((a, b) => a - b)
-      const rowMapping = new Map<number, number>()
-      originalRows.forEach((originalRow, index) => {
-        rowMapping.set(originalRow, index)
-      })
-      swimlaneNodes.forEach((node) => {
+      swimlaneNodes.forEach((node, index) => {
         const oldRow = node.row || 0
-        const newRow = rowMapping.get(oldRow) || 0
-        node.row = newRow
+        node.row = index
+        console.log(`� ${swimlaneId}: ${node.id} row ${oldRow} → ${index}`)
       })
     })
   }
@@ -994,6 +1018,7 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
     dependencyTree.directDependents.forEach(id => visibleNodes.add(id))
     dependencyTree.indirectDependents.forEach(id => visibleNodes.add(id))
     
+    console.log(`🔍 Focus on ${nodeId} shows ${visibleNodes.size} total nodes`)
     
     return visibleNodes
   }

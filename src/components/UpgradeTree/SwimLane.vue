@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import type { Swimlane, GridConfig } from '@/types/upgrade-tree'
 
 interface Props {
@@ -31,6 +31,10 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// Debug: Log when swimlanes are actually rendered
+onMounted(() => {
+})
 
 // Compute label style
 const labelStyle = computed(() => ({

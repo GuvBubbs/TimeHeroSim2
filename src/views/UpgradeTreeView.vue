@@ -35,9 +35,9 @@
       
       <TreeGrid 
         v-else
-        :nodes="treeStore.nodes"
-        :connections="treeStore.connections"
-        :swimlanes="treeStore.swimlanes"
+        :nodes="treeStore.getVisibleNodes()"
+        :connections="treeStore.getVisibleConnections()"
+        :swimlanes="debugSwimlanes"
         :grid-config="treeStore.gridConfig"
         :node-positions="treeStore.nodePositions"
         :highlight-mode="treeStore.highlightMode"
@@ -51,6 +51,8 @@
         :get-node-connection-type="treeStore.getNodeConnectionType"
         :get-connection-depth="treeStore.getConnectionDepth"
         :is-connection-highlighted="treeStore.isConnectionHighlighted"
+        :focus-mode="treeStore.focusMode"
+        :focused-node-id="treeStore.focusedNodeId"
         @node-click="handleNodeClick"
         @edit-click="handleEditClick"
         @background-click="handleBackgroundClick"
@@ -71,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, nextTick } from 'vue'
+import { onMounted, ref, nextTick, computed } from 'vue'
 import { useUpgradeTreeStore } from '@/stores/upgradeTree'
 import { useGameDataStore } from '@/stores/gameData'
 import type { TreeNode, Connection } from '@/types/upgrade-tree'
@@ -85,6 +87,14 @@ const gameDataStore = useGameDataStore()
 // Phase 6: Edit modal state
 const editingNode = ref<TreeNode | null>(null)
 const editingNodeData = ref<GameDataItem | null>(null)
+
+// Debug: Track what swimlanes are being passed to TreeGrid
+const debugSwimlanes = computed(() => {
+  const swimlanes = treeStore.getVisibleSwimlanes()
+  if (treeStore.focusMode) {
+  }
+  return swimlanes
+})
 
 // Load data when component mounts
 onMounted(async () => {
@@ -101,25 +111,23 @@ onMounted(async () => {
   }
 })
 
-// Handle node body click (enhanced with modifier key support)
+// Handle node body click (enhanced with focus mode)
 function handleNodeClick(node: TreeNode, event?: MouseEvent) {
   // Prevent event bubbling to avoid triggering background click handlers
   if (event) {
     event.stopPropagation()
   }
   
-  const isMultiSelect = event?.ctrlKey || event?.metaKey // Ctrl/Cmd for multi-select
   const wasHighlightedBefore = treeStore.highlightMode && treeStore.selectedNodeId === node.id
   
-  if (isMultiSelect && treeStore.highlightMode) {
-    // Multi-select mode: toggle multi-select and add to selection
-    treeStore.toggleMultiSelectMode(true)
-    treeStore.enterHighlightMode(node.id, true)
-  } else if (wasHighlightedBefore) {
-    // Clicking same highlighted node exits highlight mode
-    treeStore.exitHighlightMode()
+  if (wasHighlightedBefore && !treeStore.focusMode) {
+    // Second click on highlighted node: enter focus mode
+    treeStore.enterFocusMode(node.id)
+  } else if (wasHighlightedBefore && treeStore.focusMode) {
+    // Third click on focused node: exit focus mode but stay highlighted
+    treeStore.exitFocusMode()
   } else {
-    // Enter highlight mode for this node (clears multi-select)
+    // First click: enter highlight mode
     treeStore.enterHighlightMode(node.id)
   }
 }
@@ -222,9 +230,13 @@ function debugData() {
   console.log('=== END DEBUG ===')
 }
 
-// Handle clicking on background (exit highlight mode)
+// Handle clicking on background (exit focus mode or highlight mode)
 function handleBackgroundClick() {
-  treeStore.exitHighlightMode()
+  if (treeStore.focusMode) {
+    treeStore.exitFocusMode()
+  } else {
+    treeStore.exitHighlightMode()
+  }
 }
 
 // Handle connection hover (enhanced for store integration)

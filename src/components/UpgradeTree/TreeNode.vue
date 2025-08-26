@@ -41,11 +41,15 @@ interface Props {
   highlightState?: HighlightState
   depth?: number
   connectionType?: 'prerequisite' | 'dependent'
+  focusMode?: boolean
+  isFocusedNode?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   highlightState: 'none',
-  depth: 0
+  depth: 0,
+  focusMode: false,
+  isFocusedNode: false
 })
 
 defineEmits<{
@@ -59,6 +63,11 @@ const nodeRef = ref<HTMLElement>()
 // Enhanced node classes for different highlight states
 const nodeClasses = computed(() => {
   const classes = []
+  
+  // Phase 8: Focus mode classes take highest precedence
+  if (props.focusMode && props.isFocusedNode) {
+    classes.push('focused-node')
+  }
   
   // Phase 5: Enhanced highlight states take precedence
   if (props.highlightState !== 'none') {
@@ -321,5 +330,11 @@ const nodeStyle = computed(() => {
     opacity: 1; 
     transform: scale(1) translateY(0);
   }
+}
+
+/* Phase 8: Focus mode styling */
+.tree-node.focused-node {
+  border-color: #a855f7 !important; /* Purple border for focus mode */
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3);
 }
 </style>

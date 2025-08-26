@@ -1,6 +1,6 @@
-id,from_phase,to_phase,trigger_conditions,notes
-tutorial_to_early,Tutorial,Early Game,plots >= 8 AND clear_weeds_2 AND blueprint_hoe,Complete tutorial area
-early_to_mid,Early Game,Mid Game,plots >= 20 AND homestead_deed,Reach Small Hold completion
-mid_to_late,Mid Game,Late Game,plots >= 40 AND manor_grounds_deed,Reach Homestead completion
-late_to_endgame,Late Game,Endgame,plots >= 65 AND great_estate_deed,Reach Manor Grounds completion
-endgame_to_postgame,Endgame,Post-game,plots >= 90 AND sacred_clearing,Complete Great Estate
+id,from_phase,to_phase,prerequisite,notes
+tutorial_to_early,Tutorial,Early Game,clear_weeds_2;craft_hoe,Complete tutorial area
+early_to_mid,Early Game,Mid Game,homestead_deed,Reach Small Hold completion
+mid_to_late,Mid Game,Late Game,manor_grounds_deed,Reach Homestead completion
+late_to_endgame,Late Game,Endgame,great_estate_deed,Reach Manor Grounds completion
+endgame_to_postgame,Endgame,Post-game,sacred_clearing,Complete Great Estate

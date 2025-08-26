@@ -25,31 +25,50 @@ The **Time Hero Simulator** is a web-based game balance testing tool for Time He
 │       ├── Data-Architecture-Reference.md
 │       ├── Dashboard-As-Built.md
 │       └── Configuration-As-Built.md
-└── src/            # Vue application (Phase 1-2 implemented)
+└── src/            # Vue application (Phase 1-9 implemented)
     ├── components/ # UI components with sophisticated modals
-    ├── stores/     # Pinia stores for data + configuration
+    │   ├── layout/           # App navigation and layout
+    │   ├── GameConfiguration/ # Data editing components  
+    │   └── UpgradeTree/      # Complete visualization system
+    │       ├── PhaseHeader.vue     # Game phase headers (Phase 9)
+    │       ├── TreeGrid.vue        # Main grid layout
+    │       ├── SwimLane.vue        # Horizontal lanes
+    │       ├── TreeNode.vue        # Interactive nodes
+    │       ├── ConnectionLayer.vue # SVG connections
+    │       └── EnhancedTooltip.vue # Rich tooltips
+    ├── stores/     # Pinia stores for data + configuration + tree state
     ├── utils/      # CSV loading and validation system
-    └── views/      # Dashboard + Configuration working
+    └── views/      # All 7 views implemented and working
 ```
 
 ## Key Features
 1. **Dashboard**: System status and recent simulations
 2. **Game Configuration**: View/edit all CSV data with CRUD operations
-3. **Upgrade Tree**: Interactive dependency graph (Civ V style)
+3. **Upgrade Tree**: Interactive dependency graph (Civ V style) - **COMPLETE**
+   - Game phase headers with unique texture patterns
+   - Vertical boundary lines marking progression phases
+   - Focus mode for dependency chain exploration
+   - Multi-select highlighting with keyboard shortcuts
+   - Dynamic swimlane layout and connection rendering
 4. **Player Personas**: Behavior profiles (Speedrunner, Casual, Weekend Warrior)
 5. **Simulation Setup**: Configure simulation parameters
 6. **Live Monitor**: Real-time visualization of running simulations
 7. **Reports**: Analysis and export of simulation results
 
 ## Current Status
-**Phase 1-2 Implementation**: Data layer and configuration system working
-- 9 design documents + 3 as-built technical references complete
+**Phase 1-9 Implementation**: Full upgrade tree visualization system operational
+- 9 design documents + 4 as-built technical references complete
 - All 27 CSV data files loaded and validated (17 unified + 10 specialized)
 - Vue 3 + Pinia + TypeScript architecture fully implemented
 - Dashboard with data health monitoring (17/17 file tracking) operational
 - Configuration system with two-tier navigation and CRUD operations complete
-- Sophisticated modal editing system with material management working
-- Ready to continue with Phase 3: Upgrade Tree Visualization
+- **Upgrade Tree Visualization**: Complete Civilization V-style interface with Phase 9 features
+  - Game phase headers with unique textures and vertical boundary lines
+  - Interactive node highlighting and multi-select capabilities
+  - Focus mode for dependency chain visualization
+  - Dynamic swimlane layout with connection rendering
+  - Enhanced tooltips and real-time filtering
+- Ready to continue with Phase 4: Player Personas or subsequent phases
 
 ## Development Approach
 - **Phased delivery** with testable features each phase
@@ -81,6 +100,12 @@ Dual-schema architecture handles both unified and specialized data:
 - **Real-Time Validation**: Cross-file prerequisite checking and circular dependency detection
 - **Change Tracking**: Sophisticated dirty state management and save/reset functionality
 - **Dynamic File Counting**: Smart badge system showing item counts per category
+- **Upgrade Tree Visualization**: Complete Civ V-style dependency graph with advanced features
+  - **Phase Headers**: Game progression timeline with unique texture patterns
+  - **Focus Mode**: Isolate dependency chains for detailed analysis
+  - **Multi-Select**: Keyboard shortcuts for bulk node operations
+  - **Dynamic Layout**: Responsive swimlane system with connection rendering
+  - **Enhanced Tooltips**: Rich hover information with dependency details
 
 ## Related Documents
 ### Design Documents (Original Specifications)
@@ -95,6 +120,7 @@ Dual-schema architecture handles both unified and specialized data:
 - **Data Architecture**: `App Build/Data-Architecture-Reference.md`
 - **Dashboard System**: `App Build/Dashboard-As-Built.md`
 - **Configuration System**: `App Build/Configuration-As-Built.md`
+- **Upgrade Tree System**: `App Build/UpgradeTree-As-Built.md`
 
 ## Notes
 - Simulation accuracy accepts approximations in player behavior

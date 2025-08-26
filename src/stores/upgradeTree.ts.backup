@@ -1,0 +1,1245 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import type { 
+  TreeNode, 
+  Connection, 
+  NodePosition,
+  Swimlane,
+  GridConfig,
+  DependencyTree,
+  ConnectionPath,
+  HighlightState,
+  NodeHighlightInfo
+} from '@/types/upgrade-tree'
+import { SWIMLANES, GRID_CONFIG } from '@/types/upgrade-tree'
+import type { GameDataItem } from '@/types/game-data'
+import { useGameDataStore } from './gameData'
+
+export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
+  // State
+  const nodes = ref<TreeNode[]>([])
+  const connections = ref<Connection[]>([])
+  const highlightMode = ref(false)
+  const highlightedNodes = ref<Set<string>>(new Set())
+  const selectedNodeId = ref<string | null>(null)
+  const isLoading = ref(false)
+  const loadError = ref<string | null>(null)
+
+  // Phase 5: Enhanced highlight state management
+  const nodeHighlightInfo = ref<Map<string, NodeHighlightInfo>>(new Map())
+  const currentDependencyTree = ref<DependencyTree | null>(null)
+  const hoveredConnection = ref<Connection | null>(null)
+  const multiSelectMode = ref(false)
+  const selectedNodes = ref<Set<string>>(new Set())
+
+  // Phase 8: Focus mode state management
+  const focusMode = ref<boolean>(false)
+  const focusedNodeId = ref<string | null>(null)
+  const visibleNodeIds = ref<Set<string>>(new Set())
+
+  // Grid configuration (can be modified)
+  const gridConfig = ref<GridConfig>({ ...GRID_CONFIG })
+  
+  // Swimlanes configuration
+  const swimlanes = ref<Swimlane[]>([...SWIMLANES])
+
+  // Computed properties
+  const nodePositions = computed((): Map<string, NodePosition> => {
+    const positions = new Map<string, NodePosition>()
+    
+    // In focus mode, only calculate positions for visible nodes to avoid reactive loops
+    const nodesToProcess = focusMode.value ? getVisibleNodes() : nodes.value
+    
+    if (focusMode.value) {
+      // Focus mode: compress layout by recalculating row positions sequentially within each swimlane
+      const swimlaneRowCounts = new Map<string, number>()
+      
+      // Group nodes by swimlane and sort by original row position
+      const swimlaneGroups = new Map<string, TreeNode[]>()
+      nodesToProcess.forEach(node => {
+        if (!swimlaneGroups.has(node.swimlane)) {
+          swimlaneGroups.set(node.swimlane, [])
+        }
+        swimlaneGroups.get(node.swimlane)!.push(node)
+      })
+      
+      // Sort each swimlane by original row position and assign new compressed rows
+      swimlaneGroups.forEach((nodes, swimlaneId) => {
+        nodes.sort((a, b) => (a.row || 0) - (b.row || 0))
+        nodes.forEach((node, index) => {
+          if (node.column !== undefined && node.row !== undefined) {
+            const compressedRow = index // Sequential: 0, 1, 2, 3...
+            const x = gridConfig.value.labelWidth + (node.column * (gridConfig.value.columnWidth + gridConfig.value.columnGap))
+            const y = getSwimlaneStartY(node.swimlane) + (compressedRow * (gridConfig.value.rowHeight + gridConfig.value.rowGap))
+            
+            positions.set(node.id, {
+              x,
+              y,
+              swimlane: node.swimlane,
+              row: compressedRow, // Use compressed row position
+              column: node.column
+            })
+          }
+        })
+        
+        // Track how many rows this swimlane has for height calculation
+        swimlaneRowCounts.set(swimlaneId, nodes.length)
+      })
+    } else {
+      // Normal mode: use original positions
+      nodesToProcess.forEach(node => {
+        if (node.column !== undefined && node.row !== undefined) {
+          const x = gridConfig.value.labelWidth + (node.column * (gridConfig.value.columnWidth + gridConfig.value.columnGap))
+          const y = getSwimlaneStartY(node.swimlane) + (node.row * (gridConfig.value.rowHeight + gridConfig.value.rowGap))
+          
+          positions.set(node.id, {
+            x,
+            y,
+            swimlane: node.swimlane,
+            row: node.row,
+            column: node.column
+          })
+        }
+      })
+    }
+    
+    return positions
+  })
+
+  const swimlaneNodes = computed(() => {
+    const grouped: Record<string, TreeNode[]> = {}
+    
+    // Initialize all swimlanes
+    swimlanes.value.forEach(swimlane => {
+      grouped[swimlane.id] = []
+    })
+    
+    // Group nodes by swimlane
+    nodes.value.forEach(node => {
+      if (grouped[node.swimlane]) {
+        grouped[node.swimlane].push(node)
+      }
+    })
+    
+    return grouped
+  })
+
+  // Helper to get swimlane start Y position
+  function getSwimlaneStartY(swimlaneId: string): number {
+    // Ensure we have nodes loaded
+    if (nodes.value.length === 0) {
+      return 0
+    }
+    
+    // In focus mode, use filtered swimlanes for Y calculation
+    const swimlanesToUse = focusMode.value ? getVisibleSwimlanes() : swimlanes.value
+    const nodesToUse = focusMode.value ? getVisibleNodes() : nodes.value
+    
+    let y = 0
+    
+    // Calculate height for each swimlane up to the target
+    for (const swimlane of swimlanesToUse) {
+      if (swimlane.id === swimlaneId) {
+        break
+      }
+      
+      // Get nodes in this swimlane from the appropriate node list
+      const swimlaneNodesArray = nodesToUse.filter(node => node.swimlane === swimlane.id)
+      
+      if (swimlaneNodesArray.length === 0) {
+        // Empty swimlane - use zero height to eliminate gaps
+        continue // Don't add any height - this eliminates the gap!
+      }
+      
+      if (focusMode.value) {
+        // Focus mode: use compressed maxRow like TreeGrid does
+        const maxRow = Math.max(0, ...swimlaneNodesArray.map(n => n.row || 0))
+        const swimlaneHeight = (maxRow + 1) * (gridConfig.value.rowHeight + gridConfig.value.rowGap)
+        y += swimlaneHeight
+      } else {
+        // Normal mode: find the maximum row number used in this swimlane
+        const maxRow = Math.max(0, ...swimlaneNodesArray.map(n => n.row || 0))
+        
+        // Calculate height: (maxRow + 1) * row spacing
+        const swimlaneHeight = (maxRow + 1) * (gridConfig.value.rowHeight + gridConfig.value.rowGap)
+        
+        y += swimlaneHeight
+      }
+    }
+    
+    return y
+  }
+
+  // Helper to get swimlane by node type/category
+  function getSwimlaneForNode(gameItem: GameDataItem): string {
+    // Map game data items to swimlanes based on sourceFile and type
+    const sourceFile = gameItem.sourceFile
+    const type = gameItem.type
+    
+    // Farm actions
+    if (sourceFile === 'farm_actions.csv') {
+      return 'farm'
+    }
+    
+    // Forge actions
+    if (sourceFile === 'forge_actions.csv') {
+      return 'forge'
+    }
+    
+    // Tower actions
+    if (sourceFile === 'tower_actions.csv') {
+      return 'tower'
+    }
+    
+    // Town vendors - General vendors.csv goes to town-vendors
+    if (sourceFile === 'vendors.csv') {
+      return 'town-vendors'
+    }
+    if (sourceFile.startsWith('town_') && sourceFile.includes('vendor')) {
+      return 'town-vendors'
+    }
+    
+    // Specific town vendor systems - each gets their own swimlane
+    if (sourceFile === 'town_blacksmith.csv') {
+      return 'town-blacksmith'
+    }
+    if (sourceFile === 'town_agronomist.csv') {
+      return 'town-agronomist'
+    }
+    if (sourceFile === 'town_carpenter.csv') {
+      return 'town-carpenter'
+    }
+    if (sourceFile === 'town_land_steward.csv') {
+      return 'town-land'
+    }
+    if (sourceFile === 'town_material_trader.csv') {
+      return 'town-trader'
+    }
+    if (sourceFile === 'town_skills_trainer.csv') {
+      return 'town-skills'
+    }
+    
+    // Adventures
+    if (sourceFile === 'adventures.csv') {
+      return 'adventure'
+    }
+    
+    // Mining
+    if (sourceFile === 'mining.csv') {
+      return 'mining'
+    }
+    
+    // Default fallback - unrecognized files go to "Other" swimlane
+    return 'other'
+  }
+
+  // Convert GameDataItem to TreeNode
+  function convertToTreeNode(gameItem: GameDataItem): TreeNode {
+    return {
+      id: gameItem.id,
+      name: gameItem.name,
+      swimlane: getSwimlaneForNode(gameItem),
+      type: gameItem.type,
+      category: gameItem.categories?.[0] || gameItem.type || 'unknown',
+      prerequisites: gameItem.prerequisites,
+      cost: {
+        gold: gameItem.goldCost,
+        energy: gameItem.energyCost,
+        materials: gameItem.materialsCost
+      },
+      effect: gameItem.effect || '',
+      icon: getIconForNode(gameItem)
+    }
+  }
+
+  // Get appropriate Font Awesome icon for node type
+  function getIconForNode(gameItem: GameDataItem): string {
+    const type = gameItem.type
+    const category = gameItem.categories?.[0] || ''
+    
+    // Weapons
+    if (type === 'weapon') {
+      if (category.includes('bow')) return 'fa fa-bow-arrow'
+      if (category.includes('spear')) return 'fa fa-spear'
+      if (category.includes('sword')) return 'fa fa-sword'
+      return 'fa fa-sword'
+    }
+    
+    // Tools
+    if (type === 'tool') {
+      if (category.includes('hammer')) return 'fa fa-hammer'
+      if (category.includes('pick')) return 'fa fa-pickaxe'
+      return 'fa fa-wrench'
+    }
+    
+    // Actions
+    if (type === 'action') {
+      return 'fa fa-play'
+    }
+    
+    // Upgrades
+    if (type === 'upgrade') {
+      return 'fa fa-arrow-up'
+    }
+    
+    // Crops
+    if (type === 'crop') {
+      return 'fa fa-seedling'
+    }
+    
+    // Default
+    return 'fa fa-cube'
+  }
+
+  // Load tree data from game data store
+  async function loadTreeData(): Promise<void> {
+    try {
+      isLoading.value = true
+      loadError.value = null
+      
+      const gameDataStore = useGameDataStore()
+      
+      // Wait for game data to be loaded if not already
+      if (gameDataStore.items.length === 0) {
+        await gameDataStore.loadGameData()
+      }
+      
+      // Convert game data items to tree nodes
+      // Exclude crops and other non-upgrade items from the upgrade tree
+      const treeNodes = gameDataStore.items
+        .filter(item => {
+          // Exclude crops (they're farmable items, not upgrades)
+          if (item.sourceFile === 'crops.csv') return false
+          
+          // Exclude reference data files - these are simulation data, not upgrades
+          if (item.sourceFile === 'weapons.csv') return false
+          if (item.sourceFile === 'tools.csv') return false
+          if (item.sourceFile === 'armor_base.csv') return false
+          if (item.sourceFile === 'armor_effects.csv') return false
+          if (item.sourceFile === 'armor_potential.csv') return false
+          if (item.sourceFile === 'helpers.csv') return false
+          
+          // Only include items that have prerequisites OR are dependencies of other items OR are repeatable actions
+          const hasPrerequisites = item.prerequisites.length > 0
+          const isDependency = hasItemAsDependency(item.id, gameDataStore.items)
+          const isRepeatable = (item as any).repeatable === 'TRUE' || (item as any).repeatable === true
+          
+          return hasPrerequisites || isDependency || isRepeatable
+        })
+        .map(convertToTreeNode)
+      
+      nodes.value = treeNodes
+      
+      // Build connections
+      connections.value = buildConnections(treeNodes)
+      
+      // Apply Phase 2 layout algorithm
+      assignLayoutPositions(treeNodes)
+      
+    } catch (error) {
+      loadError.value = error instanceof Error ? error.message : 'Failed to load tree data'
+      console.error('Error loading tree data:', error)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  // Check if an item is used as a dependency by other items
+  function hasItemAsDependency(itemId: string, allItems: GameDataItem[]): boolean {
+    return allItems.some(item => item.prerequisites.includes(itemId))
+  }
+
+  // Build connections array from nodes
+  function buildConnections(treeNodes: TreeNode[]): Connection[] {
+    const connections: Connection[] = []
+    const nodeIds = new Set(treeNodes.map(n => n.id))
+    
+    treeNodes.forEach(node => {
+      node.prerequisites.forEach(prereqId => {
+        // Only create connection if both nodes exist in our tree
+        if (nodeIds.has(prereqId)) {
+          connections.push({
+            from: prereqId,
+            to: node.id
+          })
+        }
+      })
+    })
+    
+    return connections
+  }
+
+  // Phase 2: Proper layout algorithm with topological sort and grouping
+  function assignLayoutPositions(treeNodes: TreeNode[]): void {
+    console.log(`📐 Starting layout calculation for ${treeNodes.length} nodes`)
+    
+    // Validate for circular dependencies first
+    const circularDeps = detectCircularDependencies(treeNodes)
+    if (circularDeps.length > 0) {
+      console.warn('Circular dependencies detected:', circularDeps)
+      // For now, continue with layout but log the issues
+    }
+    
+    // Phase 1: Assign columns using topological sort
+    assignColumns(treeNodes)
+    
+    // Phase 2: Assign rows within swimlanes using grouping logic
+    assignRows(treeNodes)
+    
+    // Check for node overlaps after layout
+    detectNodeOverlaps()
+  }
+
+  // Detect circular dependencies
+  function detectCircularDependencies(treeNodes: TreeNode[]): string[][] {
+    const nodeMap = new Map<string, TreeNode>()
+    treeNodes.forEach(node => nodeMap.set(node.id, node))
+    
+    const visited = new Set<string>()
+    const recursionStack = new Set<string>()
+    const cycles: string[][] = []
+    
+    function dfs(nodeId: string, path: string[]): void {
+      if (recursionStack.has(nodeId)) {
+        // Found a cycle
+        const cycleStart = path.indexOf(nodeId)
+        cycles.push(path.slice(cycleStart).concat(nodeId))
+        return
+      }
+      
+      if (visited.has(nodeId)) return
+      
+      visited.add(nodeId)
+      recursionStack.add(nodeId)
+      path.push(nodeId)
+      
+      const node = nodeMap.get(nodeId)
+      if (node) {
+        node.prerequisites.forEach(prereqId => {
+          if (nodeMap.has(prereqId)) {
+            dfs(prereqId, [...path])
+          }
+        })
+      }
+      
+      recursionStack.delete(nodeId)
+      path.pop()
+    }
+    
+    treeNodes.forEach(node => {
+      if (!visited.has(node.id)) {
+        dfs(node.id, [])
+      }
+    })
+    
+    return cycles
+  }
+
+  // Get breakdown of nodes by swimlane for debugging
+  function getSwimlaneBreakdown(treeNodes: TreeNode[]): Record<string, number> {
+    const breakdown: Record<string, number> = {}
+    treeNodes.forEach(node => {
+      breakdown[node.swimlane] = (breakdown[node.swimlane] || 0) + 1
+    })
+    return breakdown
+  }
+
+  // Detect node position overlaps
+  function detectNodeOverlaps(): void {
+    try {
+      console.log(`🔍 Overlap detection: nodePositions has ${nodePositions.value.size} entries`)
+      
+      if (nodePositions.value.size === 0) {
+        console.log('⚠️ No node positions available for overlap detection')
+        return
+      }
+
+      const positionMap = new Map<string, string[]>()
+      const overlaps: Array<{
+        position: string
+        coordinates: { x: number; y: number }
+        nodes: string[]
+        nodeNames: string[]
+      }> = []
+
+      console.log('🔍 Building position map...')
+      
+      // Build position map from nodePositions
+      nodePositions.value.forEach((pos, nodeId) => {
+        const positionKey = `${pos.x},${pos.y}`
+        
+        if (!positionMap.has(positionKey)) {
+          positionMap.set(positionKey, [])
+        }
+        positionMap.get(positionKey)!.push(nodeId)
+      })
+
+      console.log(`🔍 Found ${positionMap.size} unique positions, checking for overlaps...`)
+
+      // Find overlaps
+      positionMap.forEach((nodeIds, positionKey) => {
+        if (nodeIds.length > 1) {
+          const [x, y] = positionKey.split(',').map(Number)
+          const nodeNames = nodeIds.map(id => {
+            const node = nodes.value.find(n => n.id === id)
+            return node?.name || id
+          })
+          
+          overlaps.push({
+            position: positionKey,
+            coordinates: { x, y },
+            nodes: nodeIds,
+            nodeNames: nodeNames
+          })
+        }
+      })
+
+      console.log(`🔍 Overlap analysis complete, found ${overlaps.length} overlaps`)
+
+      // Simple one-line summary
+      if (overlaps.length === 0) {
+        console.log('✅ Layout complete: No node overlaps detected')
+      } else {
+        console.warn(`❌ Layout complete: ${overlaps.length} overlaps detected`)
+        console.warn('📋 Overlapping nodes that need category fixes:')
+        
+        // Show detailed list of overlapping nodes
+        overlaps.forEach((overlap, index) => {
+          const nodeNames = overlap.nodeNames || overlap.nodes || ['unknown']
+          const coords = overlap.coordinates || { x: 'unknown', y: 'unknown' }
+          console.warn(`  ${index + 1}. ${nodeNames.join(', ')}`)
+        })
+        
+        console.warn(`💡 Fix: Update categories in CSV files to make these ${overlaps.length} groups distinct`)
+      }
+    } catch (error) {
+      console.error('❌ Overlap detection failed:', error)
+    }
+  }
+
+  // Topological sort for column assignment (dependency depth)
+  function assignColumns(treeNodes: TreeNode[]): void {
+    const nodeMap = new Map<string, TreeNode>()
+    const inDegree = new Map<string, number>()
+    const adjList = new Map<string, string[]>()
+    
+    // Build graph structures
+    treeNodes.forEach(node => {
+      nodeMap.set(node.id, node)
+      inDegree.set(node.id, 0)
+      adjList.set(node.id, [])
+    })
+    
+    // Calculate in-degrees and adjacency list
+    treeNodes.forEach(node => {
+      node.prerequisites.forEach(prereqId => {
+        if (nodeMap.has(prereqId)) {
+          // prereqId -> node.id (dependency edge)
+          const adj = adjList.get(prereqId) || []
+          adj.push(node.id)
+          adjList.set(prereqId, adj)
+          
+          // Increase in-degree for dependent node
+          inDegree.set(node.id, (inDegree.get(node.id) || 0) + 1)
+        }
+      })
+    })
+    
+    // Topological sort using Kahn's algorithm
+    const queue: string[] = []
+    const levels = new Map<string, number>()
+    
+    // Find all nodes with no dependencies (in-degree = 0)
+    for (const [nodeId, degree] of inDegree.entries()) {
+      if (degree === 0) {
+        queue.push(nodeId)
+        levels.set(nodeId, 0)
+      }
+    }
+    
+    // Process nodes level by level
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      const currentLevel = levels.get(currentId)!
+      
+      // Process all dependents
+      const dependents = adjList.get(currentId) || []
+      dependents.forEach(dependentId => {
+        // Reduce in-degree
+        const newInDegree = (inDegree.get(dependentId) || 0) - 1
+        inDegree.set(dependentId, newInDegree)
+        
+        // Update level (max of all prerequisite levels + 1)
+        const currentDependentLevel = levels.get(dependentId) || 0
+        const newLevel = Math.max(currentDependentLevel, currentLevel + 1)
+        levels.set(dependentId, newLevel)
+        
+        // If all prerequisites processed, add to queue
+        if (newInDegree === 0) {
+          queue.push(dependentId)
+        }
+      })
+    }
+    
+    // Assign computed levels as columns
+    treeNodes.forEach(node => {
+      node.column = levels.get(node.id) || 0
+    })
+    
+    // Handle orphan nodes (not in dependency graph)
+    treeNodes.forEach(node => {
+      if (node.column === undefined) {
+        node.column = 0
+      }
+    })
+  }
+
+  // Row assignment within swimlanes using grouping logic
+  function assignRows(treeNodes: TreeNode[]): void {
+    // Group nodes by swimlane
+    const swimlaneGroups = new Map<string, TreeNode[]>()
+    
+    treeNodes.forEach(node => {
+      const swimlane = node.swimlane
+      if (!swimlaneGroups.has(swimlane)) {
+        swimlaneGroups.set(swimlane, [])
+      }
+      swimlaneGroups.get(swimlane)!.push(node)
+    })
+    
+    // Process each swimlane independently
+    swimlaneGroups.forEach((nodes, swimlaneId) => {
+      assignRowsInSwimlane(nodes, swimlaneId)
+    })
+  }
+
+  // Assign rows within a single swimlane
+  function assignRowsInSwimlane(nodes: TreeNode[], swimlaneId: string): void {
+    // Group by type, then by category, then by column
+    const typeGroups = new Map<string, TreeNode[]>()
+    
+    nodes.forEach(node => {
+      const type = node.type || 'unknown'
+      if (!typeGroups.has(type)) {
+        typeGroups.set(type, [])
+      }
+      typeGroups.get(type)!.push(node)
+    })
+    
+    let currentRow = 0
+    
+    // Process each type group
+    typeGroups.forEach((typeNodes, type) => {
+      // Group by category within type
+      const categoryGroups = new Map<string, TreeNode[]>()
+      
+      typeNodes.forEach(node => {
+        const category = node.category || 'unknown'
+        if (!categoryGroups.has(category)) {
+          categoryGroups.set(category, [])
+        }
+        categoryGroups.get(category)!.push(node)
+      })
+      
+      // Process each category group
+      categoryGroups.forEach((categoryNodes, category) => {
+        // Sort by column to maintain left-to-right reading order
+        categoryNodes.sort((a, b) => (a.column || 0) - (b.column || 0))
+        
+        // Group by column for same-row placement
+        const columnGroups = new Map<number, TreeNode[]>()
+        categoryNodes.forEach(node => {
+          const column = node.column || 0
+          if (!columnGroups.has(column)) {
+            columnGroups.set(column, [])
+          }
+          columnGroups.get(column)!.push(node)
+        })
+        
+        // Assign rows: nodes in same category+column share the same row
+        columnGroups.forEach((columnNodes, column) => {
+          columnNodes.forEach((node, index) => {
+            node.row = currentRow  // Same row for all nodes in same category+column
+          })
+        })
+        
+        // Move to next row for the next category (no extra spacing between types)
+        currentRow++
+      })
+      
+      // No extra spacing between type groups - keep it compact
+    })
+  }
+
+  // Temporary basic positioning (Phase 2 will replace this with proper algorithm)
+  function assignBasicPositions(treeNodes: TreeNode[]): void {
+    const swimlaneCounts: Record<string, number> = {}
+    
+    treeNodes.forEach(node => {
+      const swimlane = node.swimlane
+      const count = swimlaneCounts[swimlane] || 0
+      
+      node.column = count % 5  // Basic grid layout
+      node.row = Math.floor(count / 5)
+      
+      swimlaneCounts[swimlane] = count + 1
+    })
+  }
+
+  // Phase 5: Enhanced dependency traversal algorithms
+  
+  // Build dependency graph for efficient traversal
+  function buildDependencyGraph(): { dependencies: Map<string, string[]>, dependents: Map<string, string[]> } {
+    const dependencies = new Map<string, string[]>() // node -> prerequisites
+    const dependents = new Map<string, string[]>()   // node -> what depends on it
+    
+    // Initialize maps
+    nodes.value.forEach(node => {
+      dependencies.set(node.id, [...node.prerequisites])
+      dependents.set(node.id, [])
+    })
+    
+    // Build dependents map
+    nodes.value.forEach(node => {
+      node.prerequisites.forEach(prereqId => {
+        if (dependents.has(prereqId)) {
+          const list = dependents.get(prereqId) || []
+          list.push(node.id)
+          dependents.set(prereqId, list)
+        }
+      })
+    })
+    
+    return { dependencies, dependents }
+  }
+
+  // Recursive function to find all prerequisites (what this node needs)
+  function findAllPrerequisites(nodeId: string, visited = new Set<string>(), depth = 0): ConnectionPath[] {
+    if (visited.has(nodeId)) return [] // Avoid cycles
+    visited.add(nodeId)
+    
+    const { dependencies } = buildDependencyGraph()
+    const directPrereqs = dependencies.get(nodeId) || []
+    const paths: ConnectionPath[] = []
+    
+    // Add direct prerequisites
+    directPrereqs.forEach(prereqId => {
+      if (nodes.value.find(n => n.id === prereqId)) {
+        const fromNode = nodes.value.find(n => n.id === prereqId)
+        const toNode = nodes.value.find(n => n.id === nodeId)
+        
+        paths.push({
+          from: prereqId,
+          to: nodeId,
+          depth: depth + 1,
+          type: 'prerequisite',
+          swimlaneSpan: fromNode && toNode ? [fromNode.swimlane, toNode.swimlane] : []
+        })
+        
+        // Recursively find deeper prerequisites
+        const deeperPaths = findAllPrerequisites(prereqId, new Set(visited), depth + 1)
+        paths.push(...deeperPaths)
+      }
+    })
+    
+    return paths
+  }
+
+  // Recursive function to find all dependents (what depends on this node)
+  function findAllDependents(nodeId: string, visited = new Set<string>(), depth = 0): ConnectionPath[] {
+    if (visited.has(nodeId)) return [] // Avoid cycles
+    visited.add(nodeId)
+    
+    const { dependents } = buildDependencyGraph()
+    const directDeps = dependents.get(nodeId) || []
+    const paths: ConnectionPath[] = []
+    
+    // Add direct dependents
+    directDeps.forEach(depId => {
+      if (nodes.value.find(n => n.id === depId)) {
+        const fromNode = nodes.value.find(n => n.id === nodeId)
+        const toNode = nodes.value.find(n => n.id === depId)
+        
+        paths.push({
+          from: nodeId,
+          to: depId,
+          depth: depth + 1,
+          type: 'dependent',
+          swimlaneSpan: fromNode && toNode ? [fromNode.swimlane, toNode.swimlane] : []
+        })
+        
+        // Recursively find deeper dependents
+        const deeperPaths = findAllDependents(depId, new Set(visited), depth + 1)
+        paths.push(...deeperPaths)
+      }
+    })
+    
+    return paths
+  }
+
+  // Build complete dependency tree for selected nodes
+  function buildDependencyTree(nodeIds: string[]): DependencyTree {
+    const allPrereqPaths: ConnectionPath[] = []
+    const allDepPaths: ConnectionPath[] = []
+    
+    // Collect all paths for all selected nodes
+    nodeIds.forEach(nodeId => {
+      const prereqPaths = findAllPrerequisites(nodeId)
+      const depPaths = findAllDependents(nodeId)
+      allPrereqPaths.push(...prereqPaths)
+      allDepPaths.push(...depPaths)
+    })
+    
+    // Extract unique node IDs by depth
+    const directPrerequisites = [...new Set(allPrereqPaths.filter(p => p.depth === 1).map(p => p.from))]
+    const indirectPrerequisites = [...new Set(allPrereqPaths.filter(p => p.depth > 1).map(p => p.from))]
+    const directDependents = [...new Set(allDepPaths.filter(p => p.depth === 1).map(p => p.to))]
+    const indirectDependents = [...new Set(allDepPaths.filter(p => p.depth > 1).map(p => p.to))]
+
+    const result = {
+      selected: [...nodeIds],
+      directPrerequisites,
+      indirectPrerequisites,
+      directDependents,
+      indirectDependents,
+      connectionPaths: [...allPrereqPaths, ...allDepPaths]
+    }
+    
+    return result
+  }
+
+  // Update node highlight information based on dependency tree
+  function updateNodeHighlightInfo(dependencyTree: DependencyTree): void {
+    const info = new Map<string, NodeHighlightInfo>()
+    
+    console.log('🔧 updateNodeHighlightInfo called, dependency tree:', {
+      selected: dependencyTree.selected,
+      directPrerequisites: dependencyTree.directPrerequisites.length,
+      directDependents: dependencyTree.directDependents.length,
+      indirectPrerequisites: dependencyTree.indirectPrerequisites.length,
+      indirectDependents: dependencyTree.indirectDependents.length
+    })
+    
+    // Clear all first
+    nodes.value.forEach(node => {
+      info.set(node.id, { state: 'dimmed' })
+    })
+    
+    console.log('🔧 Set all nodes to dimmed, total nodes:', nodes.value.length)
+    
+    // Selected nodes - primary highlight
+    dependencyTree.selected.forEach(nodeId => {
+      info.set(nodeId, { state: 'selected' })
+    })
+    
+    console.log('🔧 Set selected nodes:', dependencyTree.selected)
+    
+    // Direct dependencies
+    dependencyTree.directPrerequisites.forEach(nodeId => {
+      info.set(nodeId, { 
+        state: 'direct', 
+        depth: 1, 
+        connectionType: 'prerequisite' 
+      })
+    })
+    
+    dependencyTree.directDependents.forEach(nodeId => {
+      info.set(nodeId, { 
+        state: 'direct', 
+        depth: 1, 
+        connectionType: 'dependent' 
+      })
+    })
+    
+    console.log('🔧 Set direct dependencies:', {
+      prerequisites: dependencyTree.directPrerequisites.length,
+      dependents: dependencyTree.directDependents.length
+    })
+    
+    // Indirect dependencies
+    dependencyTree.indirectPrerequisites.forEach(nodeId => {
+      if (!info.has(nodeId) || info.get(nodeId)?.state === 'dimmed') {
+        const paths = dependencyTree.connectionPaths.filter(p => p.from === nodeId && p.type === 'prerequisite')
+        const minDepth = Math.min(...paths.map(p => p.depth))
+        info.set(nodeId, { 
+          state: 'indirect', 
+          depth: minDepth, 
+          connectionType: 'prerequisite' 
+        })
+      }
+    })
+    
+    dependencyTree.indirectDependents.forEach(nodeId => {
+      if (!info.has(nodeId) || info.get(nodeId)?.state === 'dimmed') {
+        const paths = dependencyTree.connectionPaths.filter(p => p.to === nodeId && p.type === 'dependent')
+        const minDepth = Math.min(...paths.map(p => p.depth))
+        info.set(nodeId, { 
+          state: 'indirect', 
+          depth: minDepth, 
+          connectionType: 'dependent' 
+        })
+      }
+    })
+    
+    console.log('🔧 Final highlight info map size:', info.size)
+    console.log('🔧 Sample highlight states:', Array.from(info.entries()).slice(0, 5))
+    
+    nodeHighlightInfo.value = info
+  }
+
+  // Enhanced enter highlight mode with full family tree traversal
+  function enterHighlightMode(nodeId: string): void {
+    highlightMode.value = true
+    selectedNodeId.value = nodeId
+    
+    // Single node selection only (multi-select removed)
+    selectedNodes.value.clear()
+    selectedNodes.value.add(nodeId)
+    
+    // Build complete dependency tree
+    const dependencyTree = buildDependencyTree([nodeId])
+    currentDependencyTree.value = dependencyTree
+    
+    console.log('🌳 Dependencies found:', dependencyTree.directPrerequisites.length + dependencyTree.indirectPrerequisites.length, 'prereqs,', dependencyTree.directDependents.length + dependencyTree.indirectDependents.length, 'dependents')
+    
+    // Update highlight information for all nodes
+    updateNodeHighlightInfo(dependencyTree)
+    
+    // Update legacy highlightedNodes set for backward compatibility
+    highlightedNodes.value.clear()
+    const allHighlighted = new Set([
+      ...dependencyTree.selected,
+      ...dependencyTree.directPrerequisites,
+      ...dependencyTree.indirectPrerequisites,
+      ...dependencyTree.directDependents,
+      ...dependencyTree.indirectDependents
+    ])
+    highlightedNodes.value = allHighlighted
+  }
+
+  // Enhanced exit highlight mode
+  function exitHighlightMode(): void {
+    highlightMode.value = false
+    selectedNodeId.value = null
+    selectedNodes.value.clear()
+    highlightedNodes.value.clear()
+    nodeHighlightInfo.value.clear()
+    currentDependencyTree.value = null
+    hoveredConnection.value = null
+    multiSelectMode.value = false
+    
+    // Also exit focus mode if active
+    exitFocusMode()
+  }
+
+  // Phase 8: Focus mode functions
+  function enterFocusMode(nodeId: string): void {
+    focusMode.value = true
+    focusedNodeId.value = nodeId
+    
+    // Calculate visible nodes (family tree of the focused node)
+    const familyTreeNodeIds = calculateVisibleNodes(nodeId)
+    visibleNodeIds.value = familyTreeNodeIds
+    
+    // Recalculate layout for the focused nodes
+    recalculateLayoutForFocus()
+    
+    console.log('🎯 Focus mode entered for node:', nodeId, 'showing', familyTreeNodeIds.size, 'nodes')
+  }
+
+  function exitFocusMode(): void {
+    focusMode.value = false
+    focusedNodeId.value = null
+    visibleNodeIds.value.clear()
+    
+    // Restore original layout by reloading
+    loadTreeData()
+    
+    console.log('🎯 Focus mode exited')
+  }
+
+  function recalculateLayoutForFocus(): void {
+    if (!focusMode.value || visibleNodeIds.value.size === 0) return
+    
+    console.log('🔍 FOCUS MODE LAYOUT - compressing row positions')
+    
+    // Get only the visible nodes
+    const visibleNodes = nodes.value.filter(node => visibleNodeIds.value.has(node.id))
+    console.log(`📊 ${visibleNodes.length} visible nodes in focus mode`)
+    
+    // Compress row positions for each swimlane
+    compressRowPositionsForFocus(visibleNodes)
+    
+    // Get visible swimlanes
+    const visibleSwimlanes = getVisibleSwimlanes()
+    console.log(`🏊 ${visibleSwimlanes.length} visible swimlanes:`, visibleSwimlanes.map(s => s.id))
+    
+    console.log('🎯 Row compression complete')
+  }
+
+  function compressRowPositionsForFocus(visibleNodes: TreeNode[]): void {
+    // Group visible nodes by swimlane
+    const swimlaneGroups = new Map<string, TreeNode[]>()
+    
+    visibleNodes.forEach(node => {
+      const swimlane = node.swimlane
+      if (!swimlaneGroups.has(swimlane)) {
+        swimlaneGroups.set(swimlane, [])
+      }
+      swimlaneGroups.get(swimlane)!.push(node)
+    })
+    
+    // Compress rows within each swimlane
+    swimlaneGroups.forEach((swimlaneNodes, swimlaneId) => {
+      // Sort nodes by their original row position to maintain relative order
+      swimlaneNodes.sort((a, b) => (a.row || 0) - (b.row || 0))
+      
+      // Reassign sequential row numbers starting from 0
+      swimlaneNodes.forEach((node, index) => {
+        const oldRow = node.row || 0
+        node.row = index
+        console.log(`� ${swimlaneId}: ${node.id} row ${oldRow} → ${index}`)
+      })
+    })
+  }
+
+  function calculateVisibleNodes(nodeId: string): Set<string> {
+    const visibleNodes = new Set<string>()
+    
+    // Add the focused node itself
+    visibleNodes.add(nodeId)
+    
+    // Build dependency tree for this node only
+    const dependencyTree = buildDependencyTree([nodeId])
+    
+    // Add all prerequisites and dependents
+    dependencyTree.directPrerequisites.forEach(id => visibleNodes.add(id))
+    dependencyTree.indirectPrerequisites.forEach(id => visibleNodes.add(id))
+    dependencyTree.directDependents.forEach(id => visibleNodes.add(id))
+    dependencyTree.indirectDependents.forEach(id => visibleNodes.add(id))
+    
+    console.log(`🔍 Focus on ${nodeId} shows ${visibleNodes.size} total nodes`)
+    
+    return visibleNodes
+  }
+
+  function getVisibleSwimlanes(): Swimlane[] {
+    if (!focusMode.value) {
+      return swimlanes.value
+    }
+    
+    // Filter swimlanes to only those containing visible nodes
+    return swimlanes.value.filter(swimlane => {
+      return nodes.value.some(node => 
+        node.swimlane === swimlane.id && visibleNodeIds.value.has(node.id)
+      )
+    })
+  }
+
+  function getVisibleNodes(): TreeNode[] {
+    if (!focusMode.value) {
+      return nodes.value
+    }
+    
+    return nodes.value.filter(node => visibleNodeIds.value.has(node.id))
+  }
+
+  function getVisibleConnections(): Connection[] {
+    if (!focusMode.value) {
+      return connections.value
+    }
+    
+    // Only show connections where both source and target are visible
+    return connections.value.filter(connection => 
+      visibleNodeIds.value.has(connection.from) && visibleNodeIds.value.has(connection.to)
+    )
+  }
+
+  // Handle connection hover for enhanced interactions
+  function handleConnectionHover(connection: Connection | null): void {
+    hoveredConnection.value = connection
+  }
+
+  // Handle connection click for path-based navigation
+  function handleConnectionClick(connection: Connection): void {
+    // Navigate to the target node and highlight its family tree
+    enterHighlightMode(connection.to)
+  }
+
+  // Get enhanced highlight state for a node
+  function getNodeHighlightState(nodeId: string): HighlightState {
+    const info = nodeHighlightInfo.value.get(nodeId)
+    const state = info?.state || 'none'
+    return state
+  }
+
+  // Get connection depth for styling
+  function getConnectionDepth(connection: Connection): number {
+    if (!currentDependencyTree.value) return 0
+    
+    const path = currentDependencyTree.value.connectionPaths.find(
+      p => p.from === connection.from && p.to === connection.to
+    )
+    return path?.depth || 0
+  }
+
+  // Check if connection should be highlighted
+  function isConnectionHighlighted(connection: Connection): boolean {
+    if (!highlightMode.value || !currentDependencyTree.value) return false
+    
+    // Check if both nodes are in the highlighted tree
+    const isInTree = currentDependencyTree.value.connectionPaths.some(
+      p => p.from === connection.from && p.to === connection.to
+    )
+    
+    return isInTree || hoveredConnection.value === connection
+  }
+
+  // Get node dependency depth for visual hierarchy
+  function getNodeDepth(nodeId: string): number {
+    const info = nodeHighlightInfo.value.get(nodeId)
+    const depth = info?.depth || 0
+    return depth
+  }
+
+  // Get node connection type for styling
+  function getNodeConnectionType(nodeId: string): 'prerequisite' | 'dependent' | undefined {
+    const info = nodeHighlightInfo.value.get(nodeId)
+    const connectionType = info?.connectionType
+    return connectionType
+  }
+
+  // Check if a node should be dimmed
+  function isNodeDimmed(nodeId: string): boolean {
+    return highlightMode.value && !highlightedNodes.value.has(nodeId)
+  }
+
+  // Check if a node is highlighted
+  function isNodeHighlighted(nodeId: string): boolean {
+    return highlightedNodes.value.has(nodeId)
+  }
+
+  // Phase 6: Edit Integration Methods
+  
+  // Get source CSV file for a tree node (reverse of getSwimlaneForNode)
+  function getSourceFileForNode(node: TreeNode): string {
+    const swimlane = node.swimlane
+    
+    // Map swimlanes back to their source files (must match exactly with CSV_FILE_LIST)
+    switch (swimlane) {
+      case 'farm': return 'farm_actions.csv'
+      case 'forge': return 'forge_actions.csv'
+      case 'tower': return 'tower_actions.csv'
+      case 'town-vendors': return 'vendors.csv'
+      case 'town-blacksmith': return 'town_blacksmith.csv'
+      case 'town-agronomist': return 'town_agronomist.csv'
+      case 'town-carpenter': return 'town_carpenter.csv'
+      case 'town-land': return 'town_land_steward.csv'
+      case 'town-trader': return 'town_material_trader.csv'  // This was the key issue!
+      case 'town-skills': return 'town_skills_trainer.csv'
+      case 'adventure': return 'adventures.csv'
+      case 'mining': return 'mining.csv'
+      default:
+        console.warn(`Unknown swimlane for file mapping: ${swimlane}`)
+        return 'farm_actions.csv' // fallback
+    }
+  }
+
+  // Find the original GameDataItem for a TreeNode
+  function findOriginalGameDataItem(node: TreeNode): GameDataItem | null {
+    const gameDataStore = useGameDataStore()
+    const sourceFile = getSourceFileForNode(node)
+    
+    console.log('Finding original item for:', { nodeId: node.id, sourceFile, totalItems: gameDataStore.items.length })
+    
+    // Find item by ID in the appropriate source file
+    const item = gameDataStore.items.find(item => 
+      item.id === node.id && item.sourceFile === sourceFile
+    )
+    
+    if (!item) {
+      console.log('Item not found. Available items in source file:', 
+        gameDataStore.items.filter(i => i.sourceFile === sourceFile).map(i => i.id).slice(0, 10)
+      )
+    }
+    
+    return item || null
+  }
+
+  // Reload tree data while preserving highlight state
+  async function reloadAfterEdit(): Promise<void> {
+    // Store current state
+    const wasHighlighted = highlightMode.value
+    const selectedId = selectedNodeId.value
+    
+    // Reload tree data
+    await loadTreeData()
+    
+    // Restore highlight state if node still exists
+    if (wasHighlighted && selectedId) {
+      const nodeExists = nodes.value.some(n => n.id === selectedId)
+      if (nodeExists) {
+        enterHighlightMode(selectedId)
+      }
+    }
+  }
+
+  return {
+    // State
+    nodes,
+    connections,
+    highlightMode,
+    highlightedNodes,
+    selectedNodeId,
+    isLoading,
+    loadError,
+    gridConfig,
+    swimlanes,
+    
+    // Phase 5: Enhanced state
+    nodeHighlightInfo,
+    currentDependencyTree,
+    hoveredConnection,
+    multiSelectMode,
+    selectedNodes,
+    
+    // Computed
+    nodePositions,
+    swimlaneNodes,
+    
+    // Actions
+    loadTreeData,
+    enterHighlightMode,
+    exitHighlightMode,
+    isNodeDimmed,
+    isNodeHighlighted,
+    getSwimlaneStartY,
+    
+    // Phase 5: Enhanced actions
+    handleConnectionHover,
+    handleConnectionClick,
+    getNodeHighlightState,
+    getConnectionDepth,
+    isConnectionHighlighted,
+    getNodeDepth,
+    getNodeConnectionType,
+    buildDependencyTree,
+    findAllPrerequisites,
+    findAllDependents,
+    
+    // Phase 6: Edit integration
+    getSourceFileForNode,
+    findOriginalGameDataItem,
+    reloadAfterEdit,
+    
+    // Phase 8: Focus mode
+    focusMode,
+    focusedNodeId,
+    enterFocusMode,
+    exitFocusMode,
+    recalculateLayoutForFocus,
+    getVisibleSwimlanes,
+    getVisibleNodes,
+    getVisibleConnections
+  }
+})

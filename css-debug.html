@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS Debug - Node Blank Issue</title>
+    <style>
+        /* Replicate the TreeNode styles */
+        .tree-node {
+            background: white;
+            border: 2px solid #666;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-sizing: border-box;
+            width: 180px;
+            height: 40px;
+            margin: 10px;
+        }
+
+        .tree-node.dimmed {
+            opacity: 0.5;
+        }
+
+        .tree-node.highlighted {
+            border-color: #fbbf24;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+        }
+
+        /* Phase 5 Enhanced states */
+        .tree-node.highlight-selected {
+            border-color: #fbbf24;
+            background-color: #fffbeb;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+        }
+
+        .tree-node.highlight-direct {
+            border-color: #fb923c;
+            background-color: #fff7ed;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+        }
+
+        .tree-node.highlight-indirect {
+            border-color: #ea580c;
+            background-color: #fffbf5;
+            box-shadow: 0 0 10px rgba(217, 119, 6, 0.4);
+        }
+
+        .node-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-align: center;
+            color: #111827;
+            flex: 1;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>TreeNode CSS Debug</h1>
+    
+    <div class="tree-node">
+        <div class="node-title">Normal Node</div>
+    </div>
+    
+    <div class="tree-node dimmed">
+        <div class="node-title">Dimmed Node (should be translucent)</div>
+    </div>
+    
+    <div class="tree-node highlighted">
+        <div class="node-title">Highlighted Node</div>
+    </div>
+    
+    <div class="tree-node highlight-selected">
+        <div class="node-title">Selected Node</div>
+    </div>
+    
+    <div class="tree-node highlight-direct">
+        <div class="node-title">Direct Dependency</div>
+    </div>
+    
+    <div class="tree-node highlight-indirect">
+        <div class="node-title">Indirect Dependency</div>
+    </div>
+    
+    <script>
+        console.log('All nodes should show their text. If any are blank, there is a CSS issue.');
+    </script>
+</body>
+</html>

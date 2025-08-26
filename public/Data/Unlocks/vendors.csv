@@ -4,4 +4,4 @@ agronomist,Greenwise Co-op,,town,energy_storage;pump;water_storage;seed_storage;
 land_steward,County Land Office,,town,land_deeds,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Purchase new land
 carpenter,Towerwrights Guild,,town,tower_reach;tower_nets;tower_auto;gnome_housing;gnome_training,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Tower and housing
 skills_trainer,Field School,,town,carry_capacity,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Hero abilities
-material_trader,Exchange Post,,town,material_trades;gold_conversion,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Resource trading
+material_trader,Exchange Post,depth_2;farm_stage_2,town,material_trades;gold_conversion,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Resource trading

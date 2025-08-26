@@ -1,0 +1,16 @@
+      // Find unique row values and create a compressed mapping
+      const originalRows = [...new Set(swimlaneNodes.map(node => node.row || 0))].sort((a, b) => a - b)
+      const rowMapping = new Map<number, number>()
+      
+      // Create compressed row mapping to preserve grouping
+      originalRows.forEach((originalRow, index) => {
+        rowMapping.set(originalRow, index)
+      })
+      
+      // Apply the compressed row mapping
+      swimlaneNodes.forEach(node => {
+        const oldRow = node.row || 0
+        const newRow = rowMapping.get(oldRow) || 0
+        node.row = newRow
+        console.log(`🔧 ${swimlaneId}: ${node.id} row ${oldRow} → ${newRow}`)
+      })

@@ -80,27 +80,34 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
 
   // Helper to get swimlane start Y position
   function getSwimlaneStartY(swimlaneId: string): number {
+    // Ensure we have nodes loaded
+    if (nodes.value.length === 0) {
+      return 0
+    }
+    
     let y = 0
     
+    // Calculate height for each swimlane up to the target
     for (const swimlane of swimlanes.value) {
       if (swimlane.id === swimlaneId) {
         break
       }
       
-      // Calculate height for this swimlane based on actual row usage
-      const swimlaneNodesInThisLane = swimlaneNodes.value[swimlane.id] || []
-      if (swimlaneNodesInThisLane.length === 0) {
-        // Empty swimlane - use single row height for grid alignment
-        y += gridConfig.value.rowHeight + gridConfig.value.rowGap
-        continue
+      // Get nodes in this swimlane directly from nodes array
+      const swimlaneNodesArray = nodes.value.filter(node => node.swimlane === swimlane.id)
+      
+      if (swimlaneNodesArray.length === 0) {
+        // Empty swimlane - use zero height to eliminate gaps
+        continue // Don't add any height - this eliminates the gap!
       }
       
-      // Find the maximum row number (could be fractional)
-      const maxRow = Math.max(0, ...swimlaneNodesInThisLane.map(n => n.row || 0))
+      // Find the maximum row number used in this swimlane
+      const maxRow = Math.max(0, ...swimlaneNodesArray.map(n => n.row || 0))
       
-      // Calculate height: (maxRow + 1) * row spacing (no extra padding)
-      const rowSpace = (maxRow + 1) * (gridConfig.value.rowHeight + gridConfig.value.rowGap)
-      y += rowSpace
+      // Calculate height: (maxRow + 1) * row spacing
+      const swimlaneHeight = (maxRow + 1) * (gridConfig.value.rowHeight + gridConfig.value.rowGap)
+      
+      y += swimlaneHeight
     }
     
     return y
@@ -165,8 +172,8 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
       return 'mining'
     }
     
-    // Default fallback
-    return 'farm'
+    // Default fallback - unrecognized files go to "Other" swimlane
+    return 'other'
   }
 
   // Convert GameDataItem to TreeNode
@@ -247,8 +254,20 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
           // Exclude crops (they're farmable items, not upgrades)
           if (item.sourceFile === 'crops.csv') return false
           
-          // Only include items that have prerequisites OR are dependencies of other items
-          return item.prerequisites.length > 0 || hasItemAsDependency(item.id, gameDataStore.items)
+          // Exclude reference data files - these are simulation data, not upgrades
+          if (item.sourceFile === 'weapons.csv') return false
+          if (item.sourceFile === 'tools.csv') return false
+          if (item.sourceFile === 'armor_base.csv') return false
+          if (item.sourceFile === 'armor_effects.csv') return false
+          if (item.sourceFile === 'armor_potential.csv') return false
+          if (item.sourceFile === 'helpers.csv') return false
+          
+          // Only include items that have prerequisites OR are dependencies of other items OR are repeatable actions
+          const hasPrerequisites = item.prerequisites.length > 0
+          const isDependency = hasItemAsDependency(item.id, gameDataStore.items)
+          const isRepeatable = (item as any).repeatable === 'TRUE' || (item as any).repeatable === true
+          
+          return hasPrerequisites || isDependency || isRepeatable
         })
         .map(convertToTreeNode)
       
@@ -587,16 +606,11 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
           })
         })
         
-        // Move to next row for the next category
+        // Move to next row for the next category (no extra spacing between types)
         currentRow++
       })
       
-      // Add one row spacing between type groups (only if we have more types coming)
-      const typeEntries = Array.from(typeGroups.entries())
-      const currentTypeIndex = typeEntries.findIndex(([t]) => t === type)
-      if (currentTypeIndex < typeEntries.length - 1) {
-        currentRow++ // One full row gap between different types
-      }
+      // No extra spacing between type groups - keep it compact
     })
   }
 

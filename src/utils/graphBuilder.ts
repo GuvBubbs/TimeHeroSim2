@@ -213,6 +213,8 @@ function calculateLaneBoundaries(laneHeights: Map<string, number>): Map<string, 
     // Only add padding and advance Y position if the lane has height
     if (height > 0) {
       cumulativeY += height + LAYOUT_CONSTANTS.LANE_PADDING
+    } else {
+      console.log(`🏊 ZERO HEIGHT LANE: ${lane} - skipping padding`)
     }
   })
   
@@ -290,6 +292,7 @@ function calculateLaneHeights(items: GameDataItem[]): Map<string, number> {
       // Empty lane: allocate zero height to avoid empty rows
       laneHeights.set(lane, 0)
       laneAnalysis.set(lane, { maxTier: -1, maxNodesInTier: 0, totalNodes: 0 })
+      console.log(`🏊 EMPTY LANE: ${lane} → height 0px (was 100px)`)
       return
     }
     

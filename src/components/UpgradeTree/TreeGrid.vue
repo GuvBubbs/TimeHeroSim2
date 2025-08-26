@@ -123,8 +123,8 @@ const gridStyle = computed(() => {
     const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
     
     if (swimlaneNodes.length === 0) {
-      // Empty swimlane - use single row height for grid alignment
-      totalHeight += props.gridConfig.rowHeight + props.gridConfig.rowGap
+      // Empty swimlane - use zero height to eliminate gaps
+      // totalHeight += 0 (no need to add anything)
     } else {
       // Find the maximum row number (could be fractional from spacing)
       const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))
@@ -217,8 +217,8 @@ function getSwimlaneHeight(swimlane: Swimlane): number {
   const swimlaneNodes = props.nodes.filter(n => n.swimlane === swimlane.id)
   
   if (swimlaneNodes.length === 0) {
-    // Empty swimlane - use single row height for grid alignment
-    return props.gridConfig.rowHeight + props.gridConfig.rowGap
+    // Empty swimlane - use zero height to eliminate gaps
+    return 0
   } else {
     // Calculate height based on actual row usage (matching store logic)
     const maxRow = Math.max(0, ...swimlaneNodes.map(n => n.row || 0))

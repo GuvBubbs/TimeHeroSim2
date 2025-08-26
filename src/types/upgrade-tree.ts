@@ -105,7 +105,8 @@ export const SWIMLANES: Swimlane[] = [
   { id: 'adventure', label: 'Adventure - Routes', color: '#ef4444' },     // red
   { id: 'forge', label: 'Forge', color: '#f97316' },         // orange
   { id: 'mining', label: 'Mining', color: '#78716c' },       // stone
-  { id: 'tower', label: 'Tower', color: '#3b82f6' }          // blue
+  { id: 'tower', label: 'Tower', color: '#3b82f6' },         // blue
+  { id: 'other', label: 'Other', color: '#6b7280' }          // gray
 ]
 
 // Grid configuration from design document

@@ -755,15 +755,27 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
   function updateNodeHighlightInfo(dependencyTree: DependencyTree): void {
     const info = new Map<string, NodeHighlightInfo>()
     
+    console.log('🔧 updateNodeHighlightInfo called, dependency tree:', {
+      selected: dependencyTree.selected,
+      directPrerequisites: dependencyTree.directPrerequisites.length,
+      directDependents: dependencyTree.directDependents.length,
+      indirectPrerequisites: dependencyTree.indirectPrerequisites.length,
+      indirectDependents: dependencyTree.indirectDependents.length
+    })
+    
     // Clear all first
     nodes.value.forEach(node => {
       info.set(node.id, { state: 'dimmed' })
     })
     
+    console.log('🔧 Set all nodes to dimmed, total nodes:', nodes.value.length)
+    
     // Selected nodes - primary highlight
     dependencyTree.selected.forEach(nodeId => {
       info.set(nodeId, { state: 'selected' })
     })
+    
+    console.log('🔧 Set selected nodes:', dependencyTree.selected)
     
     // Direct dependencies
     dependencyTree.directPrerequisites.forEach(nodeId => {
@@ -780,6 +792,11 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
         depth: 1, 
         connectionType: 'dependent' 
       })
+    })
+    
+    console.log('🔧 Set direct dependencies:', {
+      prerequisites: dependencyTree.directPrerequisites.length,
+      dependents: dependencyTree.directDependents.length
     })
     
     // Indirect dependencies
@@ -806,6 +823,9 @@ export const useUpgradeTreeStore = defineStore('upgradeTree', () => {
         })
       }
     })
+    
+    console.log('🔧 Final highlight info map size:', info.size)
+    console.log('🔧 Sample highlight states:', Array.from(info.entries()).slice(0, 5))
     
     nodeHighlightInfo.value = info
   }

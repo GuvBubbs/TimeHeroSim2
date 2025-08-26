@@ -10,11 +10,11 @@
   >
     <!-- Title in center -->
     <div class="node-title">
-      {{ node.name }}
+      {{ node.name || 'NO NAME' }}
     </div>
     
     <!-- Depth indicator for indirect dependencies -->
-    <div v-if="depthIndicator" class="depth-indicator">
+    <div v-if="depthIndicator" class="depth-indicator depth-badge">
       {{ depthIndicator }}
     </div>
     
@@ -60,23 +60,23 @@ const nodeRef = ref<HTMLElement>()
 const nodeClasses = computed(() => {
   const classes = []
   
-  // Legacy support
-  if (props.highlighted) classes.push('highlighted')
-  if (props.dimmed) classes.push('dimmed')
-  
-  // Phase 5: Enhanced highlight states
+  // Phase 5: Enhanced highlight states take precedence
   if (props.highlightState !== 'none') {
     classes.push(`highlight-${props.highlightState}`)
-  }
-  
-  // Connection type classes
-  if (props.connectionType) {
-    classes.push(`connection-${props.connectionType}`)
-  }
-  
-  // Depth classes for staggered animations
-  if (props.depth && props.depth > 0) {
-    classes.push(`depth-${Math.min(props.depth, 5)}`) // Cap at depth-5
+    
+    // Connection type classes
+    if (props.connectionType) {
+      classes.push(`connection-${props.connectionType}`)
+    }
+    
+    // Depth classes for staggered animations
+    if (props.depth && props.depth > 0) {
+      classes.push(`depth-${Math.min(props.depth, 5)}`) // Cap at depth-5
+    }
+  } else {
+    // Legacy support only when new system is not active
+    if (props.highlighted) classes.push('highlighted')
+    if (props.dimmed) classes.push('dimmed')
   }
   
   return classes
@@ -85,7 +85,10 @@ const nodeClasses = computed(() => {
 // Enhanced depth indicator
 const depthIndicator = computed(() => {
   if (props.highlightState === 'indirect' && props.depth && props.depth > 1) {
-    return `+${props.depth}`
+    // Prerequisites show negative depth (below selected node)
+    // Dependents show positive depth (above selected node)
+    const depthValue = props.connectionType === 'prerequisite' ? -props.depth : props.depth
+    return depthValue < 0 ? `${depthValue}` : `+${depthValue}`
   }
   return null
 })
@@ -144,11 +147,12 @@ const nodeStyle = computed(() => {
   z-index: 10;
 }
 
-.tree-node.dimmed {
+/* Legacy dimmed state - only applies when enhanced highlights are NOT active */
+.tree-node.dimmed:not(.highlight-selected):not(.highlight-direct):not(.highlight-indirect):not(.highlight-dimmed) {
   opacity: 0.5;
 }
 
-/* Phase 5: Enhanced Highlight States */
+/* Phase 5: Enhanced Highlight States - These override legacy states */
 .tree-node.highlight-selected {
   border-color: #fbbf24;
   background-color: #fffbeb;
@@ -157,6 +161,7 @@ const nodeStyle = computed(() => {
   border-color: #fbbf24 !important;
   box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
   z-index: 10;
+  opacity: 1 !important; /* Override any other opacity rules */
 }
 
 .tree-node.highlight-direct {
@@ -166,6 +171,7 @@ const nodeStyle = computed(() => {
   animation: fadeInBounce 0.3s ease-out forwards;
   border-color: #f59e0b !important;
   box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+  opacity: 1 !important; /* Override any other opacity rules */
 }
 
 .tree-node.highlight-indirect {
@@ -175,6 +181,27 @@ const nodeStyle = computed(() => {
   animation: fadeInBounce 0.3s ease-out forwards;
   border-color: #d97706 !important;
   box-shadow: 0 0 10px rgba(217, 119, 6, 0.4);
+  opacity: 1 !important; /* Override any other opacity rules */
+}
+
+/* Dimmed state for Phase 5 highlight system - Override legacy dimmed */
+.tree-node.highlight-dimmed {
+  opacity: 0.6 !important; /* Increase base opacity */
+  background-color: rgba(255, 255, 255, 0.9) !important; /* Ensure solid background */
+}
+
+/* Ensure text is highly visible in dimmed nodes */
+.tree-node.highlight-dimmed .node-title {
+  color: #000000 !important; /* Pure black for maximum contrast */
+  font-weight: 700 !important; /* Extra bold */
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.8) !important; /* White outline */
+}
+
+/* Make depth indicator more visible too */
+.tree-node.highlight-dimmed .depth-indicator {
+  color: #000000 !important;
+  font-weight: 800 !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
 }
 
 /* Connection Type Styling */
@@ -192,6 +219,24 @@ const nodeStyle = computed(() => {
 .tree-node.depth-3 { animation-delay: calc(var(--animation-delay) + 100ms); }
 .tree-node.depth-4 { animation-delay: calc(var(--animation-delay) + 150ms); }
 .tree-node.depth-5 { animation-delay: calc(var(--animation-delay) + 200ms); }
+
+.depth-indicator {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  background-color: #f97316;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 9999px;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  z-index: 10;
+}
 
 /* Depth Indicator Badge */
 .depth-badge {
@@ -222,6 +267,15 @@ const nodeStyle = computed(() => {
   color: #111827;
   flex: 1;
   width: 100%;
+  /* Ensure text is always visible even in dimmed nodes */
+  position: relative;
+  z-index: 5;
+}
+
+/* Ensure text visibility in dimmed states */
+.tree-node.highlight-dimmed .node-title {
+  color: #374151 !important; /* Slightly lighter but still visible */
+  font-weight: 600; /* Bolder to compensate for opacity */
 }
 
 .node-edit-btn {

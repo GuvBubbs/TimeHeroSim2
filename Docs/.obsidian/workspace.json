@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sim Design/03-upgrade-tree-redesigned.md",
+                "file": "App Build/UpgradeTree-As-Built.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "03-upgrade-tree-redesigned"
+              "title": "UpgradeTree-As-Built"
             }
           }
         ],
@@ -186,6 +186,7 @@
   },
   "active": "2952c2bb9b8f86e1",
   "lastOpenFiles": [
+    "Sim Design/03-upgrade-tree-redesigned.md",
     "App Build/Upgrade Tree/PHASE7-PROGRESS-UPDATE.md",
     "App Build/Upgrade Tree/phase7-polish-test-prompt.md",
     "App Build/Upgrade Tree/PHASE7-IMPLEMENTATION-PLAN.md",

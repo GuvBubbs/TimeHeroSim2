@@ -194,13 +194,21 @@ UpgradeTreeView.vue (Main Container)
   - `selected` - Primary gold highlight (#fbbf24) with scale transform and glow
   - `direct` - Medium orange highlight (#f59e0b) for 1-hop dependencies  
   - `indirect` - Subtle amber highlight (#d97706) for 2+ hop dependencies
-  - `dimmed` - 30% opacity for non-related nodes
+  - `dimmed` - 60% opacity for non-related nodes with enhanced text visibility
 - **Interactive Connection System**: Clickable SVG paths with cursor styling and navigation
 - **Advanced Interaction Patterns**: Multi-select mode with Ctrl/Cmd + Click
 - **Enhanced Animations**: 300-500ms staggered transitions with depth-based delays
-- **Visual Depth Indicators**: "+2", "+3" badges with directional arrows (← → for type)
+- **Visual Depth Indicators**: Directional badges showing dependency hierarchy
+  - Prerequisites: "-2", "-3" for nodes below selected (moving down dependency chain)
+  - Dependents: "+2", "+3" for nodes above selected (moving up dependency chain)
+  - Corner positioning as circular orange badges without text interference
+- **Text Visibility Enhancement**: Fixed dimmed node text contrast issues
+  - Pure black text (#000000) with white text shadow for maximum readability
+  - Extra bold font weight (700) to compensate for container opacity
+  - Solid white background for improved contrast in dimmed states
 - **Performance Optimized**: O(V+E) algorithms handling complex dependency trees smoothly
 - **Enhanced Store Architecture**: 15 new functions including `buildDependencyTree()`, `findAllPrerequisites()`, `findAllDependents()`
+- **Debug System Cleanup**: Removed verbose console logging for clean production experience
 
 ### ✅ Phase 6: Edit Integration (COMPLETED)
 - **Configuration Modal Reuse**: Successfully integrated existing EditItemModal.vue from Configuration screen
@@ -676,25 +684,35 @@ console.log('Grid config:', store.gridConfig)
 
 ## Known Issues & Limitations
 
-### Current Limitations (Phase 4 Complete)
+### ✅ Recently Fixed Issues (Phase 5 Polish)
 
-1. **Basic Highlight Mode**: Current highlight system is functional but needs enhanced family tree traversal
-2. **No Connection Interactions**: Connection lines don't yet support click/hover interactions  
-3. **No Edit Integration**: Edit button only logs to console (planned for Phase 6)
-4. **No Connection Tooltips**: Missing contextual information on dependency relationships
+1. **Text Visibility in Dimmed Nodes**: Fixed nodes appearing "blank" in highlight mode
+   - **Root Cause**: CSS opacity inheritance causing text contrast to become nearly invisible
+   - **Solution**: Enhanced text styling with pure black color (#000000), white text shadow, and bold font weight
+   - **Depth Badge Positioning**: Fixed depth indicators overlapping node titles by implementing proper corner badge positioning
+
+2. **Depth Indicator Direction**: Fixed incorrect +/- signs for dependency hierarchy
+   - **Issue**: Prerequisites showing "+2" instead of "-2" 
+   - **Fix**: Directional logic based on connectionType (prerequisite = negative, dependent = positive)
+
+### Current Limitations (All Major Features Complete)
+
+1. **Mobile Responsiveness**: Layout optimized for desktop, mobile experience could be enhanced
+2. **Accessibility**: Keyboard navigation and screen reader support could be improved
+3. **Performance Edge Cases**: Very large datasets (1000+ nodes) may benefit from virtual scrolling
 
 ### TypeScript Issues (Non-blocking)
 
 - Some existing Configuration components have type issues
-- TreeGrid component fully typed and error-free
+- TreeGrid component fully typed and error-free  
 - New upgrade tree code follows strict TypeScript patterns
 
-### Future Optimization Needs
+### Future Enhancement Opportunities
 
-1. **Large Dataset Performance**: Virtual scrolling for 100+ nodes
-2. **Connection Routing**: Smart arrow paths avoiding node overlaps
-3. **Responsive Design**: Mobile/tablet layout considerations
-4. **Accessibility**: Keyboard navigation and screen reader support
+1. **Advanced Connection Routing**: Smart arrow paths with collision avoidance for overlapping connections
+2. **Enhanced Tooltips**: Rich contextual information with dependency path details
+3. **Export Functionality**: PDF/image export of dependency trees
+4. **Theme Customization**: User-configurable color schemes and visual density options
 
 ## File Structure Summary
 

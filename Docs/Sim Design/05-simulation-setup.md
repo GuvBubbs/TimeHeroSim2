@@ -1,6 +1,183 @@
 # Time Hero Simulator - Simulation Setup
 ## Document 5: Configuration Wizard & Launch Control
 
+---
+
+## 📋 ACTUAL REQUIREMENTS & MVP GOALS (NEW SECTION)
+
+### Core Purpose
+Create a multi-step wizard interface to configure simulation parameters before launching. This connects the persona system (Phase 4) with the game data (Phases 1-3) and prepares everything needed for the simulation engine (Phase 6).
+
+### MVP Requirements (What We're Actually Building)
+1. **3-Step Wizard** with progress indicator
+2. **Step 1: Basic Config** - Name, duration, speed
+3. **Step 2: Persona Selection** - Choose from Phase 4 personas
+4. **Step 3: Review & Launch** - Summary and start button
+5. **Save/Load Configurations** - LocalStorage persistence
+6. **Integration with Existing Stores** - Game data, personas, configuration
+
+### What We're NOT Building (Yet)
+- Screen-by-screen parameter tweaking
+- Advanced validation options
+- A/B testing setup
+- Batch simulations
+- Complex success criteria
+
+### ASCII UI Mockup
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Simulation Setup                               [Back to Dashboard] │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Progress: [■■■■■■■■□□□□] Step 2 of 3                          │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                                                          │  │
+│  │  Step 1: Basic Configuration ✓                          │  │
+│  │  ─────────────────────────────                          │  │
+│  │  Name: [Casual Player Test Run_______________]          │  │
+│  │                                                          │  │
+│  │  Duration:                                              │  │
+│  │  ○ Fixed: [35] days                                     │  │
+│  │  ● Run until completion                                 │  │
+│  │  ○ Run until stuck for [3] days                         │  │
+│  │                                                          │  │
+│  │  Speed:                                                 │  │
+│  │  ○ Real-time (1x) - Watch in detail                     │  │
+│  │  ● Fast (100x) - Normal testing                         │  │
+│  │  ○ Maximum - Quick validation                           │  │
+│  │                                                          │  │
+│  │  [◀ Previous]                          [Next ▶]         │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  Quick Templates:                                              │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐            │
+│  │ ⚡ Speed Test│ │ 📊 Full Run │ │ 🔍 Find Issue│            │
+│  │  20 days    │ │  35 days    │ │  Until stuck │            │
+│  │  Maximum    │ │  Fast       │ │  Real-time   │            │
+│  │  [Load]     │ │  [Load]     │ │  [Load]      │            │
+│  └─────────────┘ └─────────────┘ └─────────────┘            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Step 2: Select Persona
+┌──────────────────────────────────────────────────────────┐
+│                                                          │
+│  Step 2: Select Player Persona                          │
+│  ─────────────────────────────                          │
+│                                                          │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐      │
+│  │ ⚡          │ │ 😊          │ │ 📅          │      │
+│  │ SPEEDRUNNER │ │   CASUAL    │ │   WEEKEND   │      │
+│  │   95% eff   │ │   70% eff   │ │   80% eff   │      │
+│  │ [Selected]  │ │  [Select]   │ │  [Select]   │      │
+│  └─────────────┘ └─────────────┘ └─────────────┘      │
+│                                                          │
+│  Selected Details:                                      │
+│  • Efficiency: 95%                                      │
+│  • Daily checks: 10 weekday, 15 weekend                │
+│  • Expected completion: 20 days                         │
+│  • Strategy: Optimal decisions                          │
+│                                                          │
+│  Data Source:                                            │
+│  ● Use current configuration (17 files, 3 modified)     │
+│  ○ Use default CSV data                                 │
+│  ○ Load saved configuration: [_________▼]               │
+│                                                          │
+│  [◀ Previous]                          [Next ▶]         │
+└──────────────────────────────────────────────────────────┘
+
+Step 3: Review & Launch
+┌──────────────────────────────────────────────────────────┐
+│                                                          │
+│  Step 3: Review & Launch                                │
+│  ──────────────────────                                 │
+│                                                          │
+│  Simulation Summary:                                    │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │ Name:     Casual Player Test Run                │   │
+│  │ Persona:  Speedrunner (95% efficiency)          │   │
+│  │ Duration: Until completion                      │   │
+│  │ Speed:    Fast (100x)                           │   │
+│  │ Data:     Current config (3 changes)            │   │
+│  │                                                  │   │
+│  │ Estimated Time: ~5 minutes                      │   │
+│  └─────────────────────────────────────────────────┘   │
+│                                                          │
+│  Options:                                               │
+│  ☑ Save this configuration for later                    │
+│  ☐ Generate detailed logs                              │
+│  ☐ Include memory profiling                            │
+│                                                          │
+│  Recent Runs:                                           │
+│  • Casual 35-day test - Completed (32 days) ✓          │
+│  • Weekend warrior test - Failed (bottleneck day 18) ✗  │
+│  • Speedrun validation - Completed (19 days) ✓          │
+│                                                          │
+│  [◀ Previous]  [Save Config]    [🚀 Launch Simulation]  │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Key Data Structure (Simplified)
+```typescript
+interface SimulationConfig {
+  // Basic settings
+  name: string
+  duration: {
+    mode: 'fixed' | 'completion' | 'bottleneck'
+    maxDays?: number
+    stuckThreshold?: number
+  }
+  speed: 'realtime' | 'fast' | 'maximum'
+  
+  // Persona from Phase 4
+  personaId: string
+  
+  // Data source
+  dataSource: 'current' | 'default' | 'saved'
+  savedConfigId?: string
+  
+  // Options
+  generateLogs: boolean
+  memoryProfiling: boolean
+  saveConfig: boolean
+}
+```
+
+### Wizard State Management
+```typescript
+interface WizardState {
+  currentStep: 0 | 1 | 2
+  config: Partial<SimulationConfig>
+  validation: {
+    step1: boolean
+    step2: boolean
+    step3: boolean
+  }
+  canProceed: boolean
+  canGoBack: boolean
+}
+```
+
+### Integration Points
+1. **SetupStore** (new Pinia store using Composition API)
+2. **Uses PersonaStore** from Phase 4
+3. **Uses GameDataStore** from Phase 1
+4. **Saves to LocalStorage** for persistence
+5. **Launches to LiveMonitor** (future Phase 7)
+
+### Success Criteria
+- [ ] 3-step wizard with progress indicator
+- [ ] Can configure basic simulation parameters
+- [ ] Can select personas from Phase 4
+- [ ] Shows summary before launch
+- [ ] Saves configurations to LocalStorage
+- [ ] Can load saved configurations
+- [ ] Quick templates for common scenarios
+- [ ] Dark theme consistent with existing UI
+
+---
+
 ### Purpose & Goals
 The Simulation Setup provides a **guided configuration wizard** for preparing and launching game simulations. It enables developers to fine-tune simulation parameters, select personas, configure individual game systems, and establish success criteria before initiating a balance test run.
 
@@ -100,39 +277,145 @@ const wizardSteps: WizardStep[] = [
 
 ### Step 1: Basic Configuration
 
-#### Interface Design
-```
-┌─────────────────────────────────────────┐
-│      Simulation Setup - Basic Config    │
-├─────────────────────────────────────────┤
-│                                          │
-│ Simulation Name                         │
-│ [Casual Player Balance Test    ]        │
-│                                          │
-│ Description (optional)                  │
-│ [Testing if casual players can complete │
-│  the game within 35 days with new      │
-│  adventure balance changes.            ]│
-│                                          │
-│ Duration                                │
-│ ● Simulate specific days: [35  ] days   │
-│ ○ Run until completion                  │
-│ ○ Run until bottleneck                 │
-│                                          │
-│ Success Criteria                        │
-│ ☑ Complete game                        │
-│ ☑ Within [35] days                     │
-│ ☐ Reach phase: [Endgame        ▼]     │
-│ ☐ No bottlenecks lasting > [3] days    │
-│ ☐ Minimum efficiency: [60]%            │
-│                                          │
-│ Simulation Speed                        │
-│ ○ Real-time (1x)                       │
-│ ● Fast (100x)                          │
-│ ○ Maximum                              │
-│                                          │
-│        [Back]            [Next →]       │
-└─────────────────────────────────────────┘
+#### Interface Design (Using established UI patterns)
+```vue
+<template>
+  <div class="bg-sim-surface border border-sim-border rounded-lg p-6">
+    <div class="card-header border-b border-sim-border pb-4 mb-6">
+      <h2 class="text-lg font-semibold text-sim-text">Simulation Setup - Basic Config</h2>
+    </div>
+    
+    <div class="card-body space-y-6">
+      <!-- Simulation Name -->
+      <div class="form-section">
+        <label class="block text-sm font-medium text-sim-muted mb-2">
+          Simulation Name
+        </label>
+        <input v-model="config.name"
+               type="text"
+               placeholder="Casual Player Balance Test"
+               class="w-full border border-sim-border rounded-lg bg-sim-bg text-sim-text px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent" />
+      </div>
+      
+      <!-- Description -->
+      <div class="form-section">
+        <label class="block text-sm font-medium text-sim-muted mb-2">
+          Description (optional)
+        </label>
+        <textarea v-model="config.description"
+                  rows="3"
+                  placeholder="Testing if casual players can complete the game within 35 days with new adventure balance changes."
+                  class="w-full border border-sim-border rounded-lg bg-sim-bg text-sim-text px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent" />
+      </div>
+      
+      <!-- Duration -->
+      <div class="form-section">
+        <h3 class="text-sm font-medium text-sim-text mb-3">Duration</h3>
+        <div class="space-y-2">
+          <label class="flex items-center">
+            <input v-model="config.duration.mode" 
+                   type="radio" 
+                   value="fixed"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Simulate specific days:</span>
+            <input v-model.number="config.duration.maxDays"
+                   type="number"
+                   :disabled="config.duration.mode !== 'fixed'"
+                   class="ml-2 w-20 border border-sim-border rounded bg-sim-bg text-sim-text px-2 py-1 disabled:opacity-50" />
+            <span class="ml-2 text-sim-muted">days</span>
+          </label>
+          
+          <label class="flex items-center">
+            <input v-model="config.duration.mode" 
+                   type="radio" 
+                   value="completion"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Run until completion</span>
+          </label>
+          
+          <label class="flex items-center">
+            <input v-model="config.duration.mode" 
+                   type="radio" 
+                   value="bottleneck"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Run until bottleneck</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Success Criteria -->
+      <div class="form-section">
+        <h3 class="text-sm font-medium text-sim-text mb-3">Success Criteria</h3>
+        <div class="space-y-2">
+          <label class="flex items-center">
+            <input v-model="config.successCriteria.mustComplete" 
+                   type="checkbox"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Complete game</span>
+          </label>
+          
+          <label class="flex items-center">
+            <input v-model="config.successCriteria.withinDays" 
+                   type="checkbox"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Within</span>
+            <input v-model.number="config.successCriteria.maxDays"
+                   type="number"
+                   :disabled="!config.successCriteria.withinDays"
+                   class="ml-2 w-20 border border-sim-border rounded bg-sim-bg text-sim-text px-2 py-1 disabled:opacity-50" />
+            <span class="ml-2 text-sim-muted">days</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Simulation Speed -->
+      <div class="form-section">
+        <h3 class="text-sm font-medium text-sim-text mb-3">Simulation Speed</h3>
+        <div class="space-y-2">
+          <label class="flex items-center">
+            <input v-model="config.executionSpeed" 
+                   type="radio" 
+                   value="realtime"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Real-time (1x)</span>
+          </label>
+          
+          <label class="flex items-center">
+            <input v-model="config.executionSpeed" 
+                   type="radio" 
+                   value="fast"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Fast (100x)</span>
+          </label>
+          
+          <label class="flex items-center">
+            <input v-model="config.executionSpeed" 
+                   type="radio" 
+                   value="maximum"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Maximum</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Navigation -->
+      <div class="flex justify-between pt-6 border-t border-sim-border">
+        <button @click="goBack"
+                class="px-4 py-2 bg-sim-surface text-sim-text border border-sim-border rounded hover:bg-slate-700 transition-colors">
+          <i class="fas fa-arrow-left mr-2"></i>
+          Back
+        </button>
+        
+        <button @click="goNext"
+                :disabled="!canProceed"
+                class="px-4 py-2 bg-sim-accent text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+          Next
+          <i class="fas fa-arrow-right ml-2"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
 ```
 
 #### Configuration Model
@@ -168,679 +451,564 @@ interface BasicConfig {
 
 ### Step 2: Persona Selection
 
-#### Interface Design
-```
-┌─────────────────────────────────────────┐
-│    Simulation Setup - Player Persona    │
-├─────────────────────────────────────────┤
-│                                          │
-│ Select Persona Type                     │
-│                                          │
-│ ┌─────────────┐ ┌─────────────┐        │
-│ │      ⚡      │ │      👤      │        │
-│ │ Speedrunner │ │   Casual    │        │
-│ │   95% eff   │ │   70% eff   │        │
-│ │ 10 check/day│ │ 2 check/day │        │
-│ └─────────────┘ └─────────────┘        │
-│                                          │
-│ ┌─────────────┐ ┌─────────────┐        │
-│ │      📅      │ │      ➕      │        │
-│ │   Weekend   │ │   Custom    │        │
-│ │   Warrior   │ │   Create    │        │
-│ │   80% eff   │ │     New     │        │
-│ └─────────────┘ └─────────────┘        │
-│                                          │
-│ Persona Details                         │
-│ ┌─────────────────────────────────┐    │
-│ │ Efficiency: 70%                 │    │
-│ │ Daily Play: 30 min              │    │
-│ │ Check-ins: 2 weekday, 3 weekend │    │
-│ │ Risk Level: Low (20%)           │    │
-│ │ Strategy: Quality of Life       │    │
-│ └─────────────────────────────────┘    │
-│                                          │
-│ ☐ Override persona settings            │
-│                                          │
-│        [← Back]          [Next →]       │
-└─────────────────────────────────────────┘
-```
+#### Interface Design (Using card patterns from Dashboard)
+```vue
+<template>
+  <div class="bg-sim-surface border border-sim-border rounded-lg p-6">
+    <div class="card-header border-b border-sim-border pb-4 mb-6">
+      <h2 class="text-lg font-semibold text-sim-text">Simulation Setup - Player Persona</h2>
+    </div>
+    
+    <div class="card-body">
+      <!-- Persona Grid -->
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- Speedrunner Card -->
+        <div @click="selectPersona('speedrunner')"
+             :class="getPersonaCardClass('speedrunner')"
+             class="cursor-pointer p-4 rounded-lg border-2 transition-all">
+          <div class="text-center">
+            <i class="fas fa-bolt text-3xl mb-2 text-amber-500"></i>
+            <h3 class="font-semibold text-sim-text">Speedrunner</h3>
+            <p class="text-sm text-sim-muted">95% efficiency</p>
+            <p class="text-sm text-sim-muted">10 check/day</p>
+          </div>
+        </div>
+        
+        <!-- Casual Card -->
+        <div @click="selectPersona('casual')"
+             :class="getPersonaCardClass('casual')"
+             class="cursor-pointer p-4 rounded-lg border-2 transition-all">
+          <div class="text-center">
+            <i class="fas fa-user text-3xl mb-2 text-emerald-500"></i>
+            <h3 class="font-semibold text-sim-text">Casual</h3>
+            <p class="text-sm text-sim-muted">70% efficiency</p>
+            <p class="text-sm text-sim-muted">2 check/day</p>
+          </div>
+        </div>
+        
+        <!-- Weekend Warrior Card -->
+        <div @click="selectPersona('weekend-warrior')"
+             :class="getPersonaCardClass('weekend-warrior')"
+             class="cursor-pointer p-4 rounded-lg border-2 transition-all">
+          <div class="text-center">
+            <i class="fas fa-calendar-week text-3xl mb-2 text-blue-500"></i>
+            <h3 class="font-semibold text-sim-text">Weekend Warrior</h3>
+            <p class="text-sm text-sim-muted">80% efficiency</p>
+            <p class="text-sm text-sim-muted">1 weekday / 8 weekend</p>
+          </div>
+        </div>
+        
+        <!-- Custom Card -->
+        <div @click="createCustomPersona"
+             class="cursor-pointer p-4 rounded-lg border-2 border-dashed border-sim-border hover:border-sim-accent transition-all">
+          <div class="text-center">
+            <i class="fas fa-plus text-3xl mb-2 text-sim-accent"></i>
+            <h3 class="font-semibold text-sim-text">Custom</h3>
+            <p class="text-sm text-sim-muted">Create New</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Persona Details -->
+      <div v-if="selectedPersona" 
+           class="bg-sim-bg border border-sim-border rounded-lg p-4">
+        <h3 class="font-semibold text-sim-text mb-3">Persona Details</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-sim-muted">Efficiency:</span>
+            <span class="text-sim-text">{{ (selectedPersona.behavior.efficiency.base * 100).toFixed(0) }}%</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-sim-muted">Daily Play:</span>
+            <span class="text-sim-text">{{ calculateDailyPlaytime(selectedPersona) }} min</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-sim-muted">Check-ins:</span>
+            <span class="text-sim-text">{{ selectedPersona.schedule.weekday.checkIns }} weekday, {{ selectedPersona.schedule.weekend.checkIns }} weekend</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-sim-muted">Risk Level:</span>
+            <span class="text-sim-text">{{ getRiskLevel(selectedPersona.behavior.riskTolerance) }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-sim-muted">Strategy:</span>
+            <span class="text-sim-text">{{ selectedPersona.patterns.upgradeStrategy }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Override Option -->
+      <div class="mt-4">
+        <label class="flex items-center">
+          <input v-model="enableOverrides" 
+                 type="checkbox"
+                 class="mr-2 text-sim-accent focus:ring-sim-accent" />
+          <span class="text-sim-text">Override persona settings</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</template>
 
-#### Persona Overrides
-```typescript
-interface PersonaOverrides {
-  enabled: boolean;
-  
-  overrides: {
-    efficiency?: Partial<EfficiencyProfile>;
-    schedule?: Partial<SchedulePattern>;
-    decisionMaking?: Partial<DecisionProfile>;
-    customBehaviors?: CustomBehavior[];
-  };
-  
-  presets: {
-    name: string;
-    description: string;
-    overrides: PersonaOverrides;
-  }[];
+<script setup lang="ts">
+function getPersonaCardClass(personaId: string) {
+  if (selectedPersonaId.value === personaId) {
+    return 'border-sim-accent bg-sim-accent bg-opacity-10'
+  }
+  return 'border-sim-border hover:border-sim-accent'
 }
 
-// Example override preset
-const strugglingCasual: PersonaOverrides = {
-  enabled: true,
-  overrides: {
-    efficiency: {
-      tutorial: 0.4,  // Really struggles at start
-      earlyGame: 0.5
-    },
-    schedule: {
-      variance: 0.6  // Very inconsistent
-    }
-  }
-};
+function getRiskLevel(tolerance: number): string {
+  if (tolerance < 0.3) return 'Low (20%)'
+  if (tolerance < 0.6) return 'Medium (50%)'
+  return 'High (80%)'
+}
+</script>
 ```
 
 ### Step 3: Game Data Selection
 
-#### Interface Design
-```
-┌─────────────────────────────────────────┐
-│     Simulation Setup - Game Data        │
-├─────────────────────────────────────────┤
-│                                          │
-│ Configuration Source                    │
-│ ● Current (unsaved changes)            │
-│ ○ Default (original CSVs)              │
-│ ○ Saved Configuration: [Select...  ▼]  │
-│ ○ Custom Mix:                          │
-│                                          │
-│ Data Validation                         │
-│ ┌─────────────────────────────────┐    │
-│ │ ✓ 35 CSV files loaded           │    │
-│ │ ✓ 2,847 data points valid       │    │
-│ │ ⚠ 3 warnings (non-critical)     │    │
-│ │                                  │    │
-│ │ [View Details]                   │    │
-│ └─────────────────────────────────┘    │
-│                                          │
-│ Configuration Overrides                 │
-│ ☐ Override specific values             │
-│                                          │
-│ ┌─────────────────────────────────┐    │
-│ │ Example overrides:               │    │
-│ │ crops.carrot.energy: 2           │    │
-│ │ adventures.meadow.difficulty: 1.5│    │
-│ │ [+ Add Override]                 │    │
-│ └─────────────────────────────────┘    │
-│                                          │
-│        [← Back]          [Next →]       │
-└─────────────────────────────────────────┘
-```
-
-#### Data Configuration
-```typescript
-interface GameDataConfig {
-  source: 'current' | 'default' | 'saved' | 'custom';
-  savedConfigId?: string;
-  
-  customMix?: {
-    base: 'current' | 'default' | 'saved';
-    overrides: Map<string, any>; // file.path.to.value -> new value
-  };
-  
-  validation: {
-    status: 'valid' | 'warnings' | 'errors';
-    issues: ValidationIssue[];
-    canProceed: boolean;
-  };
-  
-  experiments?: {
-    parameterSweep?: ParameterSweep;
-    abTest?: ABTestConfig;
-  };
-}
-
-interface ParameterSweep {
-  parameter: string; // Path to value
-  values: any[];     // Values to test
-  mode: 'sequential' | 'parallel';
-}
-```
-
-### Step 4: Screen Configuration
-
-#### Tab-Based Screen Settings
-```
-┌─────────────────────────────────────────┐
-│    Simulation Setup - Screen Settings   │
-├─────────────────────────────────────────┤
-│ [Farm][Tower][Town][Adventure][Forge][Mine]│
-├─────────────────────────────────────────┤
-│              Farm Settings               │
-│                                          │
-│ Starting Conditions                     │
-│ Initial Plots: [3      ]                │
-│ Starting Seeds: [10 carrot, 5 potato ▼]│
-│ Water Capacity: [20     ]               │
-│                                          │
-│ Automation Settings                     │
-│ ☑ Auto-plant when seeds available      │
-│ ☑ Auto-water when water available      │
-│ ☑ Auto-harvest when ready              │
-│ ☐ Prioritize high-value crops          │
-│                                          │
-│ Efficiency Modifiers                    │
-│ Planting efficiency: [100]%             │
-│ Watering efficiency: [95 ]%             │
-│ Harvest timing: [±5 ] minutes           │
-│                                          │
-│ Special Rules                           │
-│ ☐ Disable offline growth               │
-│ ☐ Force water shortage at day [10]     │
-│ ☐ Limit seed availability              │
-│                                          │
-│        [← Back]          [Next →]       │
-└─────────────────────────────────────────┘
-```
-
-#### Screen-Specific Configurations
-
-##### Farm Configuration
-```typescript
-interface FarmConfig {
-  initial: {
-    plots: number;
-    seeds: { type: string; amount: number; }[];
-    water: number;
-    energy: number;
-  };
-  
-  automation: {
-    autoPlant: boolean;
-    autoWater: boolean;
-    autoHarvest: boolean;
-    priorityStrategy: 'value' | 'time' | 'balanced';
-  };
-  
-  efficiency: {
-    plantingMod: number;   // 0.5 to 1.0
-    wateringMod: number;   // 0.5 to 1.0
-    harvestWindow: number; // ± minutes variance
-  };
-  
-  specialRules: {
-    disableOfflineGrowth?: boolean;
-    forceWaterShortage?: { day: number; duration: number; };
-    seedLimitations?: { type: string; maxPerDay: number; }[];
-  };
-}
-```
-
-##### Tower Configuration
-```typescript
-interface TowerConfig {
-  initial: {
-    reachLevel: number;
-    autoCatcherTier: number;
-    nets: number;
-  };
-  
-  behavior: {
-    activePlayMinutes: number; // Per session
-    catchEfficiency: number;   // 0.5 to 1.0
-    autoCatcherBonus: number;  // Multiplier
-  };
-  
-  seedDistribution: {
-    mode: 'random' | 'weighted' | 'fixed';
-    weights?: Map<string, number>;
-    guaranteed?: { seed: string; every: number; }[];
-  };
-}
-```
-
-##### Adventure Configuration
-```typescript
-interface AdventureConfig {
-  initial: {
-    unlockedRoutes: string[];
-    heroLevel: number;
-    startingWeapons: string[];
-    startingArmor: string[];
-  };
-  
-  combatBehavior: {
-    routeSelection: 'optimal' | 'safe' | 'random' | 'rotating';
-    difficultyPreference: 'short' | 'medium' | 'long' | 'adaptive';
-    retreatThreshold: number; // HP percentage
-  };
-  
-  lootModifiers: {
-    goldMultiplier: number;
-    materialDropRate: number;
-    armorDropChance: number;
-  };
-  
-  specialRules: {
-    noDeath?: boolean;
-    guaranteedBossKills?: boolean;
-    forcedRoutes?: { day: number; route: string; }[];
-  };
-}
-```
-
-##### Mining Configuration
-```typescript
-interface MiningConfig {
-  initial: {
-    unlockedDepths: number[];
-    pickaxeTier: number;
-  };
-  
-  behavior: {
-    depthStrategy: 'shallow' | 'deep' | 'balanced';
-    sessionLength: { min: number; max: number; };
-    toolSharpening: boolean;
-  };
-  
-  yieldModifiers: {
-    materialMultiplier: number;
-    rareBonusChance: number;
-    energyEfficiency: number;
-  };
-}
-```
-
-### Step 5: Advanced Options
-
-#### Interface Design
-```
-┌─────────────────────────────────────────┐
-│   Simulation Setup - Advanced Options   │
-├─────────────────────────────────────────┤
-│                                          │
-│ Logging & Debug                         │
-│ Log Level: [Standard         ▼]         │
-│ ☑ Log to file                          │
-│ ☑ Include timestamps                   │
-│ ☐ Verbose action logging               │
-│ ☐ Memory profiling                     │
-│                                          │
-│ Validation                              │
-│ ☑ Validate prerequisites               │
-│ ☑ Check resource bounds                │
-│ ☑ Detect impossible states             │
-│ ☐ Strict mode (fail on warning)        │
-│                                          │
-│ Experimental Features                   │
-│ ☐ Enable A/B testing                   │
-│ ┌─────────────────────────────────┐    │
-│ │ Variant A: Current config       │    │
-│ │ Variant B: [Select...        ▼]│    │
-│ │ Sample size: [100] runs each    │    │
-│ └─────────────────────────────────┘    │
-│                                          │
-│ ☐ Parameter sweep                      │
-│ ┌─────────────────────────────────┐    │
-│ │ Parameter: [crops.carrot.energy]│    │
-│ │ Values: [1, 2, 3, 4, 5]         │    │
-│ │ ☑ Run in parallel               │    │
-│ └─────────────────────────────────┘    │
-│                                          │
-│ Performance                             │
-│ ☑ Use web workers                      │
-│ Max workers: [4    ]                    │
-│ ☐ Limit memory usage to [500] MB       │
-│                                          │
-│        [← Back]          [Next →]       │
-└─────────────────────────────────────────┘
-```
-
-#### Advanced Configuration
-```typescript
-interface AdvancedConfig {
-  logging: {
-    level: 'minimal' | 'standard' | 'detailed' | 'debug';
-    toFile: boolean;
-    includeTimestamps: boolean;
-    verboseActions: boolean;
-    memoryProfiling: boolean;
-    customLoggers?: Logger[];
-  };
-  
-  validation: {
-    validatePrerequisites: boolean;
-    checkResourceBounds: boolean;
-    detectImpossibleStates: boolean;
-    strictMode: boolean;
-    customValidators?: Validator[];
-  };
-  
-  experiments: {
-    abTesting?: {
-      enabled: boolean;
-      variantA: SimulationConfig;
-      variantB: SimulationConfig;
-      sampleSize: number;
-      metrics: string[];
-    };
+#### Interface Design (Using validation patterns from Dashboard)
+```vue
+<template>
+  <div class="bg-sim-surface border border-sim-border rounded-lg p-6">
+    <div class="card-header border-b border-sim-border pb-4 mb-6">
+      <h2 class="text-lg font-semibold text-sim-text">Simulation Setup - Game Data</h2>
+    </div>
     
-    parameterSweep?: {
-      enabled: boolean;
-      parameter: string;
-      values: any[];
-      parallel: boolean;
-      aggregation: 'mean' | 'median' | 'all';
-    };
-  };
-  
-  performance: {
-    useWebWorkers: boolean;
-    maxWorkers: number;
-    memoryLimit?: number;
-    throttleUpdates: boolean;
-    updateInterval: number; // ms
-  };
-  
-  random: {
-    seed?: number; // For reproducible randomness
-    distribution: 'uniform' | 'normal' | 'exponential';
-  };
-}
-```
-
-### Step 6: Review & Launch
-
-#### Interface Design
-```
-┌─────────────────────────────────────────┐
-│    Simulation Setup - Review & Launch   │
-├─────────────────────────────────────────┤
-│                                          │
-│ Configuration Summary                   │
-│ ┌─────────────────────────────────┐    │
-│ │ Name: Casual Player Balance Test│    │
-│ │ Persona: Casual (70% efficiency)│    │
-│ │ Duration: 35 days maximum       │    │
-│ │ Data: Current + 3 overrides     │    │
-│ │ Speed: Fast (100x)              │    │
-│ └─────────────────────────────────┘    │
-│                                          │
-│ Success Criteria                        │
-│ ✓ Complete game                        │
-│ ✓ Within 35 days                       │
-│ ✓ No bottlenecks > 3 days             │
-│                                          │
-│ Estimated Runtime                       │
-│ Single run: ~8 seconds                  │
-│ Total with analysis: ~15 seconds       │
-│                                          │
-│ Save Configuration                      │
-│ ☑ Save this configuration              │
-│ Name: [Casual Balance v2.1    ]        │
-│                                          │
-│ Launch Options                          │
-│ ○ Run once                             │
-│ ● Run [10] times (Monte Carlo)         │
-│ ○ Run continuously until stopped       │
-│                                          │
-│    [← Back]   [Save]   [🚀 Launch]     │
-└─────────────────────────────────────────┘
-```
-
-#### Launch Configuration
-```typescript
-interface LaunchConfig {
-  summary: {
-    name: string;
-    persona: string;
-    duration: string;
-    dataSource: string;
-    criteria: string[];
-  };
-  
-  estimatedRuntime: {
-    singleRun: number; // seconds
-    totalTime: number; // seconds
-    runsPerMinute: number;
-  };
-  
-  saveOptions: {
-    saveConfig: boolean;
-    configName: string;
-    autoSaveResults: boolean;
-    resultsFormat: 'json' | 'csv' | 'both';
-  };
-  
-  execution: {
-    mode: 'single' | 'multiple' | 'continuous';
-    count?: number;
-    stopCondition?: StopCondition;
-    parallel: boolean;
-  };
-}
-
-interface StopCondition {
-  type: 'time' | 'runs' | 'success' | 'failure';
-  value: number;
-}
-```
-
-### Preset Configurations
-
-#### Quick Start Templates
-```typescript
-const presetConfigs = {
-  'quick-test': {
-    name: 'Quick Balance Check',
-    duration: { mode: 'fixed', maxDays: 7 },
-    persona: 'speedrunner',
-    speed: 'maximum',
-    logging: { level: 'minimal' }
-  },
-  
-  'full-playthrough': {
-    name: 'Complete Game Test',
-    duration: { mode: 'completion' },
-    persona: 'casual',
-    speed: 'fast',
-    logging: { level: 'standard' }
-  },
-  
-  'bottleneck-hunt': {
-    name: 'Find Bottlenecks',
-    duration: { mode: 'bottleneck', bottleneckThreshold: 2 },
-    persona: 'weekend-warrior',
-    speed: 'fast',
-    logging: { level: 'detailed' }
-  },
-  
-  'regression-test': {
-    name: 'Regression Suite',
-    duration: { mode: 'fixed', maxDays: 35 },
-    personaSet: ['speedrunner', 'casual', 'weekend-warrior'],
-    speed: 'maximum',
-    validation: { strictMode: true }
-  }
-};
-```
-
-### Validation System
-
-#### Configuration Validator
-```typescript
-class ConfigurationValidator {
-  validate(config: SimulationConfig): ValidationResult {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
-    
-    // Check basic config
-    if (!config.basic.name) {
-      errors.push({
-        step: 'basic',
-        field: 'name',
-        message: 'Simulation name is required'
-      });
-    }
-    
-    // Check persona compatibility
-    if (config.persona.schedule.weekday.checkIns < 1) {
-      warnings.push({
-        step: 'persona',
-        field: 'schedule',
-        message: 'Less than 1 check-in per day may cause issues'
-      });
-    }
-    
-    // Check data integrity
-    const dataValidation = this.validateGameData(config.gameData);
-    errors.push(...dataValidation.errors);
-    
-    // Check screen configs
-    if (config.screens.farm.initial.plots < 3) {
-      errors.push({
-        step: 'screens',
-        field: 'farm.plots',
-        message: 'Minimum 3 plots required for tutorial'
-      });
-    }
-    
-    return {
-      valid: errors.length === 0,
-      canProceed: errors.filter(e => e.severity === 'critical').length === 0,
-      errors,
-      warnings
-    };
-  }
-}
+    <div class="card-body space-y-6">
+      <!-- Configuration Source -->
+      <div class="form-section">
+        <h3 class="text-sm font-medium text-sim-text mb-3">Configuration Source</h3>
+        <div class="space-y-2">
+          <label class="flex items-center">
+            <input v-model="config.source" 
+                   type="radio" 
+                   value="current"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Current (unsaved changes)</span>
+          </label>
+          
+          <label class="flex items-center">
+            <input v-model="config.source" 
+                   type="radio" 
+                   value="default"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Default (original CSVs)</span>
+          </label>
+          
+          <label class="flex items-center">
+            <input v-model="config.source" 
+                   type="radio" 
+                   value="saved"
+                   class="mr-2 text-sim-accent focus:ring-sim-accent" />
+            <span class="text-sim-text">Saved Configuration:</span>
+            <select v-model="config.savedConfigId"
+                    :disabled="config.source !== 'saved'"
+                    class="ml-2 border border-sim-border rounded bg-sim-bg text-sim-text px-2 py-1 disabled:opacity-50">
+              <option value="">Select...</option>
+              <option v-for="cfg in savedConfigs" :key="cfg.id" :value="cfg.id">
+                {{ cfg.name }}
+              </option>
+            </select>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Data Validation (Similar to Dashboard) -->
+      <div class="bg-sim-bg border border-sim-border rounded-lg p-4">
+        <h3 class="font-semibold text-sim-text mb-3">Data Validation</h3>
+        <div class="space-y-2">
+          <div class="flex items-center">
+            <i class="fas fa-check-circle text-sim-success mr-2"></i>
+            <span class="text-sim-text">{{ gameData.stats.totalItems }} data points loaded</span>
+          </div>
+          
+          <div class="flex items-center">
+            <i class="fas fa-check-circle text-sim-success mr-2"></i>
+            <span class="text-sim-text">{{ Object.keys(gameData.stats.itemsByFile).length }} CSV files valid</span>
+          </div>
+          
+          <div v-if="warningCount > 0" class="flex items-center">
+            <i class="fas fa-exclamation-triangle text-sim-warning mr-2"></i>
+            <span class="text-sim-text">{{ warningCount }} warnings (non-critical)</span>
+          </div>
+          
+          <button v-if="gameData.validationIssues.length > 0"
+                  @click="showValidationDetails = !showValidationDetails"
+                  class="text-sim-accent hover:text-blue-400 text-sm transition-colors">
+            <i class="fas fa-eye mr-1"></i>
+            View Details
+          </button>
+        </div>
+        
+        <!-- Validation Details (expandable) -->
+        <div v-if="showValidationDetails" class="mt-3 pt-3 border-t border-sim-border">
+          <div v-for="issue in gameData.validationIssues" 
+               :key="issue.id"
+               class="text-xs p-2 mb-1 rounded"
+               :class="getIssueClass(issue.level)">
+            <div class="font-medium">{{ issue.level.toUpperCase() }}</div>
+            <div>{{ issue.message }}</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Configuration Overrides -->
+      <div class="form-section">
+        <label class="flex items-center mb-3">
+          <input v-model="enableOverrides" 
+                 type="checkbox"
+                 class="mr-2 text-sim-accent focus:ring-sim-accent" />
+          <span class="text-sim-text">Override specific values</span>
+        </label>
+        
+        <div v-if="enableOverrides" 
+             class="bg-sim-bg border border-sim-border rounded-lg p-3">
+          <div class="text-xs text-sim-muted mb-2">Example overrides:</div>
+          <div class="space-y-2">
+            <div class="flex items-center space-x-2">
+              <input placeholder="crops.carrot.energy"
+                     class="flex-1 border border-sim-border rounded bg-sim-surface text-sim-text px-2 py-1 text-sm" />
+              <input placeholder="2"
+                     class="w-20 border border-sim-border rounded bg-sim-surface text-sim-text px-2 py-1 text-sm" />
+              <button class="text-sim-error hover:text-red-400">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <button @click="addOverride"
+                  class="mt-2 text-sim-accent hover:text-blue-400 text-sm transition-colors">
+            <i class="fas fa-plus mr-1"></i>
+            Add Override
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 ```
 
 ### State Management
 
-#### Setup Store
+#### Setup Store (Using Composition API pattern from completed phases)
 ```typescript
-export const useSetupStore = defineStore('simulationSetup', {
-  state: () => ({
-    wizard: {
-      currentStep: 0,
-      visitedSteps: new Set<number>(),
-      completedSteps: new Set<number>()
-    },
-    
-    configuration: {
-      basic: {} as BasicConfig,
-      persona: {} as PersonaConfig,
-      gameData: {} as GameDataConfig,
-      screens: {} as ScreenConfigs,
-      advanced: {} as AdvancedConfig
-    },
-    
-    validation: {
-      stepValidation: new Map<string, ValidationResult>(),
-      overallValid: false
-    },
-    
-    presets: new Map<string, SimulationConfig>(),
-    recent: [] as SimulationConfig[]
-  }),
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useGameDataStore } from '@/stores/gameData'
+import { usePersonaStore } from '@/stores/personas'
+import type { SimulationConfig, WizardStep, ValidationResult } from '@/types/simulation'
+
+export const useSetupStore = defineStore('simulationSetup', () => {
+  const router = useRouter()
+  const gameData = useGameDataStore()
+  const personaStore = usePersonaStore()
   
-  getters: {
-    currentStepData: (state) => 
-      wizardSteps[state.wizard.currentStep],
-    
-    canProceed: (state) => {
-      const current = wizardSteps[state.wizard.currentStep];
-      const validation = state.validation.stepValidation.get(current.id);
-      return validation?.valid || !current.isRequired;
-    },
-    
-    isComplete: (state) => 
-      state.wizard.completedSteps.size === wizardSteps.filter(s => s.isRequired).length,
-    
-    configurationSummary: (state) => ({
-      name: state.configuration.basic.name,
-      persona: state.configuration.persona.name,
-      duration: state.configuration.basic.duration,
-      dataChanges: state.configuration.gameData.customMix?.overrides.size || 0
-    })
-  },
+  // Wizard state
+  const currentStep = ref(0)
+  const visitedSteps = ref<Set<number>>(new Set([0]))
+  const completedSteps = ref<Set<number>>(new Set())
+  const isLoading = ref(false)
   
-  actions: {
-    nextStep() {
-      if (this.canProceed) {
-        this.wizard.completedSteps.add(this.wizard.currentStep);
-        this.wizard.currentStep++;
-        this.wizard.visitedSteps.add(this.wizard.currentStep);
+  // Configuration state
+  const configuration = ref<SimulationConfig>({
+    basic: {
+      name: '',
+      description: '',
+      duration: { mode: 'fixed', maxDays: 35 },
+      successCriteria: {
+        mustComplete: true,
+        maxDays: 35
+      },
+      executionSpeed: 'fast',
+      metadata: {
+        tags: [],
+        category: 'balance',
+        priority: 'normal'
       }
     },
-    
-    previousStep() {
-      if (this.wizard.currentStep > 0) {
-        this.wizard.currentStep--;
+    persona: {
+      id: 'casual',
+      overrides: {
+        enabled: false,
+        overrides: {}
       }
     },
-    
-    jumpToStep(stepIndex: number) {
-      if (stepIndex < this.wizard.currentStep || 
-          this.wizard.visitedSteps.has(stepIndex)) {
-        this.wizard.currentStep = stepIndex;
+    gameData: {
+      source: 'current',
+      validation: {
+        status: 'valid',
+        issues: [],
+        canProceed: true
       }
     },
-    
-    async launchSimulation() {
-      const config = this.buildFinalConfig();
-      
-      if (config.saveOptions.saveConfig) {
-        await this.saveConfiguration(config);
+    screens: {
+      farm: {
+        initial: {
+          plots: 3,
+          seeds: [{ type: 'carrot', amount: 10 }],
+          water: 20,
+          energy: 50
+        },
+        automation: {
+          autoPlant: true,
+          autoWater: true,
+          autoHarvest: true,
+          priorityStrategy: 'value'
+        },
+        efficiency: {
+          plantingMod: 1.0,
+          wateringMod: 0.95,
+          harvestWindow: 5
+        }
       }
-      
-      // Navigate to Live Monitor
-      router.push('/live-monitor');
-      
-      // Start simulation in background
-      simulationStore.startSimulation(config);
+    },
+    advanced: {
+      logging: {
+        level: 'standard',
+        toFile: false,
+        includeTimestamps: true,
+        verboseActions: false,
+        memoryProfiling: false
+      },
+      validation: {
+        validatePrerequisites: true,
+        checkResourceBounds: true,
+        detectImpossibleStates: true,
+        strictMode: false
+      },
+      performance: {
+        useWebWorkers: true,
+        maxWorkers: 4,
+        throttleUpdates: true,
+        updateInterval: 100
+      }
+    }
+  })
+  
+  // Validation state
+  const stepValidation = ref<Map<string, ValidationResult>>(new Map())
+  
+  // Presets and recent configurations
+  const presets = ref<Map<string, SimulationConfig>>(new Map())
+  const recentConfigs = ref<SimulationConfig[]>([])
+  
+  // Computed properties
+  const currentStepData = computed(() => wizardSteps[currentStep.value])
+  
+  const canProceed = computed(() => {
+    const current = wizardSteps[currentStep.value]
+    const validation = stepValidation.value.get(current.id)
+    return validation?.valid || !current.isRequired
+  })
+  
+  const canGoBack = computed(() => currentStep.value > 0)
+  
+  const isComplete = computed(() => {
+    const requiredSteps = wizardSteps.filter(s => s.isRequired)
+    return requiredSteps.every(s => completedSteps.value.has(wizardSteps.indexOf(s)))
+  })
+  
+  const configurationSummary = computed(() => ({
+    name: configuration.value.basic.name,
+    persona: personaStore.getPersona(configuration.value.persona.id)?.name || 'Unknown',
+    duration: configuration.value.basic.duration.maxDays 
+      ? `${configuration.value.basic.duration.maxDays} days` 
+      : configuration.value.basic.duration.mode,
+    dataChanges: configuration.value.gameData.customMix?.overrides.size || 0,
+    speed: configuration.value.basic.executionSpeed
+  }))
+  
+  // Actions
+  function nextStep() {
+    if (!canProceed.value) return
+    
+    completedSteps.value.add(currentStep.value)
+    currentStep.value++
+    visitedSteps.value.add(currentStep.value)
+    validateCurrentStep()
+  }
+  
+  function previousStep() {
+    if (!canGoBack.value) return
+    currentStep.value--
+  }
+  
+  function jumpToStep(stepIndex: number) {
+    if (stepIndex < currentStep.value || visitedSteps.value.has(stepIndex)) {
+      currentStep.value = stepIndex
+      validateCurrentStep()
     }
   }
-});
-```
-
-### Integration with Simulation Engine
-
-#### Configuration Compiler
-```typescript
-class ConfigurationCompiler {
-  compile(wizardConfig: WizardConfiguration): EngineConfiguration {
-    return {
-      // Core settings
-      maxDays: wizardConfig.basic.duration.maxDays,
-      ticksPerMinute: 1,
-      
-      // Player behavior
-      persona: personaStore.getPersona(wizardConfig.persona.id),
-      schedule: this.compileSchedule(wizardConfig.persona),
-      
-      // Game data
-      gameData: this.loadGameData(wizardConfig.gameData),
-      
-      // System configurations
-      systems: {
-        farm: this.compileFarmSystem(wizardConfig.screens.farm),
-        tower: this.compileTowerSystem(wizardConfig.screens.tower),
-        adventure: this.compileAdventureSystem(wizardConfig.screens.adventure),
-        mine: this.compileMiningSystem(wizardConfig.screens.mine),
-        forge: this.compileForgeSystem(wizardConfig.screens.forge),
-        town: this.compileTownSystem(wizardConfig.screens.town)
-      },
-      
-      // Execution settings
-      logging: wizardConfig.advanced.logging,
-      validation: wizardConfig.advanced.validation,
-      performance: wizardConfig.advanced.performance,
-      
-      // Success criteria
-      successCriteria: this.compileSuccessCriteria(wizardConfig.basic.successCriteria)
-    };
+  
+  function validateCurrentStep() {
+    const step = wizardSteps[currentStep.value]
+    const result = step.validation()
+    stepValidation.value.set(step.id, result)
   }
-}
+  
+  function updateConfiguration(stepId: string, updates: any) {
+    // Update specific step configuration
+    if (stepId === 'basic') {
+      configuration.value.basic = { ...configuration.value.basic, ...updates }
+    } else if (stepId === 'persona') {
+      configuration.value.persona = { ...configuration.value.persona, ...updates }
+    }
+    // ... etc for other steps
+    
+    validateCurrentStep()
+  }
+  
+  async function saveConfiguration(name?: string) {
+    const configName = name || configuration.value.basic.name
+    const toSave = {
+      ...configuration.value,
+      savedAt: new Date().toISOString()
+    }
+    
+    // Save to localStorage
+    const saved = JSON.parse(localStorage.getItem('savedSimulations') || '{}')
+    saved[configName] = toSave
+    localStorage.setItem('savedSimulations', JSON.stringify(saved))
+    
+    // Add to recent
+    recentConfigs.value.unshift(toSave)
+    if (recentConfigs.value.length > 10) {
+      recentConfigs.value.pop()
+    }
+  }
+  
+  async function loadConfiguration(configName: string) {
+    const saved = JSON.parse(localStorage.getItem('savedSimulations') || '{}')
+    if (saved[configName]) {
+      configuration.value = saved[configName]
+      validateAllSteps()
+    }
+  }
+  
+  function validateAllSteps() {
+    wizardSteps.forEach(step => {
+      const result = step.validation()
+      stepValidation.value.set(step.id, result)
+    })
+  }
+  
+  function buildFinalConfig(): EngineConfiguration {
+    // Compile configuration for simulation engine
+    return {
+      maxDays: configuration.value.basic.duration.maxDays || 35,
+      ticksPerMinute: 1,
+      persona: personaStore.getPersona(configuration.value.persona.id)!,
+      gameData: gameData.items,
+      systems: configuration.value.screens,
+      logging: configuration.value.advanced.logging,
+      validation: configuration.value.advanced.validation,
+      performance: configuration.value.advanced.performance,
+      successCriteria: configuration.value.basic.successCriteria
+    }
+  }
+  
+  async function launchSimulation() {
+    if (!isComplete.value) return
+    
+    isLoading.value = true
+    
+    try {
+      const config = buildFinalConfig()
+      
+      if (configuration.value.basic.metadata.tags.includes('save')) {
+        await saveConfiguration()
+      }
+      
+      // Store configuration for Live Monitor
+      localStorage.setItem('currentSimulation', JSON.stringify(config))
+      
+      // Navigate to Live Monitor
+      await router.push('/live-monitor')
+      
+      // Start simulation will be handled by Live Monitor
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  function reset() {
+    currentStep.value = 0
+    visitedSteps.value = new Set([0])
+    completedSteps.value = new Set()
+    stepValidation.value = new Map()
+    
+    // Reset to default configuration
+    configuration.value = {
+      basic: {
+        name: '',
+        description: '',
+        duration: { mode: 'fixed', maxDays: 35 },
+        successCriteria: { mustComplete: true, maxDays: 35 },
+        executionSpeed: 'fast',
+        metadata: { tags: [], category: 'balance', priority: 'normal' }
+      },
+      persona: { id: 'casual', overrides: { enabled: false, overrides: {} } },
+      gameData: { source: 'current', validation: { status: 'valid', issues: [], canProceed: true } },
+      screens: { /* ... default screen configs ... */ },
+      advanced: { /* ... default advanced configs ... */ }
+    }
+  }
+  
+  // Load presets on initialization
+  async function loadPresets() {
+    // Load built-in presets
+    presets.value.set('quick-test', {
+      basic: {
+        name: 'Quick Balance Check',
+        duration: { mode: 'fixed', maxDays: 7 },
+        executionSpeed: 'maximum'
+      },
+      persona: { id: 'speedrunner' }
+      // ... etc
+    } as SimulationConfig)
+    
+    // Load saved configurations
+    const saved = JSON.parse(localStorage.getItem('savedSimulations') || '{}')
+    Object.entries(saved).forEach(([name, config]) => {
+      presets.value.set(name, config as SimulationConfig)
+    })
+  }
+  
+  // Return public interface
+  return {
+    // State
+    currentStep,
+    visitedSteps,
+    completedSteps,
+    configuration,
+    stepValidation,
+    presets,
+    recentConfigs,
+    isLoading,
+    
+    // Computed
+    currentStepData,
+    canProceed,
+    canGoBack,
+    isComplete,
+    configurationSummary,
+    
+    // Actions
+    nextStep,
+    previousStep,
+    jumpToStep,
+    validateCurrentStep,
+    updateConfiguration,
+    saveConfiguration,
+    loadConfiguration,
+    validateAllSteps,
+    launchSimulation,
+    reset,
+    loadPresets
+  }
+})
 ```
 
 ### Quick Launch Features
@@ -873,7 +1041,10 @@ const quickLaunchPresets = [
     name: 'Speedrun Validation',
     description: 'Can optimal play complete in 20 days?',
     icon: 'fa-bolt',
-    config: { persona: 'speedrunner', duration: { maxDays: 20 } },
+    config: { 
+      persona: { id: 'speedrunner' },
+      basic: { duration: { mode: 'fixed', maxDays: 20 } }
+    },
     estimatedTime: 5
   },
   {
@@ -881,8 +1052,35 @@ const quickLaunchPresets = [
     name: 'Casual Full Journey',
     description: 'Standard 35-day casual progression',
     icon: 'fa-user',
-    config: { persona: 'casual', duration: { maxDays: 35 } },
+    config: { 
+      persona: { id: 'casual' },
+      basic: { duration: { mode: 'fixed', maxDays: 35 } }
+    },
     estimatedTime: 10
+  },
+  {
+    id: 'bottleneck-hunt',
+    name: 'Find Bottlenecks',
+    description: 'Identify progression blocking points',
+    icon: 'fa-search',
+    config: { 
+      basic: { duration: { mode: 'bottleneck', bottleneckThreshold: 2 } },
+      advanced: { logging: { level: 'detailed' } }
+    },
+    estimatedTime: 15
+  },
+  {
+    id: 'regression-suite',
+    name: 'Regression Test',
+    description: 'Full test across all personas',
+    icon: 'fa-check-circle',
+    config: { 
+      basic: { 
+        duration: { mode: 'fixed', maxDays: 35 },
+        metadata: { category: 'regression' }
+      }
+    },
+    estimatedTime: 30
   }
 ];
 ```
@@ -892,25 +1090,24 @@ const quickLaunchPresets = [
 #### Configuration Caching
 ```typescript
 class ConfigCache {
-  private cache = new LRUCache<string, CompiledConfig>(50);
+  private cache = new Map<string, CompiledConfig>()
   
   getCachedConfig(wizard: WizardConfiguration): CompiledConfig {
-    const key = this.generateKey(wizard);
+    const key = this.generateKey(wizard)
     
     if (this.cache.has(key)) {
-      return this.cache.get(key);
+      return this.cache.get(key)
     }
     
-    const compiled = this.compiler.compile(wizard);
-    this.cache.set(key, compiled);
+    const compiled = this.compiler.compile(wizard)
+    this.cache.set(key, compiled)
     
-    return compiled;
+    return compiled
   }
   
   private generateKey(wizard: WizardConfiguration): string {
-    return crypto.subtle.digest('SHA-256', 
-      new TextEncoder().encode(JSON.stringify(wizard))
-    );
+    // Create hash of configuration for caching
+    return btoa(JSON.stringify(wizard)).slice(0, 16)
   }
 }
 ```
@@ -921,28 +1118,101 @@ class ConfigCache {
 ```typescript
 describe('SimulationWizard', () => {
   it('should enforce required steps', () => {
-    const wizard = new SimulationWizard();
-    expect(wizard.canSkipToReview()).toBe(false);
+    const setupStore = useSetupStore()
     
-    wizard.completeStep('basic');
-    wizard.completeStep('persona');
-    wizard.completeStep('gameData');
+    // Can't skip to review without completing required steps
+    expect(setupStore.isComplete).toBe(false)
     
-    expect(wizard.canSkipToReview()).toBe(true);
-  });
+    // Complete required steps
+    setupStore.configuration.basic.name = 'Test Simulation'
+    setupStore.validateCurrentStep()
+    setupStore.nextStep()
+    
+    setupStore.configuration.persona.id = 'casual'
+    setupStore.validateCurrentStep()
+    setupStore.nextStep()
+    
+    setupStore.configuration.gameData.source = 'default'
+    setupStore.validateCurrentStep()
+    setupStore.nextStep()
+    
+    // Now should be complete
+    expect(setupStore.isComplete).toBe(true)
+  })
   
   it('should validate configuration before launch', () => {
-    const config = createTestConfig();
-    config.basic.name = ''; // Invalid
+    const setupStore = useSetupStore()
+    setupStore.configuration.basic.name = '' // Invalid
     
-    const validation = wizard.validateForLaunch(config);
-    expect(validation.valid).toBe(false);
-    expect(validation.errors).toContainEqual({
+    setupStore.validateCurrentStep()
+    const validation = setupStore.stepValidation.get('basic')
+    
+    expect(validation?.valid).toBe(false)
+    expect(validation?.errors).toContainEqual({
       field: 'name',
       message: 'Simulation name is required'
-    });
-  });
-});
+    })
+  })
+})
+```
+
+### Integration with Other Systems
+
+#### Connection to Game Data
+```typescript
+// Use actual game data from completed Phase 1
+import { useGameDataStore } from '@/stores/gameData'
+
+function loadGameDataForSimulation(config: GameDataConfig) {
+  const gameData = useGameDataStore()
+  
+  switch (config.source) {
+    case 'current':
+      // Use current in-memory data (may have unsaved changes)
+      return gameData.items
+      
+    case 'default':
+      // Reload from original CSV files
+      gameData.loadGameData()
+      return gameData.items
+      
+    case 'saved':
+      // Load specific saved configuration
+      const saved = localStorage.getItem(`config_${config.savedConfigId}`)
+      return saved ? JSON.parse(saved) : gameData.items
+      
+    case 'custom':
+      // Apply overrides to base configuration
+      const base = gameData.items
+      const modified = applyOverrides(base, config.customMix?.overrides)
+      return modified
+  }
+}
+```
+
+#### Connection to Persona System
+```typescript
+// Use personas from Phase 4
+import { usePersonaStore } from '@/stores/personas'
+
+function getPersonaForSimulation(personaConfig: PersonaConfig) {
+  const personaStore = usePersonaStore()
+  const basePersona = personaStore.getPersona(personaConfig.id)
+  
+  if (!basePersona) {
+    throw new Error(`Persona ${personaConfig.id} not found`)
+  }
+  
+  if (personaConfig.overrides.enabled) {
+    // Apply overrides to base persona
+    return {
+      ...basePersona,
+      ...personaConfig.overrides.overrides
+    }
+  }
+  
+  return basePersona
+}
 ```
 
 ### Future Enhancements
@@ -951,6 +1221,11 @@ describe('SimulationWizard', () => {
 3. **Conditional Logic**: Steps that adapt based on previous choices
 4. **Import/Export**: Share configurations with team
 5. **Preset Marketplace**: Community-created test configurations
+6. **A/B Testing Wizard**: Specialized flow for comparison tests
+7. **Parameter Sweep Wizard**: Automated multi-value testing
 
 ### Conclusion
-The Simulation Setup wizard provides a comprehensive yet intuitive interface for configuring game balance tests. Its flexible architecture supports everything from quick validation runs to complex parameter sweeps, ensuring developers can test any aspect of Time Hero's economy with precision and reproducibility.
+The Simulation Setup wizard provides a comprehensive yet intuitive interface for configuring game balance tests. Built on the established patterns from Phases 1-3, it integrates seamlessly with the existing data layer, configuration system, and upcoming persona system. Its flexible architecture supports everything from quick validation runs to complex parameter sweeps, ensuring developers can test any aspect of Time Hero's economy with precision and reproducibility.
+
+*Document updated: January 2025*  
+*Aligned with completed Phases 1-3 implementation patterns*

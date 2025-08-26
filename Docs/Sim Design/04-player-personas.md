@@ -1,6 +1,149 @@
 # Time Hero Simulator - Player Personas
 ## Document 4: Behavior Profiles & Play Patterns
 
+---
+
+## 📋 ACTUAL REQUIREMENTS & MVP GOALS (NEW SECTION)
+
+### Core Purpose
+Create player behavior profiles to test if Time Hero is balanced for different playstyles. We need to simulate how speedrunners, casual players, and weekend warriors progress differently through the game.
+
+### MVP Requirements (What We're Actually Building)
+1. **Three Pre-defined Personas** with simple, clear parameters
+2. **Persona Selection UI** - Simple cards to pick from
+3. **Basic Custom Persona Builder** - Sliders for key parameters
+4. **Integration with Existing Stores** - Using Pinia Composition API
+5. **Save/Load Custom Personas** - LocalStorage persistence
+
+### What We're NOT Building (Yet)
+- Complex schedule visualization (heatmaps)
+- Behavior radar charts
+- Machine learning adaptation
+- Emotional modeling
+- Social features
+
+### ASCII UI Mockup
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Player Personas                                     [Dashboard] │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Select a Player Persona:                                      │
+│                                                                 │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐             │
+│  │ ⚡          │ │ 😊          │ │ 📅          │             │
+│  │             │ │             │ │             │             │
+│  │ SPEEDRUNNER │ │   CASUAL    │ │   WEEKEND   │             │
+│  │             │ │             │ │   WARRIOR   │             │
+│  │ Efficiency: │ │ Efficiency: │ │ Efficiency: │             │
+│  │    95%      │ │    70%      │ │    80%      │             │
+│  │             │ │             │ │             │             │
+│  │ Daily Play: │ │ Daily Play: │ │ Daily Play: │             │
+│  │  10 checks  │ │  2 checks   │ │  1 weekday  │             │
+│  │             │ │             │ │  8 weekend  │             │
+│  │ [Selected]  │ │  [Select]   │ │  [Select]   │             │
+│  └─────────────┘ └─────────────┘ └─────────────┘             │
+│                                                                 │
+│  ┌─────────────────────────────────────────────┐              │
+│  │ Custom Personas (0 saved)                   │              │
+│  │                                              │              │
+│  │ [+ Create New Custom Persona]                │              │
+│  └─────────────────────────────────────────────┘              │
+│                                                                 │
+│  Selected: SPEEDRUNNER                                         │
+│  ┌─────────────────────────────────────────────┐              │
+│  │ Details:                                     │              │
+│  │ • Optimizes every action                    │              │
+│  │ • 95% efficiency rate                       │              │
+│  │ • Checks game 10 times per day              │              │
+│  │ • Takes calculated risks                    │              │
+│  │ • Expected completion: 20 days              │              │
+│  │                                              │              │
+│  │ Behavior Parameters:                         │              │
+│  │ Risk Tolerance:    [████████░░] 80%         │              │
+│  │ Optimization:      [██████████] 100%        │              │
+│  │ Learning Rate:     [█░░░░░░░░░] 10%         │              │
+│  └─────────────────────────────────────────────┘              │
+│                                                                 │
+│  [View Details] [Edit Copy] [Use in Simulation]                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Custom Persona Builder (Modal):
+┌─────────────────────────────────────────────────────────────────┐
+│ Create Custom Persona                                      [X] │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Name: [_________________________]                             │
+│                                                                 │
+│  Base Template: [Casual Player ▼]                              │
+│                                                                 │
+│  Behavior Settings:                                            │
+│                                                                 │
+│  Efficiency:       [░░░░░█████░] 70%                          │
+│  Risk Taking:      [░░███░░░░░] 30%                          │
+│  Optimization:     [░░░█████░░] 60%                          │
+│  Learning Speed:   [░░░░█░░░░░] 40%                          │
+│                                                                 │
+│  Play Schedule:                                                │
+│  Weekday Checks:   [░░█░░░░░░░] 2 per day                    │
+│  Weekend Checks:   [░░░░░███░░] 6 per day                    │
+│                                                                 │
+│  Expected Completion: ~28 days (estimated)                     │
+│                                                                 │
+│  [Random] [Reset]                    [Cancel] [Save Persona]   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Data Structure (Simplified)
+```typescript
+interface SimplePersona {
+  id: string
+  name: string
+  description: string
+  
+  // Core behavior (0-1 scale)
+  efficiency: number        // How optimal their decisions are
+  riskTolerance: number    // Willingness to try dangerous routes
+  optimization: number     // How much they min-max
+  learningRate: number     // How fast they improve
+  
+  // Simple schedule
+  weekdayCheckIns: number  // Times per weekday
+  weekendCheckIns: number  // Times per weekend day
+  avgSessionLength: number // Minutes per check-in
+  
+  // Expectations
+  targetDays: number       // Expected completion time
+  
+  // Focus (must sum to 1.0)
+  focusAreas: {
+    farming: number
+    combat: number
+    mining: number
+    tower: number
+    forge: number
+  }
+}
+```
+
+### Integration Points
+1. **PersonaStore** (new Pinia store using Composition API)
+2. **Connects to SimulationEngine** (future Phase 6)
+3. **Used by SimulationSetup** (Phase 5)
+4. **Saves to LocalStorage** (no backend needed)
+
+### Success Criteria
+- [ ] Can select from 3 pre-defined personas
+- [ ] Can view persona details and parameters
+- [ ] Can create custom personas with sliders
+- [ ] Custom personas save to LocalStorage
+- [ ] Personas load when returning to page
+- [ ] Clear visual distinction between persona types
+- [ ] Responsive dark theme matching existing UI
+
+---
+
 ### Purpose & Goals
 The Player Personas system models **diverse player behaviors** to test game balance across different playstyles, schedules, and skill levels. By simulating how speedrunners, casual players, and weekend warriors progress differently, we can ensure Time Hero provides a satisfying experience for all player types while maintaining economic balance.
 
@@ -501,40 +644,119 @@ class ScheduleManager {
 
 ### Custom Persona Builder
 
-#### Visual Builder Interface
-```
-┌─────────────────────────────────────────┐
-│        Create Custom Persona            │
-├─────────────────────────────────────────┤
-│ Basic Info                              │
-│ Name: [Farming Fanatic         ]        │
-│ Icon: [🌾                    ▼]        │
-│ Color: [■][■][■][■][■][■]              │
-│                                          │
-│ Schedule                                │
-│ ┌─────────────────────────────────┐    │
-│ │ Weekday Check-ins: [3    ] ▼   │    │
-│ │ Weekend Check-ins: [5    ] ▼   │    │
-│ │                                  │    │
-│ │ Session Length:                  │    │
-│ │ Min: [5  ] Avg: [20 ] Max: [40 ]│    │
-│ └─────────────────────────────────┘    │
-│                                          │
-│ Behavior                                │
-│ Efficiency: [●●●●●●○○○○] 60%           │
-│ Risk Taking: [●●○○○○○○○○] 20%          │
-│ Optimization: [●●●●●○○○○○] 50%         │
-│ Learning Rate: [●●●●●●●○○○] 70%        │
-│                                          │
-│ Play Focus                              │
-│ [████████░░] Farm 40%                  │
-│ [████░░░░░░] Combat 20%                │
-│ [████░░░░░░] Mining 20%                │
-│ [██░░░░░░░░] Tower 10%                 │
-│ [██░░░░░░░░] Forge 10%                 │
-│                                          │
-│ [Random] [Load Template] [Save]         │
-└─────────────────────────────────────────┘
+#### Visual Builder Interface (Using established UI patterns)
+```vue
+<template>
+  <div class="bg-sim-surface border border-sim-border rounded-lg p-6">
+    <div class="card-header border-b border-sim-border pb-4 mb-4">
+      <h2 class="text-lg font-semibold text-sim-text">Create Custom Persona</h2>
+    </div>
+    
+    <div class="card-body space-y-6">
+      <!-- Basic Info Section -->
+      <div class="form-section">
+        <h3 class="form-section-header text-sim-text mb-3">
+          <i class="fas fa-user form-section-icon text-sim-accent mr-2"></i>
+          Basic Info
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-sim-muted mb-1">
+              Name
+            </label>
+            <input v-model="formData.name" 
+                   type="text"
+                   placeholder="Farming Fanatic"
+                   class="w-full border border-sim-border rounded-lg bg-sim-bg text-sim-text px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent" />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-sim-muted mb-1">
+              Icon
+            </label>
+            <select v-model="formData.icon"
+                    class="w-full border border-sim-border rounded-lg bg-sim-bg text-sim-text px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sim-accent focus:border-transparent">
+              <option value="fa-seedling">🌾 Farmer</option>
+              <option value="fa-sword">⚔️ Warrior</option>
+              <option value="fa-flask">🧪 Researcher</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Schedule Section -->
+      <div class="form-section">
+        <h3 class="form-section-header text-sim-text mb-3">
+          <i class="fas fa-calendar form-section-icon text-sim-accent mr-2"></i>
+          Schedule
+        </h3>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm text-sim-muted">Weekday Check-ins</label>
+            <input v-model.number="formData.weekdayCheckIns"
+                   type="range" min="1" max="10" step="1"
+                   class="w-full" />
+            <span class="text-sm text-sim-accent">{{ formData.weekdayCheckIns }}</span>
+          </div>
+          
+          <div>
+            <label class="text-sm text-sim-muted">Weekend Check-ins</label>
+            <input v-model.number="formData.weekendCheckIns"
+                   type="range" min="1" max="15" step="1"
+                   class="w-full" />
+            <span class="text-sm text-sim-accent">{{ formData.weekendCheckIns }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Behavior Section -->
+      <div class="form-section">
+        <h3 class="form-section-header text-sim-text mb-3">
+          <i class="fas fa-brain form-section-icon text-sim-accent mr-2"></i>
+          Behavior
+        </h3>
+        
+        <div class="space-y-3">
+          <BehaviorSlider label="Efficiency" 
+                         v-model="formData.efficiency"
+                         :min="0" :max="100" />
+          
+          <BehaviorSlider label="Risk Taking" 
+                         v-model="formData.riskTolerance"
+                         :min="0" :max="100" />
+          
+          <BehaviorSlider label="Optimization" 
+                         v-model="formData.optimization"
+                         :min="0" :max="100" />
+        </div>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="flex justify-end space-x-3 pt-4 border-t border-sim-border">
+        <button @click="randomizePersona"
+                class="px-4 py-2 bg-sim-surface text-sim-text border border-sim-border rounded hover:bg-slate-700 transition-colors">
+          <i class="fas fa-dice mr-2"></i>
+          Random
+        </button>
+        
+        <button @click="loadTemplate"
+                class="px-4 py-2 bg-sim-surface text-sim-text border border-sim-border rounded hover:bg-slate-700 transition-colors">
+          <i class="fas fa-file-import mr-2"></i>
+          Load Template
+        </button>
+        
+        <button @click="savePersona"
+                :disabled="!canSave"
+                class="px-4 py-2 bg-sim-accent text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+          <i class="fas fa-save mr-2"></i>
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
 ```
 
 #### Persona Templates
@@ -679,155 +901,298 @@ function analyzeBottlenecks(persona: PlayerPersona): BottleneckAnalysis {
 
 ### State Management
 
-#### Persona Store
+#### Persona Store (Using Composition API pattern from completed phases)
 ```typescript
-export const usePersonaStore = defineStore('personas', {
-  state: () => ({
-    presets: new Map<string, PlayerPersona>([
-      ['speedrunner', speedrunner],
-      ['casual', casualPlayer],
-      ['weekend-warrior', weekendWarrior]
-    ]),
-    
-    custom: new Map<string, PlayerPersona>(),
-    
-    selected: 'casual' as string,
-    
-    comparison: {
-      personas: [] as string[],
-      results: null as ComparisonResult | null
-    },
-    
-    editor: {
-      current: null as PlayerPersona | null,
-      isDirty: false,
-      validation: [] as ValidationError[]
-    }
-  }),
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import type { PlayerPersona, ComparisonResult, ValidationError } from '@/types/personas'
+
+export const usePersonaStore = defineStore('personas', () => {
+  // State - using ref pattern from gameDataStore
+  const presets = ref<Map<string, PlayerPersona>>(new Map([
+    ['speedrunner', speedrunner],
+    ['casual', casualPlayer],
+    ['weekend-warrior', weekendWarrior]
+  ]))
   
-  getters: {
-    currentPersona: (state) => 
-      state.presets.get(state.selected) || 
-      state.custom.get(state.selected),
-    
-    allPersonas: (state) => [
-      ...Array.from(state.presets.values()),
-      ...Array.from(state.custom.values())
-    ],
-    
-    canSave: (state) => 
-      state.editor.isDirty && 
-      state.editor.validation.length === 0
-  },
+  const custom = ref<Map<string, PlayerPersona>>(new Map())
+  const selected = ref<string>('casual')
+  const isLoading = ref(false)
   
-  actions: {
-    createPersona(template?: string) {
-      const base = template ? 
-        this.presets.get(template) : 
-        this.generateDefault();
-      
-      this.editor.current = {
-        ...base,
-        id: `custom_${Date.now()}`,
-        name: 'New Persona'
-      };
-    },
-    
-    updatePersonaBehavior(updates: Partial<BehaviorProfile>) {
-      if (this.editor.current) {
-        this.editor.current.behavior = {
-          ...this.editor.current.behavior,
-          ...updates
-        };
-        this.editor.isDirty = true;
-        this.validatePersona();
+  // Editor state - similar to configuration store pattern
+  const editorState = ref({
+    current: null as PlayerPersona | null,
+    isDirty: false,
+    validation: [] as ValidationError[]
+  })
+  
+  // Comparison state
+  const comparisonState = ref({
+    personas: [] as string[],
+    results: null as ComparisonResult | null
+  })
+  
+  // Computed - following established patterns
+  const currentPersona = computed(() => 
+    presets.value.get(selected.value) || 
+    custom.value.get(selected.value)
+  )
+  
+  const allPersonas = computed(() => [
+    ...Array.from(presets.value.values()),
+    ...Array.from(custom.value.values())
+  ])
+  
+  const canSave = computed(() => 
+    editorState.value.isDirty && 
+    editorState.value.validation.length === 0
+  )
+  
+  // Actions - async pattern from gameDataStore
+  async function loadPersonas() {
+    isLoading.value = true
+    try {
+      // Load from localStorage or default presets
+      const stored = localStorage.getItem('customPersonas')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        custom.value = new Map(Object.entries(parsed))
       }
-    },
-    
-    async runComparison(personaIds: string[]) {
-      this.comparison.personas = personaIds;
-      
-      const simulations = await Promise.all(
-        personaIds.map(id => 
-          this.runSimulation(this.getPersona(id))
-        )
-      );
-      
-      this.comparison.results = this.analyzeResults(simulations);
+    } catch (error) {
+      console.error('Failed to load personas:', error)
+    } finally {
+      isLoading.value = false
     }
   }
-});
+  
+  function createPersona(template?: string) {
+    const base = template ? 
+      presets.value.get(template) : 
+      generateDefault()
+    
+    editorState.value.current = {
+      ...base,
+      id: `custom_${Date.now()}`,
+      name: 'New Persona'
+    }
+    editorState.value.isDirty = false
+  }
+  
+  function updatePersonaBehavior(updates: Partial<BehaviorProfile>) {
+    if (editorState.value.current) {
+      editorState.value.current.behavior = {
+        ...editorState.value.current.behavior,
+        ...updates
+      }
+      editorState.value.isDirty = true
+      validatePersona()
+    }
+  }
+  
+  async function savePersona() {
+    if (!canSave.value) return
+    
+    const persona = editorState.value.current!
+    custom.value.set(persona.id, persona)
+    
+    // Save to localStorage
+    const toStore = Object.fromEntries(custom.value)
+    localStorage.setItem('customPersonas', JSON.stringify(toStore))
+    
+    editorState.value.isDirty = false
+  }
+  
+  function validatePersona() {
+    const errors: ValidationError[] = []
+    const persona = editorState.value.current
+    
+    if (!persona) return
+    
+    // Validation logic
+    if (!persona.name?.trim()) {
+      errors.push({ field: 'name', message: 'Name is required' })
+    }
+    
+    // Check focus areas sum to 1
+    const focusSum = Object.values(persona.patterns.focusAreas || {})
+      .reduce((sum, val) => sum + val, 0)
+    
+    if (Math.abs(focusSum - 1.0) > 0.01) {
+      errors.push({
+        field: 'focusAreas',
+        message: `Focus areas must sum to 100% (currently ${focusSum * 100}%)`
+      })
+    }
+    
+    editorState.value.validation = errors
+  }
+  
+  async function runComparison(personaIds: string[]) {
+    comparisonState.value.personas = personaIds
+    isLoading.value = true
+    
+    try {
+      const simulations = await Promise.all(
+        personaIds.map(id => {
+          const persona = getPersona(id)
+          return runSimulation(persona)
+        })
+      )
+      
+      comparisonState.value.results = analyzeResults(simulations)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  function getPersona(id: string): PlayerPersona | undefined {
+    return presets.value.get(id) || custom.value.get(id)
+  }
+  
+  // Return public interface
+  return {
+    // State
+    presets,
+    custom,
+    selected,
+    isLoading,
+    editorState,
+    comparisonState,
+    
+    // Computed
+    currentPersona,
+    allPersonas,
+    canSave,
+    
+    // Actions
+    loadPersonas,
+    createPersona,
+    updatePersonaBehavior,
+    savePersona,
+    validatePersona,
+    runComparison,
+    getPersona
+  }
+})
 ```
 
 ### Visualization
 
-#### Schedule Heatmap
-```typescript
-interface ScheduleHeatmap {
-  render(persona: PlayerPersona): VNode {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const hours = Array.from({ length: 24 }, (_, i) => i);
+#### Schedule Heatmap (Using established dark theme patterns)
+```vue
+<template>
+  <div class="bg-sim-surface border border-sim-border rounded-lg p-4">
+    <h3 class="text-lg font-semibold text-sim-text mb-4">Play Schedule</h3>
     
-    const getIntensity = (day: number, hour: number) => {
-      const isWeekend = day >= 5;
-      const pattern = isWeekend ? 
-        persona.schedule.weekend : 
-        persona.schedule.weekday;
-      
-      const slot = pattern.times.find(t => 
-        hour >= t.hour && hour < t.hour + (t.duration / 60)
-      );
-      
-      return slot ? slot.probability : 0;
-    };
-    
-    return (
-      <div class="schedule-heatmap">
-        <div class="hours">
-          {hours.map(h => <div>{h}:00</div>)}
+    <div class="schedule-heatmap">
+      <!-- Hour labels -->
+      <div class="flex ml-16">
+        <div v-for="hour in hours" :key="hour" 
+             class="w-8 text-xs text-sim-muted text-center">
+          {{ hour }}
         </div>
-        {days.map((day, d) => (
-          <div class="day-row">
-            <div class="day-label">{day}</div>
-            {hours.map(h => (
-              <div 
-                class="hour-cell"
-                style={{
-                  background: `rgba(34, 197, 94, ${getIntensity(d, h)})`
-                }}
-                title={`${day} ${h}:00 - ${getIntensity(d, h) * 100}% chance`}
-              />
-            ))}
-          </div>
-        ))}
       </div>
-    );
+      
+      <!-- Day rows -->
+      <div v-for="(day, d) in days" :key="day" class="flex items-center">
+        <div class="w-16 text-sm text-sim-text">{{ day }}</div>
+        
+        <div v-for="hour in hours" :key="hour"
+             class="w-8 h-8 border border-sim-border"
+             :style="getCellStyle(d, hour)"
+             :title="`${day} ${hour}:00 - ${getIntensity(d, hour) * 100}% chance`">
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+
+const props = defineProps<{
+  persona: PlayerPersona
+}>()
+
+const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const hours = Array.from({ length: 24 }, (_, i) => i)
+
+function getIntensity(day: number, hour: number) {
+  const isWeekend = day >= 5
+  const pattern = isWeekend ? 
+    props.persona.schedule.weekend : 
+    props.persona.schedule.weekday
+  
+  const slot = pattern.times.find(t => 
+    hour >= t.hour && hour < t.hour + (t.duration / 60)
+  )
+  
+  return slot ? slot.probability[pattern.times.indexOf(slot)] || 0 : 0
+}
+
+function getCellStyle(day: number, hour: number) {
+  const intensity = getIntensity(day, hour)
+  return {
+    backgroundColor: `rgba(34, 197, 94, ${intensity * 0.8})`,
+    opacity: 0.5 + (intensity * 0.5)
   }
 }
+</script>
 ```
 
-#### Behavior Radar Chart
+#### Behavior Radar Chart (Using Chart.js integration)
 ```typescript
-interface BehaviorRadar {
-  render(persona: PlayerPersona): VNode {
-    const axes = [
-      { key: 'efficiency', label: 'Efficiency', max: 1 },
-      { key: 'risk', label: 'Risk Taking', max: 1 },
-      { key: 'optimization', label: 'Optimization', max: 1 },
-      { key: 'learning', label: 'Learning', max: 1 },
-      { key: 'consistency', label: 'Consistency', max: 1 }
-    ];
-    
-    const values = {
-      efficiency: persona.behavior.efficiency.base,
-      risk: persona.behavior.riskTolerance,
-      optimization: persona.behavior.optimizationLevel,
-      learning: persona.behavior.learningCurve.learningRate,
-      consistency: 1 - persona.schedule.variance
-    };
-    
-    return <RadarChart axes={axes} values={values} color={persona.color} />;
+import { Chart, RadarController, RadialLinearScale, PointElement, LineElement } from 'chart.js'
+
+Chart.register(RadarController, RadialLinearScale, PointElement, LineElement)
+
+export function createBehaviorRadar(persona: PlayerPersona, canvas: HTMLCanvasElement) {
+  const ctx = canvas.getContext('2d')
+  
+  const data = {
+    labels: ['Efficiency', 'Risk Taking', 'Optimization', 'Learning', 'Consistency'],
+    datasets: [{
+      label: persona.name,
+      data: [
+        persona.behavior.efficiency.base,
+        persona.behavior.riskTolerance,
+        persona.behavior.optimizationLevel,
+        persona.behavior.learningCurve.learningRate,
+        1 - persona.schedule.variance
+      ],
+      backgroundColor: `${persona.color}33`,
+      borderColor: persona.color,
+      borderWidth: 2,
+      pointBackgroundColor: persona.color
+    }]
   }
+  
+  return new Chart(ctx, {
+    type: 'radar',
+    data,
+    options: {
+      scales: {
+        r: {
+          min: 0,
+          max: 1,
+          ticks: {
+            stepSize: 0.2,
+            color: '#94a3b8' // text-sim-muted
+          },
+          grid: {
+            color: '#475569' // border-sim-border
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#e2e8f0' // text-sim-text
+          }
+        }
+      }
+    }
+  })
 }
 ```
 
@@ -837,15 +1202,15 @@ interface BehaviorRadar {
 ```typescript
 interface PersonaValidator {
   validate(persona: PlayerPersona): ValidationResult {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
+    const errors: ValidationError[] = []
+    const warnings: ValidationWarning[] = []
     
     // Check schedule feasibility
     if (persona.schedule.weekday.checkIns > 10) {
       warnings.push({
         field: 'weekday.checkIns',
         message: 'Very high weekday check-ins may be unrealistic'
-      });
+      })
     }
     
     // Check efficiency ranges
@@ -853,21 +1218,21 @@ interface PersonaValidator {
       errors.push({
         field: 'efficiency.base',
         message: 'Efficiency cannot exceed 100%'
-      });
+      })
     }
     
     // Check focus areas sum to 1
     const focusSum = Object.values(persona.patterns.focusAreas)
-      .reduce((sum, val) => sum + val, 0);
+      .reduce((sum, val) => sum + val, 0)
     
     if (Math.abs(focusSum - 1.0) > 0.01) {
       errors.push({
         field: 'focusAreas',
         message: `Focus areas must sum to 100% (currently ${focusSum * 100}%)`
-      });
+      })
     }
     
-    return { valid: errors.length === 0, errors, warnings };
+    return { valid: errors.length === 0, errors, warnings }
   }
 }
 ```
@@ -888,7 +1253,7 @@ interface PersonaSimulationBridge {
         frustrationQuit: persona.expectations.frustrationThreshold,
         logLevel: 'standard'
       }
-    };
+    }
   }
   
   interpretResults(results: SimulationResults, persona: PlayerPersona): PersonaReport {
@@ -900,8 +1265,37 @@ interface PersonaSimulationBridge {
       efficiencyActual: results.averageEfficiency,
       efficiencyExpected: persona.behavior.efficiency.base,
       recommendations: this.generateRecommendations(results, persona)
-    };
+    }
   }
+}
+```
+
+#### Data Store Integration
+```typescript
+// Integration with existing gameDataStore
+import { useGameDataStore } from '@/stores/gameData'
+
+export function getAvailableUpgrades(persona: PlayerPersona): GameDataItem[] {
+  const gameData = useGameDataStore()
+  const currentResources = getCurrentResources()
+  
+  return gameData.items
+    .filter(item => {
+      // Check if persona can afford it
+      const canAfford = 
+        (!item.goldCost || currentResources.gold >= item.goldCost) &&
+        (!item.energyCost || currentResources.energy >= item.energyCost)
+      
+      // Check if prerequisites met
+      const prereqsMet = item.prerequisites.every(p => 
+        ownedUpgrades.includes(p)
+      )
+      
+      // Apply persona's decision-making filter
+      const personaWants = evaluatePersonaInterest(persona, item)
+      
+      return canAfford && prereqsMet && personaWants
+    })
 }
 ```
 
@@ -910,22 +1304,22 @@ interface PersonaSimulationBridge {
 #### Persona Caching
 ```typescript
 class PersonaCache {
-  private cache = new Map<string, CachedPersona>();
+  private cache = new Map<string, CachedPersona>()
   
   getCachedDecisions(persona: PlayerPersona, gameState: GameState): Decision[] {
-    const key = `${persona.id}_${gameState.hash}`;
+    const key = `${persona.id}_${gameState.hash}`
     
     if (this.cache.has(key)) {
-      const cached = this.cache.get(key);
+      const cached = this.cache.get(key)!
       if (Date.now() - cached.timestamp < 60000) { // 1 minute cache
-        return cached.decisions;
+        return cached.decisions
       }
     }
     
-    const decisions = this.calculateDecisions(persona, gameState);
-    this.cache.set(key, { decisions, timestamp: Date.now() });
+    const decisions = this.calculateDecisions(persona, gameState)
+    this.cache.set(key, { decisions, timestamp: Date.now() })
     
-    return decisions;
+    return decisions
   }
 }
 ```
@@ -939,3 +1333,6 @@ class PersonaCache {
 
 ### Conclusion
 The Player Personas system enables comprehensive testing of Time Hero's balance across the full spectrum of player behaviors. By modeling diverse playstyles, schedules, and skill levels, we ensure the game provides satisfying progression for everyone from hardcore optimizers to casual farmers, validating that the 35-day journey works for all.
+
+*Document updated: January 2025*  
+*Aligned with completed Phases 1-3 implementation patterns*

@@ -2,6 +2,7 @@
 // Main simulation engine that runs the game logic
 
 import { MapSerializer } from './MapSerializer'
+import { useGameDataStore } from '@/stores/gameData'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -28,12 +29,17 @@ export class SimulationEngine {
   private config: SimulationConfig
   private gameState: GameState
   private parameters: AllParameters
+  private gameDataStore: any
+  private persona: any // Persona from config
+  private lastCheckinTime: number = 0
   private isRunning: boolean = false
   private tickCount: number = 0
   
   constructor(config: SimulationConfig) {
     this.config = config
     this.parameters = this.extractParametersFromConfig(config)
+    this.gameDataStore = useGameDataStore()
+    this.persona = this.extractPersonaFromConfig(config)
     this.gameState = this.initializeGameState()
   }
 
@@ -157,6 +163,67 @@ export class SimulationEngine {
     // Deep merge logic - for now, just return base
     // TODO: Implement proper deep merge when needed
     return base
+  }
+
+  /**
+   * Extracts persona from configuration
+   */
+  private extractPersonaFromConfig(config: SimulationConfig): any {
+    // Extract persona from quickSetup
+    const defaultPersona = {
+      id: 'casual',
+      efficiency: 0.7,
+      riskTolerance: 0.3,
+      optimization: 0.6,
+      learningRate: 0.4,
+      weekdayCheckIns: 2,
+      weekendCheckIns: 2,
+      avgSessionLength: 15
+    }
+
+    try {
+      if (config.quickSetup?.personaId) {
+        // Map common persona IDs to their characteristics
+        const personaMap: { [key: string]: any } = {
+          'speedrunner': {
+            id: 'speedrunner',
+            efficiency: 0.95,
+            riskTolerance: 0.8,
+            optimization: 1.0,
+            learningRate: 0.1,
+            weekdayCheckIns: 10,
+            weekendCheckIns: 10,
+            avgSessionLength: 30
+          },
+          'casual': {
+            id: 'casual',
+            efficiency: 0.7,
+            riskTolerance: 0.3,
+            optimization: 0.6,
+            learningRate: 0.4,
+            weekdayCheckIns: 2,
+            weekendCheckIns: 2,
+            avgSessionLength: 15
+          },
+          'weekend-warrior': {
+            id: 'weekend-warrior',
+            efficiency: 0.8,
+            riskTolerance: 0.4,
+            optimization: 0.8,
+            learningRate: 0.3,
+            weekdayCheckIns: 1,
+            weekendCheckIns: 8,
+            avgSessionLength: 45
+          }
+        }
+
+        return personaMap[config.quickSetup.personaId] || defaultPersona
+      }
+    } catch (error) {
+      console.warn('Failed to extract persona from config:', error)
+    }
+
+    return defaultPersona
   }
 
   /**
@@ -430,6 +497,11 @@ export class SimulationEngine {
   private makeDecisions(): GameAction[] {
     const actions: GameAction[] = []
     
+    // Check if hero should act based on persona schedule (Phase 6E Enhancement)
+    if (!this.shouldHeroActNow()) {
+      return actions // No actions if not in check-in window
+    }
+    
     // Comprehensive decision making using parameter system
     
     // 1. Emergency actions first (based on decision parameters)
@@ -442,12 +514,19 @@ export class SimulationEngine {
     const screenActions = this.evaluateScreenActions()
     actions.push(...screenActions)
     
-    // 3. Screen navigation decisions
+    // 3. Helper management decisions  
+    const helperActions = this.evaluateHelperActions()
+    actions.push(...helperActions)
+    
+    // 4. Screen navigation decisions
     const navigationActions = this.evaluateNavigationActions()
     actions.push(...navigationActions)
     
-    // 4. Score and prioritize all actions
-    const scoredActions = actions.map(action => ({
+    // 5. Filter actions by prerequisites (Phase 6E Enhancement)
+    const validActions = actions.filter(action => this.checkActionPrerequisites(action))
+    
+    // 6. Score and prioritize valid actions
+    const scoredActions = validActions.map(action => ({
       action,
       score: this.scoreAction(action)
     }))
@@ -604,13 +683,412 @@ export class SimulationEngine {
   }
 
   /**
-   * Placeholder methods for other screen actions
+   * Evaluates tower-specific actions (Phase 6E Implementation)
    */
-  private evaluateTowerActions(): GameAction[] { return [] }
-  private evaluateTownActions(): GameAction[] { return [] }
-  private evaluateAdventureActions(): GameAction[] { return [] }
-  private evaluateForgeActions(): GameAction[] { return [] }
-  private evaluateMineActions(): GameAction[] { return [] }
+  private evaluateTowerActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const towerParams = this.parameters.tower
+    
+    if (!towerParams) return actions
+    
+    // Manual seed catching
+    const totalSeeds = Object.values(this.gameState.resources.seeds).reduce((a, b) => a + b, 0)
+    const needsSeeds = totalSeeds < (towerParams.decisionLogic?.seedTargetMultiplier || 2) * 10
+    
+    if (needsSeeds && this.gameState.resources.energy.current > 20) {
+      const catchDuration = towerParams.decisionLogic?.catchDuration || 2
+      const expectedCatchRate = towerParams.catchMechanics?.manualCatchRate || 60
+      
+      actions.push({
+        id: `catch_seeds_${Date.now()}`,
+        type: 'catch_seeds',
+        screen: 'tower',
+        target: 'manual_catch',
+        duration: catchDuration,
+        energyCost: catchDuration * 5, // 5 energy per minute
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {
+          items: ['seeds_mixed'],
+          resources: { seeds: Math.floor(expectedCatchRate * catchDuration / 60) }
+        }
+      })
+    }
+    
+    // Auto-catcher management
+    if (towerParams.autoCatcher && this.gameState.resources.gold >= 100) {
+      const autoCatcherLevel = this.getAutoCatcherLevel()
+      const upgradeThreshold = towerParams.decisionLogic?.upgradeThreshold || 0.5
+      
+      if (autoCatcherLevel === 0 || (this.gameState.resources.gold >= 200 * Math.pow(2, autoCatcherLevel))) {
+        actions.push({
+          id: `upgrade_autocatcher_${Date.now()}`,
+          type: 'purchase',
+          screen: 'tower',
+          target: 'auto_catcher',
+          duration: 1,
+          energyCost: 0,
+          goldCost: 100 * Math.pow(2, autoCatcherLevel),
+          prerequisites: [],
+          expectedRewards: {}
+        })
+      }
+    }
+    
+    // Tower reach upgrades
+    if (towerParams.unlockProgression?.reachLevelCosts && 
+        this.gameState.resources.energy.current > 50) {
+      const currentReach = this.getTowerReachLevel()
+      const nextCost = towerParams.unlockProgression.reachLevelCosts[currentReach]
+      
+      if (nextCost && this.gameState.resources.gold >= nextCost) {
+        actions.push({
+          id: `tower_reach_upgrade_${Date.now()}`,
+          type: 'purchase',
+          screen: 'tower',
+          target: `reach_level_${currentReach + 1}`,
+          duration: 2,
+          energyCost: towerParams.unlockProgression.reachLevelEnergy?.[currentReach] || 20,
+          goldCost: nextCost,
+          prerequisites: [],
+          expectedRewards: {}
+        })
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * Evaluates town-specific actions (Phase 6E Implementation)
+   */
+  private evaluateTownActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const townParams = this.parameters.town
+    
+    if (!townParams) return actions
+    
+    // Purchase decisions based on vendor priorities
+    if (this.gameState.resources.gold >= 50) {
+      const affordableUpgrades = this.getAffordableUpgrades()
+      
+      for (const upgrade of affordableUpgrades) {
+        // Apply vendor priorities if available
+        let priority = 1.0
+        if (townParams.purchasing?.vendorPriorities) {
+          const vendorId = upgrade.vendorId || 'general'
+          priority = this.getArrayPosition(townParams.purchasing.vendorPriorities, vendorId) || 1.0
+        }
+        
+        // Apply blueprint strategy priorities
+        if (townParams.blueprintStrategy?.toolPriorities && upgrade.category === 'tool') {
+          const toolPriority = this.getArrayPosition(townParams.blueprintStrategy.toolPriorities, upgrade.id)
+          priority *= toolPriority
+        }
+        
+        if (priority > 0.5) { // Only consider higher priority items
+          actions.push({
+            id: `purchase_${upgrade.id}_${Date.now()}`,
+            type: 'purchase',
+            screen: 'town',
+            target: upgrade.id,
+            duration: 1,
+            energyCost: 0,
+            goldCost: upgrade.cost,
+            prerequisites: upgrade.prerequisites || [],
+            expectedRewards: { items: [upgrade.id] }
+          })
+        }
+      }
+    }
+    
+    // Skill training decisions
+    if (townParams.skillTraining && this.gameState.resources.gold >= 200) {
+      const trainingOptions = this.getAvailableTraining()
+      
+      for (const training of trainingOptions) {
+        if (this.shouldTrainSkill(training)) {
+          actions.push({
+            id: `train_${training.skill}_${Date.now()}`,
+            type: 'train',
+            screen: 'town',
+            target: training.skill,
+            duration: training.duration,
+            energyCost: 0,
+            goldCost: training.cost,
+            prerequisites: [],
+            expectedRewards: { experience: training.xpGain }
+          })
+        }
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * Evaluates adventure-specific actions (Phase 6E Implementation)
+   */
+  private evaluateAdventureActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const adventureParams = this.parameters.adventure
+    
+    if (!adventureParams || this.gameState.processes.adventure) return actions // Already on adventure
+    
+    // Route selection based on risk tolerance and rewards
+    const availableRoutes = this.getAvailableAdventureRoutes()
+    
+    for (const route of availableRoutes) {
+      // Apply routing priorities if available
+      let routePriority = 1.0
+      if (adventureParams.routing?.priorityOrder) {
+        routePriority = this.getArrayPosition(adventureParams.routing.priorityOrder, route.id)
+      }
+      
+      // Risk assessment
+      const riskLevel = this.calculateAdventureRisk(route)
+      const riskTolerance = adventureParams.combatMechanics?.riskTolerance || 0.5
+      
+      if (riskLevel <= riskTolerance && routePriority > 0.3) {
+        // Consider different duration options
+        for (const duration of ['short', 'medium', 'long']) {
+          const routeData = route[duration as keyof typeof route]
+          if (!routeData) continue
+          
+          const energyReq = adventureParams.energyManagement?.minimumEnergyReserve || 30
+          if (this.gameState.resources.energy.current >= energyReq + routeData.energyCost) {
+            actions.push({
+              id: `adventure_${route.id}_${duration}_${Date.now()}`,
+              type: 'adventure',
+              screen: 'adventure',
+              target: `${route.id}_${duration}`,
+              duration: routeData.duration,
+              energyCost: routeData.energyCost,
+              goldCost: 0,
+              prerequisites: route.prerequisites || [],
+              expectedRewards: {
+                gold: routeData.goldReward,
+                experience: routeData.xpReward,
+                items: routeData.loot || []
+              }
+            })
+          }
+        }
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * Evaluates forge-specific actions (Phase 6E Implementation)
+   */
+  private evaluateForgeActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const forgeParams = this.parameters.forge
+    
+    if (!forgeParams) return actions
+    
+    // Crafting priorities based on tool needs and materials
+    const craftingQueue = this.gameState.processes.crafting || []
+    const maxConcurrent = forgeParams.heatManagement?.maxConcurrentItems || 3
+    
+    if (craftingQueue.length < maxConcurrent) {
+      const craftableItems = this.getCraftableItems()
+      
+      for (const item of craftableItems) {
+        // Apply crafting priorities
+        let priority = 1.0
+        if (forgeParams.craftingPriorities?.toolOrder) {
+          priority = this.getArrayPosition(forgeParams.craftingPriorities.toolOrder, item.id)
+        }
+        
+        // Check material requirements
+        const hasResources = this.checkMaterialRequirements(item.materials)
+        const heatRequired = item.heatRequirement || 50
+        const currentHeat = this.getForgeHeat()
+        
+        if (hasResources && currentHeat >= heatRequired && priority > 0.4) {
+          actions.push({
+            id: `craft_${item.id}_${Date.now()}`,
+            type: 'craft',
+            screen: 'forge',
+            target: item.id,
+            duration: item.craftingTime,
+            energyCost: item.energyCost,
+            goldCost: 0,
+            prerequisites: [],
+            expectedRewards: { items: [item.id] }
+          })
+        }
+      }
+    }
+    
+    // Heat management
+    if (this.getForgeHeat() < 30 && this.gameState.resources.materials['wood'] >= 5) {
+      actions.push({
+        id: `stoke_forge_${Date.now()}`,
+        type: 'stoke',
+        screen: 'forge',
+        target: 'heat',
+        duration: 2,
+        energyCost: 5,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {}
+      })
+    }
+    
+    return actions
+  }
+
+  /**
+   * Evaluates mine-specific actions (Phase 6E Implementation)
+   */
+  private evaluateMineActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const mineParams = this.parameters.mine
+    
+    if (!mineParams || this.gameState.processes.mining?.isActive) return actions // Already mining
+    
+    // Depth strategy based on energy and risk
+    const energyManagement = mineParams.energyManagement
+    const minimumEnergy = energyManagement?.minimumEnergyReserve || 40
+    
+    if (this.gameState.resources.energy.current > minimumEnergy + 30) {
+      const depthStrategy = mineParams.depthStrategy?.targetDepth || 5
+      const currentDepth = this.gameState.processes.mining?.depth || 0
+      
+      // Mining session planning
+      const sessionDuration = this.calculateOptimalMiningDuration()
+      const energyDrain = mineParams.energyManagement?.drainRate || 3 // per minute
+      
+      if (sessionDuration > 0 && this.gameState.resources.energy.current >= sessionDuration * energyDrain) {
+        actions.push({
+          id: `start_mining_${Date.now()}`,
+          type: 'mine',
+          screen: 'mine',
+          target: `depth_${Math.min(currentDepth + 1, depthStrategy)}`,
+          duration: sessionDuration,
+          energyCost: sessionDuration * energyDrain,
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: {
+            resources: this.calculateMiningRewards(sessionDuration)
+          }
+        })
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * Evaluates helper management actions (Phase 6E Implementation)
+   */
+  private evaluateHelperActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const helperParams = this.parameters.helpers
+    
+    if (!helperParams) return actions
+    
+    // Helper rescue decisions based on drag-and-drop priority order
+    if (this.gameState.priorities.helperRescue.length > 0) {
+      const unrescuedHelpers = this.getUnrescuedHelpers()
+      
+      for (const helperId of unrescuedHelpers) {
+        const priority = this.getArrayPosition(this.gameState.priorities.helperRescue, helperId)
+        const rescueCost = this.getHelperRescueCost(helperId)
+        
+        // Only rescue if we have enough resources and it's high priority
+        if (priority > 0.6 && this.gameState.resources.gold >= rescueCost) {
+          actions.push({
+            id: `rescue_${helperId}_${Date.now()}`,
+            type: 'rescue',
+            screen: 'farm', // Helpers typically rescued on farm
+            target: helperId,
+            duration: 5, // 5 minutes to rescue
+            energyCost: 10,
+            goldCost: rescueCost,
+            prerequisites: [],
+            expectedRewards: { items: [helperId] }
+          })
+        }
+      }
+    }
+    
+    // Helper role assignment optimization
+    const availableHelpers = this.gameState.helpers.gnomes.filter(g => !g.isAssigned)
+    if (availableHelpers.length > 0 && helperParams.roleAssignment?.priorities) {
+      const optimalRole = this.getOptimalHelperRole()
+      
+      if (optimalRole) {
+        const bestHelper = this.selectBestHelperForRole(availableHelpers, optimalRole)
+        if (bestHelper) {
+          actions.push({
+            id: `assign_${bestHelper.id}_${optimalRole}_${Date.now()}`,
+            type: 'assign_role',
+            screen: 'farm',
+            target: `${bestHelper.id}:${optimalRole}`,
+            duration: 2,
+            energyCost: 5,
+            goldCost: 0,
+            prerequisites: [],
+            expectedRewards: {}
+          })
+        }
+      }
+    }
+    
+    // Helper training decisions
+    const trainableHelpers = this.gameState.helpers.gnomes.filter(
+      g => g.isAssigned && g.experience < 100 // Can be trained
+    )
+    
+    if (trainableHelpers.length > 0 && helperParams.training?.enabled) {
+      const trainingCost = helperParams.training.costPerSession || 50
+      
+      if (this.gameState.resources.gold >= trainingCost * 2) { // Only if we have extra gold
+        const helperToTrain = trainableHelpers[0] // Train first available
+        
+        actions.push({
+          id: `train_helper_${helperToTrain.id}_${Date.now()}`,
+          type: 'train_helper', 
+          screen: 'farm',
+          target: helperToTrain.id,
+          duration: 15, // 15 minutes training
+          energyCost: 0,
+          goldCost: trainingCost,
+          prerequisites: [],
+          expectedRewards: { experience: 25 }
+        })
+      }
+    }
+    
+    // Helper housing management
+    if (this.gameState.helpers.gnomes.length > this.gameState.helpers.housingCapacity) {
+      const housingUpgrades = this.getAvailableHousingUpgrades()
+      
+      for (const housing of housingUpgrades) {
+        if (this.gameState.resources.gold >= housing.cost) {
+          actions.push({
+            id: `build_housing_${housing.id}_${Date.now()}`,
+            type: 'purchase',
+            screen: 'town',
+            target: housing.id,
+            duration: 10,
+            energyCost: 15,
+            goldCost: housing.cost,
+            prerequisites: housing.prerequisites || [],
+            expectedRewards: { items: [housing.id] }
+          })
+          break // Only consider one housing upgrade at a time
+        }
+      }
+    }
+    
+    return actions
+  }
 
   /**
    * Evaluates screen navigation decisions
@@ -809,6 +1287,9 @@ export class SimulationEngine {
       score += efficiency * 5
     }
     
+    // Apply persona-based modifications (Phase 6E Enhancement)
+    score = this.applyPersonaModifications(action, score)
+    
     // Randomness factor for more realistic behavior
     if (decisionParams?.globalBehavior?.randomness) {
       const randomFactor = 1 + (Math.random() - 0.5) * decisionParams.globalBehavior.randomness
@@ -918,6 +1399,212 @@ export class SimulationEngine {
           })
         }
         break
+        
+      case 'catch_seeds':
+        // Add seeds to inventory
+        const seedsGained = action.expectedRewards.resources?.seeds || 0
+        if (seedsGained > 0) {
+          // Distribute seeds randomly among available types
+          const seedTypes = Object.keys(this.gameState.resources.seeds)
+          const seedType = seedTypes[Math.floor(Math.random() * seedTypes.length)]
+          this.gameState.resources.seeds[seedType] += seedsGained
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'action_catch_seeds',
+            description: `Caught ${seedsGained} seeds in tower`,
+            importance: 'low'
+          })
+        }
+        break
+        
+      case 'train':
+        // Award experience for training
+        const xpGain = action.expectedRewards.experience || 0
+        this.gameState.progression.experience += xpGain
+        this.gameState.resources.gold -= action.goldCost
+        
+        events.push({
+          timestamp: this.gameState.time.totalMinutes,
+          type: 'action_train',
+          description: `Trained ${action.target} skill for ${xpGain} XP`,
+          importance: 'medium'
+        })
+        break
+        
+      case 'craft':
+        // Start crafting process
+        if (action.target) {
+          this.gameState.processes.crafting.push({
+            itemId: action.target,
+            startedAt: this.gameState.time.totalMinutes,
+            duration: action.duration,
+            progress: 0,
+            heat: this.getForgeHeat(),
+            isComplete: false
+          })
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'action_craft',
+            description: `Started crafting ${action.target}`,
+            importance: 'medium'
+          })
+        }
+        break
+        
+      case 'stoke':
+        // Increase forge heat (placeholder)
+        events.push({
+          timestamp: this.gameState.time.totalMinutes,
+          type: 'action_stoke',
+          description: 'Stoked the forge fire',
+          importance: 'low'
+        })
+        break
+        
+      case 'mine':
+        // Start mining process
+        this.gameState.processes.mining = {
+          depth: 1, // Would extract from action.target
+          energyDrain: 3,
+          isActive: true,
+          timeAtDepth: 0
+        }
+        
+        events.push({
+          timestamp: this.gameState.time.totalMinutes,
+          type: 'action_mine',
+          description: `Started mining at depth ${this.gameState.processes.mining.depth}`,
+          importance: 'medium'
+        })
+        break
+        
+      case 'purchase':
+        // Handle purchases
+        this.gameState.resources.gold -= action.goldCost
+        
+        // Add purchased item to inventory (simplified)
+        if (action.expectedRewards.items) {
+          for (const item of action.expectedRewards.items) {
+            // Would add to appropriate inventory section
+            events.push({
+              timestamp: this.gameState.time.totalMinutes,
+              type: 'action_purchase',
+              description: `Purchased ${item} for ${action.goldCost} gold`,
+              importance: 'medium'
+            })
+          }
+        }
+        break
+        
+      case 'adventure':
+        // Start adventure
+        if (action.target) {
+          const [routeId, duration] = action.target.split('_')
+          this.gameState.processes.adventure = {
+            adventureId: routeId,
+            startedAt: this.gameState.time.totalMinutes,
+            duration: action.duration,
+            progress: 0,
+            rewards: {
+              experience: action.expectedRewards.experience || 0,
+              gold: action.expectedRewards.gold || 0,
+              items: action.expectedRewards.items || []
+            },
+            isComplete: false
+          }
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'action_adventure',
+            description: `Started adventure: ${routeId} (${duration})`,
+            importance: 'high'
+          })
+        }
+        break
+        
+      case 'move':
+        // Change screens
+        if (action.target && action.target !== this.gameState.location.currentScreen) {
+          this.gameState.location.currentScreen = action.target as GameScreen
+          this.gameState.location.timeOnScreen = 0
+          this.gameState.location.screenHistory.push(action.target as GameScreen)
+          this.gameState.location.navigationReason = `AI decision: ${action.id}`
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'action_move',
+            description: `Moved to ${action.target}`,
+            importance: 'low'
+          })
+        }
+        break
+
+      case 'rescue':
+        // Rescue a helper (gnome)
+        if (action.target) {
+          const newGnome = {
+            id: action.target,
+            name: action.target.replace('_gnome', '').replace('_', ' '),
+            role: '',
+            efficiency: 1.0,
+            isAssigned: false,
+            currentTask: null,
+            experience: 0
+          }
+          
+          this.gameState.helpers.gnomes.push(newGnome)
+          this.gameState.resources.gold -= action.goldCost
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'action_rescue',
+            description: `Rescued ${newGnome.name} gnome`,
+            importance: 'high'
+          })
+        }
+        break
+        
+      case 'assign_role':
+        // Assign role to a helper
+        if (action.target) {
+          const [helperId, role] = action.target.split(':')
+          const helper = this.gameState.helpers.gnomes.find(g => g.id === helperId)
+          
+          if (helper) {
+            helper.role = role
+            helper.isAssigned = true
+            
+            events.push({
+              timestamp: this.gameState.time.totalMinutes,
+              type: 'action_assign_role',
+              description: `Assigned ${helper.name} to ${role} role`,
+              importance: 'medium'
+            })
+          }
+        }
+        break
+        
+      case 'train_helper':
+        // Train a helper to increase efficiency
+        if (action.target) {
+          const helper = this.gameState.helpers.gnomes.find(g => g.id === action.target)
+          
+          if (helper) {
+            helper.experience += action.expectedRewards.experience || 0
+            helper.efficiency = Math.min(2.0, 1.0 + helper.experience / 100) // Cap at 2x efficiency
+            this.gameState.resources.gold -= action.goldCost
+            
+            events.push({
+              timestamp: this.gameState.time.totalMinutes,
+              type: 'action_train_helper',
+              description: `Trained ${helper.name} (${helper.experience} XP, ${helper.efficiency.toFixed(1)}x efficiency)`,
+              importance: 'medium'
+            })
+          }
+        }
+        break
     }
     
     return { success: true, events }
@@ -979,5 +1666,1161 @@ export class SimulationEngine {
       isRunning: this.isRunning,
       currentPhase: this.gameState.progression.currentPhase
     }
+  }
+
+  /**
+   * Testing framework for validating decision engine with different personas (Phase 6E)
+   */
+  static validateDecisionEngine(): { 
+    success: boolean; 
+    results: Array<{ persona: string; actions: string[]; scores: number[] }>; 
+    errors: string[] 
+  } {
+    const results: Array<{ persona: string; actions: string[]; scores: number[] }> = []
+    const errors: string[] = []
+    
+    try {
+      // Test scenarios for different personas
+      const testPersonas = ['speedrunner', 'casual', 'weekend-warrior']
+      const testConfigs = testPersonas.map(personaId => ({
+        quickSetup: { personaId },
+        parameterOverrides: new Map(),
+        gameData: null
+      }))
+      
+      for (let i = 0; i < testPersonas.length; i++) {
+        const personaId = testPersonas[i]
+        const config = testConfigs[i]
+        
+        try {
+          // Create test engine instance
+          const engine = new SimulationEngine(config)
+          
+          // Set up test game state scenario
+          engine.setupTestScenario('early_game')
+          
+          // Run decision making test
+          const actions = engine.makeDecisions()
+          const actionTypes = actions.map(a => a.type)
+          const scores = actions.map(a => a.score || 0)
+          
+          results.push({
+            persona: personaId,
+            actions: actionTypes,
+            scores: scores
+          })
+          
+          // Validate persona-specific behaviors
+          const validationResult = engine.validatePersonaBehavior(personaId, actions)
+          if (!validationResult.isValid) {
+            errors.push(`${personaId}: ${validationResult.reason}`)
+          }
+          
+        } catch (error) {
+          errors.push(`${personaId} test failed: ${error}`)
+        }
+      }
+      
+      // Validate differences between personas
+      const behaviorDifferences = SimulationEngine.validateBehaviorDifferences(results)
+      if (!behaviorDifferences.hasSignificantDifferences) {
+        errors.push('Personas do not show significantly different behaviors')
+      }
+      
+      return {
+        success: errors.length === 0,
+        results,
+        errors
+      }
+      
+    } catch (error) {
+      return {
+        success: false,
+        results: [],
+        errors: [`Test framework error: ${error}`]
+      }
+    }
+  }
+
+  /**
+   * Sets up a test scenario with specific game state
+   */
+  private setupTestScenario(scenario: 'early_game' | 'mid_game' | 'late_game'): void {
+    switch (scenario) {
+      case 'early_game':
+        this.gameState.resources.energy.current = 100
+        this.gameState.resources.energy.max = 150
+        this.gameState.resources.gold = 50
+        this.gameState.progression.heroLevel = 2
+        this.gameState.progression.currentPhase = 'Early'
+        this.gameState.progression.farmStage = 1
+        // Set up some ready crops for testing
+        this.gameState.processes.crops = Array(5).fill(null).map((_, i) => ({
+          plotId: i,
+          cropId: i < 3 ? 'carrot' : null,
+          isReady: i < 2,
+          waterLevel: 0.8,
+          plantedAt: this.gameState.time.totalMinutes - (i < 2 ? 100 : 50)
+        }))
+        break
+        
+      case 'mid_game':
+        this.gameState.resources.energy.current = 250
+        this.gameState.resources.energy.max = 300
+        this.gameState.resources.gold = 500
+        this.gameState.progression.heroLevel = 8
+        this.gameState.progression.currentPhase = 'Mid'
+        this.gameState.progression.farmStage = 3
+        this.gameState.progression.unlockedUpgrades = ['forge_access', 'tower_access', 'town_access']
+        break
+        
+      case 'late_game':
+        this.gameState.resources.energy.current = 400
+        this.gameState.resources.energy.max = 500
+        this.gameState.resources.gold = 2000
+        this.gameState.progression.heroLevel = 15
+        this.gameState.progression.currentPhase = 'Late'
+        this.gameState.progression.farmStage = 5
+        this.gameState.progression.unlockedUpgrades = ['forge_access', 'tower_access', 'town_access', 'mine_access', 'adventure_access']
+        break
+    }
+  }
+
+  /**
+   * Validates that a persona is behaving as expected
+   */
+  private validatePersonaBehavior(personaId: string, actions: GameAction[]): { isValid: boolean; reason?: string } {
+    if (actions.length === 0) {
+      return { isValid: false, reason: 'No actions generated' }
+    }
+    
+    const actionTypes = actions.map(a => a.type)
+    const avgScore = actions.reduce((sum, a) => sum + (a.score || 0), 0) / actions.length
+    
+    switch (personaId) {
+      case 'speedrunner':
+        // Speedrunners should prioritize efficient actions
+        if (avgScore < 50) {
+          return { isValid: false, reason: 'Speedrunner actions have unexpectedly low scores' }
+        }
+        if (actionTypes.includes('water') && !actionTypes.includes('harvest') && !actionTypes.includes('plant')) {
+          return { isValid: false, reason: 'Speedrunner doing inefficient watering without harvesting/planting' }
+        }
+        break
+        
+      case 'casual':
+        // Casual players should avoid high-energy actions
+        const hasHighEnergyAction = actions.some(a => (a.energyCost || 0) > 50)
+        if (hasHighEnergyAction) {
+          return { isValid: false, reason: 'Casual player attempting high-energy action' }
+        }
+        // Should favor safe, basic actions
+        const hasSafeAction = actionTypes.some(type => ['water', 'harvest', 'plant'].includes(type))
+        if (!hasSafeAction) {
+          return { isValid: false, reason: 'Casual player not doing basic farming actions' }
+        }
+        break
+        
+      case 'weekend-warrior':
+        // Weekend warriors should batch actions
+        if (actions.length < 2) {
+          return { isValid: false, reason: 'Weekend warrior not batching actions efficiently' }
+        }
+        break
+    }
+    
+    return { isValid: true }
+  }
+
+  /**
+   * Validates that different personas show distinct behaviors
+   */
+  static validateBehaviorDifferences(results: Array<{ persona: string; actions: string[]; scores: number[] }>): { 
+    hasSignificantDifferences: boolean; 
+    analysis: string 
+  } {
+    if (results.length < 2) {
+      return { hasSignificantDifferences: false, analysis: 'Need at least 2 persona results to compare' }
+    }
+    
+    // Compare average scores
+    const avgScores = results.map(r => r.scores.reduce((sum, s) => sum + s, 0) / r.scores.length)
+    const scoreVariance = Math.max(...avgScores) - Math.min(...avgScores)
+    
+    // Compare action diversity
+    const uniqueActionSets = new Set(results.map(r => r.actions.join(',')))
+    const actionDiversity = uniqueActionSets.size
+    
+    // Analyze behavior patterns
+    let analysis = `Score variance: ${scoreVariance.toFixed(2)}, Action diversity: ${actionDiversity}/${results.length}`
+    
+    // Significant differences if:
+    // 1. Score variance > 20 points OR
+    // 2. At least 75% of personas have unique action sets
+    const hasSignificantDifferences = scoreVariance > 20 || actionDiversity >= results.length * 0.75
+    
+    if (hasSignificantDifferences) {
+      analysis += ' - Personas show distinct behavioral patterns ✓'
+    } else {
+      analysis += ' - Personas appear too similar ⚠️'
+    }
+    
+    return { hasSignificantDifferences, analysis }
+  }
+
+  /**
+   * Run comprehensive parameter configuration test
+   */
+  static testParameterConfigurations(): { 
+    success: boolean; 
+    configResults: Array<{ config: string; avgScore: number; actionCount: number }>; 
+    errors: string[] 
+  } {
+    const configResults: Array<{ config: string; avgScore: number; actionCount: number }> = []
+    const errors: string[] = []
+    
+    try {
+      // Test different parameter configurations
+      const testConfigs = [
+        { name: 'high_efficiency', overrides: new Map([['farm.efficiency.energyValue', 2.0]]) },
+        { name: 'risk_averse', overrides: new Map([['adventure.thresholds.riskTolerance', 0.2]]) },
+        { name: 'gold_focused', overrides: new Map([['town.thresholds.saveGoldAbove', 1000]]) },
+        { name: 'default', overrides: new Map() }
+      ]
+      
+      for (const testConfig of testConfigs) {
+        try {
+          const config = {
+            quickSetup: { personaId: 'casual' },
+            parameterOverrides: testConfig.overrides,
+            gameData: null
+          }
+          
+          const engine = new SimulationEngine(config)
+          engine.setupTestScenario('mid_game')
+          
+          const actions = engine.makeDecisions()
+          const avgScore = actions.reduce((sum, a) => sum + (a.score || 0), 0) / Math.max(actions.length, 1)
+          
+          configResults.push({
+            config: testConfig.name,
+            avgScore,
+            actionCount: actions.length
+          })
+          
+        } catch (error) {
+          errors.push(`${testConfig.name} config test failed: ${error}`)
+        }
+      }
+      
+      return {
+        success: errors.length === 0,
+        configResults,
+        errors
+      }
+      
+    } catch (error) {
+      return {
+        success: false,
+        configResults: [],
+        errors: [`Parameter test framework error: ${error}`]
+      }
+    }
+  }
+
+  // ===== Phase 6E Helper Methods =====
+
+  /**
+   * Gets the current auto-catcher level
+   */
+  private getAutoCatcherLevel(): number {
+    // Placeholder - would look up from inventory/upgrades
+    return 0
+  }
+
+  /**
+   * Gets the current tower reach level
+   */
+  private getTowerReachLevel(): number {
+    // Placeholder - would look up from progression
+    return 1
+  }
+
+  /**
+   * Gets affordable upgrades from CSV data
+   */
+  private getAffordableUpgrades(): Array<{
+    id: string
+    cost: number
+    category: string
+    vendorId?: string
+    prerequisites?: string[]
+  }> {
+    const upgrades: Array<{
+      id: string
+      cost: number
+      category: string
+      vendorId?: string
+      prerequisites?: string[]
+    }> = []
+    
+    try {
+      // Query town/upgrade data from CSV files
+      const townItems = this.gameDataStore.itemsByGameFeature['Town'] || []
+      
+      for (const item of townItems) {
+        // Parse cost from materials (e.g., "Gold x100")
+        const goldCost = this.parseGoldCost(item.materials)
+        
+        if (goldCost > 0 && this.gameState.resources.gold >= goldCost) {
+          // Check if already owned
+          if (!this.gameState.progression.unlockedUpgrades.includes(item.id)) {
+            upgrades.push({
+              id: item.id,
+              cost: goldCost,
+              category: item.category,
+              vendorId: this.parseVendorId(item.type),
+              prerequisites: item.prerequisites || []
+            })
+          }
+        }
+      }
+      
+      // Also check specialized data for town vendors
+      const townVendorData = this.gameDataStore.getSpecializedDataByFile('town_vendors.csv')
+      for (const vendor of townVendorData) {
+        if (vendor.cost && vendor.cost <= this.gameState.resources.gold) {
+          upgrades.push({
+            id: vendor.id || vendor.name,
+            cost: parseInt(vendor.cost),
+            category: vendor.category || 'misc',
+            vendorId: vendor.vendor || 'general',
+            prerequisites: vendor.prerequisites ? vendor.prerequisites.split(';') : []
+          })
+        }
+      }
+      
+    } catch (error) {
+      console.warn('Failed to load affordable upgrades from CSV, using fallback:', error)
+      // Fallback to placeholder data if CSV loading fails
+      return [
+        { id: 'storage_shed_1', cost: 100, category: 'storage', vendorId: 'general' },
+        { id: 'better_hoe', cost: 150, category: 'tool', vendorId: 'blacksmith' }
+      ].filter(item => this.gameState.resources.gold >= item.cost)
+    }
+    
+    return upgrades
+  }
+
+  /**
+   * Gets position-based priority from drag-and-drop ordered arrays
+   */
+  private getArrayPosition(priorityArray: string[], itemId: string): number {
+    const index = priorityArray.indexOf(itemId)
+    if (index === -1) return 0.5 // Default middle priority
+    
+    // Convert array position to priority weight (earlier = higher priority)
+    const maxIndex = priorityArray.length - 1
+    return maxIndex === 0 ? 1.0 : 1.0 - (index / maxIndex) * 0.8
+  }
+
+  /**
+   * Gets available skill training options
+   */
+  private getAvailableTraining(): Array<{
+    skill: string
+    cost: number
+    duration: number
+    xpGain: number
+  }> {
+    // Placeholder - would query CSV data for available training
+    return [
+      { skill: 'farming', cost: 250, duration: 30, xpGain: 100 },
+      { skill: 'combat', cost: 300, duration: 45, xpGain: 150 }
+    ]
+  }
+
+  /**
+   * Determines if a skill should be trained based on current progression
+   */
+  private shouldTrainSkill(training: { skill: string; cost: number }): boolean {
+    // Placeholder logic - would check current skill levels and needs
+    return this.gameState.resources.gold >= training.cost * 1.2 // Only if we have extra gold
+  }
+
+  /**
+   * Gets available adventure routes based on unlocks and progression
+   */
+  private getAvailableAdventureRoutes(): Array<{
+    id: string
+    prerequisites?: string[]
+    short: { duration: number; energyCost: number; goldReward: number; xpReward: number; loot?: string[] }
+    medium?: { duration: number; energyCost: number; goldReward: number; xpReward: number; loot?: string[] }
+    long?: { duration: number; energyCost: number; goldReward: number; xpReward: number; loot?: string[] }
+  }> {
+    const routes: Array<{
+      id: string
+      prerequisites?: string[]
+      short: { duration: number; energyCost: number; goldReward: number; xpReward: number; loot?: string[] }
+      medium?: { duration: number; energyCost: number; goldReward: number; xpReward: number; loot?: string[] }
+      long?: { duration: number; energyCost: number; goldReward: number; xpReward: number; loot?: string[] }
+    }> = []
+    
+    try {
+      // Query adventure data from CSV files
+      const adventureItems = this.gameDataStore.itemsByGameFeature['Adventure'] || []
+      
+      // Group adventures by base route (remove _short, _medium, _long suffixes)
+      const routeGroups: { [key: string]: any[] } = {}
+      
+      for (const item of adventureItems) {
+        let baseRouteId = item.id
+        let duration = 'short'
+        
+        if (item.id.endsWith('_short')) {
+          baseRouteId = item.id.replace('_short', '')
+          duration = 'short'
+        } else if (item.id.endsWith('_medium')) {
+          baseRouteId = item.id.replace('_medium', '')
+          duration = 'medium'
+        } else if (item.id.endsWith('_long')) {
+          baseRouteId = item.id.replace('_long', '')
+          duration = 'long'
+        }
+        
+        if (!routeGroups[baseRouteId]) {
+          routeGroups[baseRouteId] = []
+        }
+        
+        routeGroups[baseRouteId].push({
+          duration,
+          item,
+          energyCost: this.parseEnergyCost(item.materials),
+          goldReward: this.parseReward(item.effects, 'gold'),
+          xpReward: this.parseReward(item.effects, 'xp'),
+          durationMinutes: this.parseDuration(item.description)
+        })
+      }
+      
+      // Convert groups into route objects
+      for (const [routeId, variants] of Object.entries(routeGroups)) {
+        const route: any = {
+          id: routeId,
+          prerequisites: variants[0]?.item.prerequisites || []
+        }
+        
+        for (const variant of variants) {
+          route[variant.duration] = {
+            duration: variant.durationMinutes,
+            energyCost: variant.energyCost,
+            goldReward: variant.goldReward,
+            xpReward: variant.xpReward
+          }
+        }
+        
+        // Only include routes that have at least a short variant
+        if (route.short) {
+          routes.push(route)
+        }
+      }
+      
+    } catch (error) {
+      console.warn('Failed to load adventure routes from CSV, using fallback:', error)
+      // Fallback to placeholder data
+      return [
+        {
+          id: 'meadow_path',
+          short: { duration: 15, energyCost: 20, goldReward: 30, xpReward: 25 },
+          medium: { duration: 30, energyCost: 35, goldReward: 60, xpReward: 50 }
+        }
+      ]
+    }
+    
+    return routes
+  }
+
+  /**
+   * Calculates risk level for an adventure route
+   */
+  private calculateAdventureRisk(route: any): number {
+    // Simplified risk calculation based on energy cost and rewards
+    const baseRisk = route.short.energyCost / 100 // Higher energy = higher risk
+    const heroLevel = this.gameState.progression.heroLevel
+    const levelAdjustment = Math.max(0.1, 1.0 - (heroLevel - 1) * 0.1)
+    
+    return baseRisk * levelAdjustment
+  }
+
+  /**
+   * Gets craftable items based on available materials and forge heat
+   */
+  private getCraftableItems(): Array<{
+    id: string
+    materials: { [key: string]: number }
+    craftingTime: number
+    energyCost: number
+    heatRequirement?: number
+  }> {
+    const craftableItems: Array<{
+      id: string
+      materials: { [key: string]: number }
+      craftingTime: number
+      energyCost: number
+      heatRequirement?: number
+    }> = []
+    
+    try {
+      // Query forge/crafting data from CSV files
+      const forgeItems = this.gameDataStore.itemsByGameFeature['Forge'] || []
+      
+      for (const item of forgeItems) {
+        // Parse materials requirements
+        const materials = this.parseMaterialRequirements(item.materials)
+        const energyCost = this.parseEnergyCost(item.materials)
+        const craftingTime = this.parseCraftingTime(item.description)
+        const heatRequirement = this.parseHeatRequirement(item.description)
+        
+        // Only include items that can be crafted (have material requirements)
+        if (Object.keys(materials).length > 0) {
+          craftableItems.push({
+            id: item.id,
+            materials,
+            craftingTime,
+            energyCost,
+            heatRequirement
+          })
+        }
+      }
+      
+      // Also check tools that can be crafted
+      const toolItems = this.gameDataStore.itemsByCategory['tool'] || []
+      for (const item of toolItems) {
+        // Check if this tool can be forged (has material requirements)
+        if (item.materials && item.materials.includes('Iron')) {
+          const materials = this.parseMaterialRequirements(item.materials)
+          if (Object.keys(materials).length > 0) {
+            craftableItems.push({
+              id: item.id,
+              materials,
+              craftingTime: 15, // Default crafting time
+              energyCost: 10,
+              heatRequirement: 50
+            })
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.warn('Failed to load craftable items from CSV, using fallback:', error)
+      // Fallback to placeholder data
+      return [
+        {
+          id: 'iron_hoe',
+          materials: { iron: 2, wood: 1 },
+          craftingTime: 10,
+          energyCost: 15,
+          heatRequirement: 60
+        }
+      ]
+    }
+    
+    return craftableItems
+  }
+
+  /**
+   * Checks if required materials are available
+   */
+  private checkMaterialRequirements(materials: { [key: string]: number }): boolean {
+    for (const [material, required] of Object.entries(materials)) {
+      const available = this.gameState.resources.materials[material] || 0
+      if (available < required) return false
+    }
+    return true
+  }
+
+  /**
+   * Gets current forge heat level
+   */
+  private getForgeHeat(): number {
+    // Placeholder - would track forge state
+    return 50
+  }
+
+  /**
+   * Calculates optimal mining duration based on energy and risk
+   */
+  private calculateOptimalMiningDuration(): number {
+    const availableEnergy = this.gameState.resources.energy.current
+    const safetyBuffer = 40 // Keep energy reserve
+    const maxSessionEnergy = availableEnergy - safetyBuffer
+    const energyPerMinute = 3 // Energy drain rate
+    
+    return Math.max(0, Math.floor(maxSessionEnergy / energyPerMinute))
+  }
+
+  /**
+   * Calculates expected rewards from a mining session
+   */
+  private calculateMiningRewards(duration: number): { [key: string]: number } {
+    // Simplified mining rewards calculation
+    const baseRate = 2 // Materials per minute
+    const totalMaterials = duration * baseRate
+    
+    return {
+      stone: Math.floor(totalMaterials * 0.4),
+      iron: Math.floor(totalMaterials * 0.3),
+      silver: Math.floor(totalMaterials * 0.2),
+      crystal: Math.floor(totalMaterials * 0.1)
+    }
+  }
+
+  /**
+   * Gets list of unrescued helpers available for rescue
+   */
+  private getUnrescuedHelpers(): string[] {
+    try {
+      // Query helper data from CSV files
+      const helperItems = this.gameDataStore.itemsByCategory['helper'] || []
+      const allHelperIds = helperItems.map(item => item.id)
+      
+      // Filter out already rescued helpers
+      const rescuedIds = this.gameState.helpers.gnomes.map(g => g.id)
+      const unrescued = allHelperIds.filter(id => !rescuedIds.includes(id))
+      
+      return unrescued
+      
+    } catch (error) {
+      console.warn('Failed to load helper data from CSV, using fallback:', error)
+      // Fallback to placeholder data
+      const allHelpers = ['waterer_gnome', 'harvester_gnome', 'planter_gnome', 'cleaner_gnome']
+      const rescuedIds = this.gameState.helpers.gnomes.map(g => g.id)
+      return allHelpers.filter(id => !rescuedIds.includes(id))
+    }
+  }
+
+  /**
+   * Gets the rescue cost for a specific helper
+   */
+  private getHelperRescueCost(helperId: string): number {
+    try {
+      // Query helper cost from CSV data
+      const helperItem = this.gameDataStore.getItemById(helperId)
+      if (helperItem) {
+        const goldCost = this.parseGoldCost(helperItem.materials)
+        return goldCost > 0 ? goldCost : 100 // Default cost if no gold cost specified
+      }
+      
+    } catch (error) {
+      console.warn('Failed to get helper rescue cost from CSV:', error)
+    }
+    
+    // Fallback to placeholder costs
+    const costs: { [key: string]: number } = {
+      'waterer_gnome': 100,
+      'harvester_gnome': 150,
+      'planter_gnome': 125,
+      'cleaner_gnome': 200
+    }
+    return costs[helperId] || 100
+  }
+
+  /**
+   * Determines the optimal helper role needed based on current game state
+   */
+  private getOptimalHelperRole(): string | null {
+    // Analyze current needs
+    const dryPlots = this.gameState.processes.crops.filter(c => c.waterLevel < 30).length
+    const readyToHarvest = this.gameState.processes.crops.filter(c => c.readyToHarvest).length
+    const emptyPlots = this.parameters.farm.initialState.plots - this.gameState.processes.crops.length
+
+    // Return role with highest need
+    if (dryPlots > 2) return 'waterer'
+    if (readyToHarvest > 3) return 'harvester'
+    if (emptyPlots > 1) return 'planter'
+    
+    return null
+  }
+
+  /**
+   * Selects the best helper for a specific role based on efficiency
+   */
+  private selectBestHelperForRole(helpers: any[], role: string): any | null {
+    if (helpers.length === 0) return null
+    
+    // Simple selection - first available helper
+    // In real implementation, would consider efficiency ratings
+    return helpers[0]
+  }
+
+  /**
+   * Gets available housing upgrades for helpers
+   */
+  private getAvailableHousingUpgrades(): Array<{
+    id: string
+    cost: number
+    capacityIncrease: number
+    prerequisites?: string[]
+  }> {
+    // Placeholder - would query CSV data for housing buildings
+    return [
+      { id: 'gnome_hut', cost: 300, capacityIncrease: 2 },
+      { id: 'gnome_house', cost: 600, capacityIncrease: 3, prerequisites: ['gnome_hut'] },
+      { id: 'gnome_lodge', cost: 1000, capacityIncrease: 5, prerequisites: ['gnome_house'] }
+    ]
+  }
+
+  /**
+   * Parses gold cost from material string (e.g., "Gold x100" -> 100)
+   */
+  private parseGoldCost(materials: string): number {
+    if (!materials) return 0
+    
+    const goldMatch = materials.match(/Gold x(\d+)/i)
+    return goldMatch ? parseInt(goldMatch[1]) : 0
+  }
+
+  /**
+   * Determines vendor ID from item type
+   */
+  private parseVendorId(itemType: string): string {
+    if (!itemType) return 'general'
+    
+    const typeVendorMap: { [key: string]: string } = {
+      'tool': 'blacksmith',
+      'weapon': 'blacksmith',
+      'armor': 'blacksmith',
+      'infrastructure': 'general',
+      'storage': 'general',
+      'upgrade': 'general'
+    }
+    
+    return typeVendorMap[itemType.toLowerCase()] || 'general'
+  }
+
+  /**
+   * Parses energy cost from materials string
+   */
+  private parseEnergyCost(materials: string): number {
+    if (!materials) return 20 // Default energy cost
+    
+    const energyMatch = materials.match(/Energy x(\d+)/i)
+    return energyMatch ? parseInt(energyMatch[1]) : 20
+  }
+
+  /**
+   * Parses reward values from effects string
+   */
+  private parseReward(effects: string, rewardType: 'gold' | 'xp'): number {
+    if (!effects) return 0
+    
+    const rewardMap = {
+      'gold': /Gold \+(\d+)/i,
+      'xp': /XP \+(\d+)/i
+    }
+    
+    const match = effects.match(rewardMap[rewardType])
+    return match ? parseInt(match[1]) : 0
+  }
+
+  /**
+   * Parses duration from description (looks for time indicators)
+   */
+  private parseDuration(description: string): number {
+    if (!description) return 15 // Default 15 minutes
+    
+    const hourMatch = description.match(/(\d+)\s*hour/i)
+    if (hourMatch) return parseInt(hourMatch[1]) * 60
+    
+    const minuteMatch = description.match(/(\d+)\s*minute/i)
+    if (minuteMatch) return parseInt(minuteMatch[1])
+    
+    // Default durations based on keywords
+    if (description.toLowerCase().includes('long')) return 60
+    if (description.toLowerCase().includes('medium')) return 30
+    return 15 // Default to short
+  }
+
+  /**
+   * Parses material requirements from materials string (e.g., "Iron x2;Wood x1")
+   */
+  private parseMaterialRequirements(materials: string): { [key: string]: number } {
+    const requirements: { [key: string]: number } = {}
+    
+    if (!materials) return requirements
+    
+    // Split by semicolon and parse each material requirement
+    const materialParts = materials.split(';')
+    for (const part of materialParts) {
+      const match = part.trim().match(/(.+?)\s*x(\d+)/i)
+      if (match) {
+        const material = match[1].trim().toLowerCase()
+        const amount = parseInt(match[2])
+        requirements[material] = amount
+      }
+    }
+    
+    return requirements
+  }
+
+  /**
+   * Parses crafting time from description
+   */
+  private parseCraftingTime(description: string): number {
+    if (!description) return 15 // Default 15 minutes
+    
+    const timeMatch = description.match(/(\d+)\s*minutes?\s*to\s*craft/i)
+    if (timeMatch) return parseInt(timeMatch[1])
+    
+    // Default based on complexity keywords
+    if (description.toLowerCase().includes('complex') || description.toLowerCase().includes('advanced')) return 30
+    if (description.toLowerCase().includes('simple') || description.toLowerCase().includes('basic')) return 5
+    
+    return 15 // Default crafting time
+  }
+
+  /**
+   * Parses heat requirement from description
+   */
+  private parseHeatRequirement(description: string): number {
+    if (!description) return 50 // Default heat requirement
+    
+    const heatMatch = description.match(/(\d+)%?\s*heat/i)
+    if (heatMatch) return parseInt(heatMatch[1])
+    
+    // Default based on material complexity
+    if (description.toLowerCase().includes('steel') || description.toLowerCase().includes('advanced')) return 80
+    if (description.toLowerCase().includes('iron') || description.toLowerCase().includes('bronze')) return 60
+    if (description.toLowerCase().includes('copper') || description.toLowerCase().includes('basic')) return 40
+    
+    return 50 // Default heat requirement
+  }
+
+  /**
+   * Applies persona-based modifications to action scoring (Phase 6E Enhancement)
+   */
+  private applyPersonaModifications(action: GameAction, baseScore: number): number {
+    let score = baseScore
+    
+    // Apply persona efficiency modifier
+    score *= this.persona.efficiency
+    
+    // Risk tolerance affects risky actions
+    if (action.type === 'adventure' || action.type === 'mine') {
+      const riskFactor = 0.5 + (this.persona.riskTolerance * 0.5) // Scale 0.5-1.0
+      score *= riskFactor
+    }
+    
+    // Optimization affects upgrade/purchase decisions
+    if (action.type === 'purchase' || action.type === 'craft') {
+      const optimizationFactor = 0.7 + (this.persona.optimization * 0.3) // Scale 0.7-1.0
+      score *= optimizationFactor
+    }
+    
+    // Learning rate affects how quickly they adopt new strategies
+    if (action.type === 'rescue' || action.type === 'train_helper') {
+      const learningFactor = 0.8 + (this.persona.learningRate * 0.2) // Scale 0.8-1.0
+      score *= learningFactor
+    }
+    
+    // Persona-specific behavior modifications
+    switch (this.persona.id) {
+      case 'speedrunner':
+        // Speedrunners heavily favor efficiency and optimization
+        if (action.type === 'plant' || action.type === 'harvest') {
+          score *= 1.2 // Favor farm efficiency
+        }
+        if (action.type === 'purchase' && action.goldCost > 100) {
+          score *= 1.3 // Favor expensive upgrades
+        }
+        break
+        
+      case 'casual':
+        // Casual players favor simple, safe actions
+        if (action.type === 'water' || action.type === 'harvest') {
+          score *= 1.1 // Favor basic farming
+        }
+        if (action.energyCost > 50) {
+          score *= 0.7 // Avoid high-energy actions
+        }
+        break
+        
+      case 'weekend-warrior':
+        // Weekend warriors batch activities efficiently
+        const isWeekend = this.gameState.time.day % 7 >= 5
+        if (isWeekend) {
+          score *= 1.2 // More active on weekends
+        } else {
+          score *= 0.8 // Less active on weekdays
+        }
+        break
+    }
+    
+    return score
+  }
+
+  /**
+   * Checks if hero should act based on persona schedule (Phase 6E Enhancement)
+   */
+  private shouldHeroActNow(): boolean {
+    const isWeekend = this.gameState.time.day % 7 >= 5
+    const checkinsToday = isWeekend ? 
+      this.persona.weekendCheckIns : 
+      this.persona.weekdayCheckIns
+    
+    if (checkinsToday <= 0) return false
+    
+    // Spread check-ins across waking hours (6 AM to 10 PM = 16 hours)
+    const wakingMinutes = 16 * 60
+    const minutesPerCheckin = wakingMinutes / checkinsToday
+    
+    // Calculate current position in the day (6 AM = 0)
+    const currentHour = this.gameState.time.hour
+    const currentMinute = this.gameState.time.minute
+    const minutesSinceWakeup = Math.max(0, (currentHour - 6) * 60 + currentMinute)
+    
+    // Check if it's time for next check-in
+    const timeSinceLastCheckin = this.gameState.time.totalMinutes - this.lastCheckinTime
+    
+    if (timeSinceLastCheckin >= minutesPerCheckin) {
+      // Add some persona-based variance
+      const variance = this.persona.learningRate * 60 // More random = more variance
+      const randomOffset = (Math.random() - 0.5) * variance
+      
+      if (minutesSinceWakeup >= this.lastCheckinTime + minutesPerCheckin + randomOffset) {
+        this.lastCheckinTime = this.gameState.time.totalMinutes
+        return true
+      }
+    }
+    
+    return false
+  }
+
+  /**
+   * Enhanced prerequisite checking using CSV data relationships (Phase 6E)
+   */
+  private checkActionPrerequisites(action: GameAction): boolean {
+    // 1. Energy requirements
+    if (action.energyCost && action.energyCost > this.gameState.resources.energy.current) {
+      return false
+    }
+    
+    // 2. Gold requirements
+    if (action.goldCost && action.goldCost > this.gameState.resources.gold) {
+      return false
+    }
+    
+    // 3. Material requirements
+    if (action.materialCosts) {
+      for (const [material, amount] of Object.entries(action.materialCosts)) {
+        const available = this.gameState.resources.materials.get(material.toLowerCase()) || 0
+        if (available < amount) {
+          return false
+        }
+      }
+    }
+    
+    // 4. CSV-based prerequisite validation
+    if (action.prerequisites && action.prerequisites.length > 0) {
+      for (const prereqId of action.prerequisites) {
+        if (!this.hasPrerequisite(prereqId)) {
+          return false
+        }
+      }
+    }
+    
+    // 5. Action-specific prerequisites
+    switch (action.type) {
+      case 'adventure':
+        return this.checkAdventurePrerequisites(action)
+      case 'craft':
+        return this.checkCraftingPrerequisites(action)
+      case 'catch_seeds':
+        return this.checkTowerPrerequisites(action)
+      case 'move':
+        return this.checkScreenAccessPrerequisites(action.toScreen)
+      case 'rescue':
+        return this.checkHelperRescuePrerequisites(action)
+      default:
+        return true
+    }
+  }
+
+  /**
+   * Checks if a specific prerequisite is met using CSV data and game state
+   */
+  private hasPrerequisite(prereqId: string): boolean {
+    // Check unlocked upgrades
+    if (this.gameState.progression.unlockedUpgrades.includes(prereqId)) {
+      return true
+    }
+    
+    // Check completed cleanups
+    if (this.gameState.progression.completedCleanups.has(prereqId)) {
+      return true
+    }
+    
+    // Check owned tools/weapons
+    if (this.gameState.inventory.tools.has(prereqId) || 
+        this.gameState.inventory.weapons.has(prereqId)) {
+      return true
+    }
+    
+    // Check progression milestones
+    switch (prereqId) {
+      case 'tutorial_complete':
+        return this.gameState.progression.currentPhase !== 'Tutorial'
+      case 'farm_stage_2':
+        return this.gameState.progression.farmStage >= 2
+      case 'farm_stage_3':
+        return this.gameState.progression.farmStage >= 3
+      case 'hero_level_5':
+        return this.gameState.progression.heroLevel >= 5
+      case 'hero_level_10':
+        return this.gameState.progression.heroLevel >= 10
+      default:
+        // Try to find in CSV data
+        try {
+          const item = this.gameDataStore.getItemById(prereqId)
+          return item ? this.gameState.progression.unlockedUpgrades.includes(item.id) : false
+        } catch {
+          return false
+        }
+    }
+  }
+
+  /**
+   * Checks adventure-specific prerequisites
+   */
+  private checkAdventurePrerequisites(action: GameAction): boolean {
+    // Check if adventure screen is unlocked
+    if (!this.checkScreenAccessPrerequisites('adventure')) {
+      return false
+    }
+    
+    // Check route prerequisites from CSV data
+    try {
+      const adventureItems = this.gameDataStore.itemsByGameFeature['Adventure'] || []
+      const routeItem = adventureItems.find(item => 
+        item.id === action.routeId || item.id === `${action.routeId}_short`
+      )
+      
+      if (routeItem && routeItem.prerequisites) {
+        for (const prereq of routeItem.prerequisites) {
+          if (!this.hasPrerequisite(prereq)) {
+            return false
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check adventure prerequisites:', error)
+    }
+    
+    return true
+  }
+
+  /**
+   * Checks crafting-specific prerequisites
+   */
+  private checkCraftingPrerequisites(action: GameAction): boolean {
+    // Check forge access
+    if (!this.checkScreenAccessPrerequisites('forge')) {
+      return false
+    }
+    
+    // Check forge heat requirements
+    const heatRequired = action.heatRequirement || 50
+    const currentHeat = this.getForgeHeat()
+    if (currentHeat < heatRequired) {
+      return false
+    }
+    
+    // Check required tools for advanced crafting
+    if (action.craftId && action.craftId.includes('advanced')) {
+      if (!this.gameState.inventory.tools.has('advanced_hammer') && 
+          !this.gameState.inventory.tools.has('master_hammer')) {
+        return false
+      }
+    }
+    
+    return true
+  }
+
+  /**
+   * Checks tower-specific prerequisites  
+   */
+  private checkTowerPrerequisites(action: GameAction): boolean {
+    // Check tower access
+    if (!this.checkScreenAccessPrerequisites('tower')) {
+      return false
+    }
+    
+    // Check auto-catcher requirements
+    if (action.requiresAutoCatcher && this.getAutoCatcherLevel() === 0) {
+      return false
+    }
+    
+    // Check tower reach level for advanced seed types
+    const reachLevel = this.getTowerReachLevel()
+    if (action.seedTier && action.seedTier > reachLevel) {
+      return false
+    }
+    
+    return true
+  }
+
+  /**
+   * Checks screen access prerequisites
+   */
+  private checkScreenAccessPrerequisites(screen: string): boolean {
+    switch (screen) {
+      case 'farm':
+        return true // Always accessible
+      case 'tower':
+        return this.gameState.progression.currentPhase !== 'Tutorial' ||
+               this.gameState.progression.unlockedUpgrades.includes('tower_access')
+      case 'town':
+        return this.gameState.progression.currentPhase !== 'Tutorial' ||
+               this.gameState.progression.unlockedUpgrades.includes('town_access')
+      case 'adventure':
+        return this.gameState.progression.heroLevel >= 3 ||
+               this.gameState.progression.unlockedUpgrades.includes('adventure_access')
+      case 'forge':
+        return this.gameState.progression.currentPhase === 'Mid' ||
+               this.gameState.progression.currentPhase === 'Late' ||
+               this.gameState.progression.currentPhase === 'End' ||
+               this.gameState.progression.unlockedUpgrades.includes('forge_access')
+      case 'mine':
+        return this.gameState.progression.currentPhase === 'Late' ||
+               this.gameState.progression.currentPhase === 'End' ||
+               this.gameState.progression.unlockedUpgrades.includes('mine_access')
+      default:
+        return true
+    }
+  }
+
+  /**
+   * Checks helper rescue prerequisites
+   */
+  private checkHelperRescuePrerequisites(action: GameAction): boolean {
+    // Check if we have housing capacity
+    if (this.gameState.helpers.currentHousing >= this.gameState.helpers.housingCapacity) {
+      return false
+    }
+    
+    // Check helper-specific prerequisites from CSV
+    try {
+      const helperItem = this.gameDataStore.getItemById(action.helperId)
+      if (helperItem && helperItem.prerequisites) {
+        for (const prereq of helperItem.prerequisites) {
+          if (!this.hasPrerequisite(prereq)) {
+            return false
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check helper prerequisites:', error)
+    }
+    
+    return true
   }
 }

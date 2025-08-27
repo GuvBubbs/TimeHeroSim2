@@ -29,20 +29,22 @@ Build the **actual simulation engine** that runs Time Hero gameplay in a Web Wor
 ### ASCII Mockup of Complete Live Monitor
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────┐
-│ Live Monitor - Casual Test Run                                    [Export] [Stop ■] │
+│ [████ Tutorial] [██░░ Early 45%] [░░░░ Mid] [░░░░ Late] [░░░░ End]               │
 ├────────────────────────────────────────────────────────────────────────────────────┤
-│ [⏸] [▶ 100x] Day 7, 14:30 (20% complete)          [🔴 Recording] [Debug Mode ▼]   │
+│ Live Monitor - Casual Test Run                            [Export Report] [Stop ■] │
+├────────────────────────────────────────────────────────────────────────────────────┤
+│ [⏸] [▶ 100x] Day 7, 14:30 (20% complete)                       [Debug Mode ▼]     │
 ├────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                      │
 │ ┌─────────────────────────┐ ┌──────────────────────┐ ┌──────────────────────────┐ │
-│ │ 🌾 Current Location      │ │ 📊 Resources         │ │ 📈 Phase Progress         │ │
-│ │ ━━━━━━━━━━━━━━━━━━━━━━ │ │ ━━━━━━━━━━━━━━━━━━━ │ │ ━━━━━━━━━━━━━━━━━━━━━━━ │ │
-│ │                          │ │                      │ │                           │ │
-│ │    ┌──────────────┐     │ │ Energy  ████░░ 450/600│ │ Tutorial    ████ 100%    │ │
-│ │    │              │     │ │ Gold    💰 1,247      │ │ Early Game  ██░░  45%    │ │
-│ │    │   🌾 FARM    │     │ │ Water   ███░░░ 45/100 │ │ Mid Game    ░░░░   0%    │ │
-│ │    │              │     │ │ Seeds   127 📦        │ │ Late Game   ░░░░   0%    │ │
-│ │    └──────────────┘     │ │                      │ │ Endgame     ░░░░   0%    │ │
+│ │ 🌾 Current Location      │ │ 📊 Resources         │ │ 🎒 Equipment            │ │
+│ │ ━━━━━━━━━━━━━━━━━━━━━━ │ │ ━━━━━━━━━━━━━━━━━━━ │ │ ━━━━━━━━━━━━━━━━━━━━━━ │ │
+│ │         [Tower]         │ │                      │ │                          │ │
+│ │   [Town][Farm👤][Advn]  │ │ Energy  ████░░ 450/600│ │ Tools: Hoe+ Hammer Axe  │ │
+│ │         [Forge]         │ │ Gold    💰 1,247      │ │ Weapons: Sword IV Bow II │ │
+│ │         [Mine]          │ │ Water   ███░░░ 45/100 │ │ Armor: [15def/Regen]     │ │
+│ │                         │ │ Seeds: 127 (8 types)  │ │       [10def/Gold+]      │ │
+│ │                         │ │  Carrot x45 Potato x32│ │       [20def/Reflect]    │ │
 │ │                          │ │ Materials:           │ │                           │ │
 │ │ Time here: 3:45          │ │ Wood: 45  Stone: 23  │ │ Next: Clear Rocks #1      │ │
 │ │ Visits today: 2          │ │ Iron: 12  Silver: 2  │ │ Blocks: Need 120 energy   │ │
@@ -67,9 +69,9 @@ Build the **actual simulation engine** that runs Time Hero gameplay in a Web Wor
 │ │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │   │
 │ │                                                                                │   │
 │ │  [🥕][🥕][🥕][🌱][🌱][  ][  ][  ][🚫][🚫]    Ready: 3                      │   │
-│ │  [🌱][🌱][  ][  ][  ][  ][  ][  ][🚫][🚫]    Growing: 7                    │   │
-│ │                                                        Empty: 10                │   │
-│ │  🥕 = Ready  🌱 = Growing  💀 = Dead  🚫 = Locked    Locked: 10               │   │
+│ │  [🌱][🌱]👤[  ][  ][  ][  ][  ][🚫][🚫]    Growing: 7                    │   │
+│ │                                        👶💧    Empty: 10                │   │
+│ │  🥕 = Ready  🌱 = Growing  🚫 = Locked  👶 = Helper   Locked: 10               │   │
 │ │                                                                                │   │
 │ └─────────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                      │
@@ -104,55 +106,107 @@ Build the **actual simulation engine** that runs Time Hero gameplay in a Web Wor
 - **Play/Pause Button**: Toggle simulation running state
 - **Speed Selector**: 1x, 10x, 100x, Max speed options
 - **Time Display**: Current game day and time with completion percentage
-- **Recording Toggle**: Enable/disable session recording for replay
 - **Debug Mode**: Toggle debug overlay and additional logging
-- **Export Button**: Save simulation data as JSON
+- **Export Report Button**: Save simulation report as JSON/CSV/Markdown
 - **Stop Button**: Terminate simulation and return to setup
 
 **Behavior**:
 - Speed changes take effect immediately
-- Recording saves every 10th frame to reduce memory
+- Results are automatically collected for report generation
 - Debug mode shows decision scoring in real-time
 
 ### 2. Current Location Widget
 **Purpose**: Show where the hero is and what screen they're on
 
-**Displays**:
-- Large icon representing current game screen
-- Screen name with visual emphasis
-- Time spent on current screen
-- Number of visits today
-- Visual transition animation when changing screens
+**Layout**: Cross-shaped navigation display
+```
+          [Tower]
+[Town] [Farm 👤] [Adventure]
+          [Forge]
+          [Mine]
+```
+
+**Visual Features**:
+- Active screen lights up with accent color
+- Hero icon (Font Awesome `fa-user`) shows current location
+- Helper icons (Font Awesome `fa-child-reaching`) appear when helpers are active
+- Time spent on current screen displayed below
+- Number of visits today shown
+
+**Behavior**:
+- No animation needed - hero icon jumps between screens
+- Screens glow when active
+- Helpers appear on their assigned screens
 
 **Updates**: Every tick when location changes
 
 ### 3. Resources Widget
-**Purpose**: Track all resources with visual bars
+**Purpose**: Track all resources with visual bars and detailed breakdowns
 
 **Components**:
 - **Energy Bar**: Green bar showing current/max with numeric display
 - **Gold Display**: Coin icon with current amount
 - **Water Bar**: Blue bar showing tank level
-- **Seeds Counter**: Total seed count with storage icon
-- **Materials List**: Compact grid of material counts
+- **Seeds Detail Panel**: 
+  - Total seed count with storage icon
+  - Expandable list of all seed types with counts
+  - Seeds grouped by tier (Seed Level 0-9)
+  - Visual indicator for which seeds are catchable at current reach level
+- **Materials List**: Compact grid of material counts (Wood, Stone, Iron, Silver, Crystal, Mythril, Obsidian)
 
 **Visual Indicators**:
 - Red flash when resource hits cap
 - Yellow pulse when resource below 20%
 - Green glow when resource increasing
+- Seed availability based on tower reach level highlighted
 
-### 4. Phase Progress Widget
-**Purpose**: Show game progression through phases
+### 4. Items & Equipment Widget
+**Purpose**: Display current inventory of tools, weapons, and armor
 
 **Components**:
-- Progress bars for each phase (Tutorial through Endgame)
-- Current phase highlighted
-- Next milestone displayed
-- Blocking requirement shown if stuck
+- **Tools Section**: 
+  - Only show highest tier of each tool owned
+  - Icons for: Hoe/Hoe+/Terra Former, Hammer/Hammer+/Stone Breaker, etc.
+  - Pickaxe level displayed separately (I-V)
+  - Watering can tier shown
+- **Weapons Section**:
+  - Only show highest level of each weapon type
+  - Format: "Sword IV", "Bow VII", etc.
+  - Maximum of 5 weapon types (Spear, Sword, Bow, Crossbow, Wand)
+- **Armor Section**:
+  - Display all 3 armor pieces (max inventory)
+  - Show defense rating and special effect for each
+  - Equipped piece highlighted
+  - When new armor drops, show replacement animation
+
+**Visual Design**:
+- Compact icon grid with tooltips
+- Progression indicators (e.g., "4/10" for Sword IV)
+- Equipped items have golden border
+
+**Updates**: When items are acquired, upgraded, or replaced
+
+### 5. Phase Progress Widget
+**Purpose**: Show game progression through phases
+
+**Position**: Top of screen as horizontal segmented progress bar
+
+**Visual Design**:
+- Single horizontal bar divided into 5 segments
+- Segments: Tutorial | Early Game | Mid Game | Late Game | Endgame
+- Current phase highlighted with accent color
+- Completed phases shown in green
+- Future phases shown in gray
+- Percentage complete shown on active segment
+
+**Compact Display**:
+```
+[████ Tutorial] [██░░ Early 45%] [░░░░ Mid] [░░░░ Late] [░░░░ End]
+```
 
 **Updates**: When major milestones completed
 
-### 5. Current Action Widget
+### 6. Current Action Widget
 **Purpose**: Detailed view of what hero is doing RIGHT NOW
 
 **Displays**:
@@ -183,24 +237,115 @@ HH:MM [Icon] Action description (Score: X.X)
   └─ Reasoning or additional details
 ```
 
-### 7. Farm Visualizer Widget
+### 7. Helper Management Widget
+**Purpose**: Track all helpers (gnomes), their roles, levels, and housing status
+
+**Components**:
+- **Housing Status**:
+  - Current housing building (Hut/House/Lodge/Hall/Village)
+  - Capacity (X/Y gnomes housed)
+  - List of built gnome buildings
+- **Gnome List**:
+  - Each gnome shows:
+    - Name and level
+    - Current role(s) assigned
+    - XP progress bar to next level
+    - Training time remaining (if training)
+  - Special indicators:
+    - Dual-role gnomes marked with asterisk
+    - Unhoused gnomes show warning icon
+    - Unrescued gnomes shown as locked
+- **Buildings Owned**:
+  - Training Grounds (if built)
+  - Master Academy (if built)
+
+**Visual Features**:
+- Color coding: Green for active, Yellow for training, Red for unhoused
+- XP bars show progress visually
+- Dual-role capability clearly marked
+- Housing warnings prominent
+
+**Updates**: When gnomes change roles, level up, or housing changes
+
+### 8. Mini Upgrade Tree Widget
+**Purpose**: Condensed view of upgrade progression showing bottlenecks and goals
+
+**Position**: Full width below farm visualizer
+
+**Components**:
+- **Grid Layout**:
+  - Condensed version of main upgrade tree
+  - Nodes arranged by game phase (Tutorial → Endgame)
+  - Connection lines show dependencies
+  - No text on nodes (too small)
+- **Node States**:
+  - Filled circle (●): Owned upgrades
+  - Star (⭐): Current goal/target
+  - Empty circle (○): Locked/unavailable
+  - Lines light up for unlocked paths
+- **Interactive Features**:
+  - Hover tooltip shows:
+    - Upgrade name
+    - Cost (gold, energy, materials)
+    - Prerequisites
+    - What it unlocks
+  - Current goal highlighted with pulsing star
+  - Bottleneck reason shown (e.g., "Need 2,500 more gold")
+- **Goal Tracking**:
+  - Shows next logical purchase target
+  - Displays what's blocking progress
+  - Updates as simulation progresses
+
+**Visual Design**:
+- Minimalist dot-and-line visualization
+- Phase boundaries clearly marked
+- Color gradients show progression
+- Goal node pulses to draw attention
+- Dependency chains visible at a glance
+
+**Layout Example**:
+```
+Tutorial    Early Game    Mid Game    Late Game    Endgame
+●───●───●   ●───●───○     ○───○───○   ○───○───○    ○───○───○
+│   │   │   │   │   │     │   │   │   │   │   │    │   │   │
+●───●───●   ●───●───⭐    ○───○───○   ○───○───○    ○───○───○
+│   │   │   │   │   │     │   │   │   │   │   │    │   │   │
+●───●───●   ●───○───○     ○───○───○   ○───○───○    ○───○───○
+```
+
+**Updates**: When upgrades are purchased or goals change
+
+### 9. Farm Visualizer Widget
 **Purpose**: Visual grid showing farm plot states
 
 **Components**:
 - Grid matching current farm size (3-90 plots)
 - Visual indicators per plot:
   - 🥕 Ready to harvest
-  - 🌱 Growing (stages 1-4)
-  - 💀 Dead crop
-  - 💧 Needs water (overlay)
-  - 🚫 Locked plot
-  - Empty plot
-- Summary counts on side
-- Animated hero position when planting/harvesting
+  - 🌱 Growing (stages 1-4 shown by size/color)
+  - 💧 Needs water (blue overlay)
+  - 🚫 Locked plot (gray)
+  - Empty plot (brown)
+- Hero icon (👤) jumps to active plot (no smooth animation)
+- Helper icons (👶 using `fa-child-reaching`) shown on their assigned areas:
+  - Waterer helper near water tank
+  - Sower helper near seed storage
+  - Harvester helper in field
+- Summary counts on side panel:
+  - Ready: X crops
+  - Growing: Y crops
+  - Empty: Z plots
+  - Locked: W plots
+  - Water level indicator
+
+**Behavior**:
+- Hero icon instantly moves to working plot
+- Helpers shown in fixed positions based on role
+- No death mechanics - crops wait indefinitely when ready
 
 **Updates**: Every farm action
 
-### 8. Timeline Widget
+### 10. Timeline Widget
 **Purpose**: Show events across the day
 
 **Components**:
@@ -217,7 +362,7 @@ HH:MM [Icon] Action description (Score: X.X)
 - Bottlenecks
 - Achievements
 
-### 9. Screen Time Widget
+### 11. Screen Time Widget
 **Purpose**: Pie/bar chart of time distribution
 
 **Displays**:
@@ -228,7 +373,7 @@ HH:MM [Icon] Action description (Score: X.X)
 
 **Updates**: Every minute of game time
 
-### 10. Next Decision Widget
+### 12. Next Decision Widget
 **Purpose**: Preview what AI will do next
 
 **Shows**:
@@ -240,7 +385,7 @@ HH:MM [Icon] Action description (Score: X.X)
 
 **Transparency**: Makes AI decision-making visible
 
-### 11. Performance Widget
+### 13. Performance Widget
 **Purpose**: Monitor simulation performance
 
 **Metrics**:
@@ -345,6 +490,7 @@ interface GameState {
     gold: number
     water: { current: number; max: number }
     seeds: Map<string, number>    // seedId -> count
+    seedsByLevel: Map<number, Map<string, number>> // Seed Level -> seedId -> count
     materials: Map<string, number> // materialId -> count
   }
   
@@ -371,10 +517,11 @@ interface GameState {
   
   // === INVENTORY ===
   inventory: {
-    tools: Map<string, ToolState>
-    weapons: Map<string, WeaponState>
-    armor: ArmorPiece[]
-    blueprints: Set<string>        // Purchased from town
+    tools: Map<string, ToolState>   // Only highest tier shown
+    weapons: Map<string, WeaponState> // Only highest level per type
+    armor: ArmorPiece[]              // Max 3 pieces
+    bossMaterials: Map<string, number> // Pine Resin, Shadow Bark, etc.
+    towerReachLevel: number          // Current tower reach (affects seed catching)
   }
   
   // === ACTIVE PROCESSES ===
@@ -389,6 +536,10 @@ interface GameState {
   helpers: {
     gnomes: GnomeState[]
     housingCapacity: number
+    currentHousing: number  // How many gnomes currently housed
+    housingBuildings: Set<string>  // 'hut', 'house', 'lodge', 'hall', 'village'
+    specialBuildings: Set<string>  // 'training_grounds', 'master_academy'
+    activeHelpers: Map<string, string> // screenId -> gnomeId (shows where helpers are)
   }
   
   // === LOCATION ===
@@ -426,16 +577,23 @@ interface WeaponState {
 interface ArmorPiece {
   id: string
   defense: number
-  effect: string
+  defenseRating: 'Minimal' | 'Low' | 'Medium' | 'High' | 'Extreme'
+  effect: string  // e.g., 'Regeneration', 'Gold Magnet', 'Reflection'
   equipped: boolean
+  upgraded: boolean  // If forge upgraded
 }
 
 interface GnomeState {
   id: string
   name: string
   level: number
-  role: string | null
+  role: string | null        // Primary role
+  secondaryRole: string | null  // For dual-role gnomes (late game)
   xp: number
+  xpToNext: number
+  isHoused: boolean
+  isRescued: boolean
+  trainingTimeRemaining: number | null
 }
 
 interface AdventureState {

@@ -427,6 +427,103 @@ const createDefaultParameters = (): AllParameters => ({
   }
 })
 
+// Helper function to deep clone objects while preserving Maps
+function deepCloneWithMaps(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj
+  }
+  
+  if (obj instanceof Map) {
+    const clonedMap = new Map()
+    for (const [key, value] of obj.entries()) {
+      clonedMap.set(key, deepCloneWithMaps(value))
+    }
+    return clonedMap
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepCloneWithMaps(item))
+  }
+  
+  const cloned: any = {}
+  for (const [key, value] of Object.entries(obj)) {
+    cloned[key] = deepCloneWithMaps(value)
+  }
+  return cloned
+}
+
+// Helper function to reconstruct Map objects after deserialization
+function reconstructMaps(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => reconstructMaps(item))
+  }
+  
+  const result: any = {}
+  for (const [key, value] of Object.entries(obj)) {
+    // Reconstruct specific Map properties that we know should be Maps
+    if (key === 'weights' || key === 'targetSeedRatios' || key === 'enemyTypeWeights' || 
+        key === 'materialTargets' || key === 'customRoles' || key === 'levelTargets' || 
+        key === 'materialStorageBuffer' || key === 'materialValues' || key === 'actionCooldowns' ||
+        key === 'energyLow' || key === 'seedsLow' || key === 'goldHigh' || key === 'newUnlock') {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = new Map(Object.entries(value))
+      } else {
+        result[key] = value
+      }
+    } else {
+      result[key] = reconstructMaps(value)
+    }
+  }
+  return result
+}
+
+// Helper function to validate parameter structure
+function validateParameters(params: any): boolean {
+  try {
+    // Check if core structure exists
+    if (!params || !params.decisions || !params.decisions.screenPriorities) {
+      console.warn('Missing core parameter structure')
+      return false
+    }
+    
+    // Check if weights Map has expected entries
+    const weights = params.decisions.screenPriorities.weights
+    if (!weights) {
+      console.warn('Missing weights object')
+      return false
+    }
+    
+    // If it's a Map, check it has the expected screen entries
+    if (weights instanceof Map) {
+      const expectedScreens = ['farm', 'tower', 'town', 'adventure', 'forge', 'mine']
+      for (const screen of expectedScreens) {
+        if (!weights.has(screen)) {
+          console.warn(`Missing screen weight for: ${screen}`)
+          return false
+        }
+      }
+    } else {
+      // If it's an object, check it has the expected properties
+      const expectedScreens = ['farm', 'tower', 'town', 'adventure', 'forge', 'mine']
+      for (const screen of expectedScreens) {
+        if (!(screen in weights)) {
+          console.warn(`Missing screen weight property for: ${screen}`)
+          return false
+        }
+      }
+    }
+    
+    return true
+  } catch (error) {
+    console.warn('Parameter validation failed:', error)
+    return false
+  }
+}
+
 // Parameter screen definitions
 export const parameterScreens: ParameterScreen[] = [
   {
@@ -504,8 +601,8 @@ export const useParameterStore = defineStore('parameters', () => {
 
   // Computed
   const effectiveParameters = computed(() => {
-    // Apply overrides to base parameters
-    const effective = JSON.parse(JSON.stringify(parameters.value)) as AllParameters
+    // Apply overrides to base parameters while preserving Maps
+    const effective = deepCloneWithMaps(parameters.value) as AllParameters
     
     for (const override of overrides.value.values()) {
       setNestedValue(effective, override.path, override.value)
@@ -595,7 +692,15 @@ export const useParameterStore = defineStore('parameters', () => {
 
   function importConfiguration(config: any) {
     if (config.parameters) {
-      parameters.value = config.parameters
+      const reconstructedParams = reconstructMaps(config.parameters)
+      
+      // Validate before importing
+      if (validateParameters(reconstructedParams)) {
+        parameters.value = reconstructedParams
+      } else {
+        console.warn('Invalid parameters in import, keeping current parameters')
+        return
+      }
     }
     
     if (config.overrides) {
@@ -620,11 +725,25 @@ export const useParameterStore = defineStore('parameters', () => {
       const saved = localStorage.getItem('timeHeroSim_parameters')
       if (saved) {
         const config = JSON.parse(saved)
-        importConfiguration(config)
-        isDirty.value = false
+        
+        // Validate the loaded configuration
+        const reconstructedParams = config.parameters ? reconstructMaps(config.parameters) : null
+        
+        if (reconstructedParams && validateParameters(reconstructedParams)) {
+          importConfiguration(config)
+          isDirty.value = false
+          console.log('Successfully loaded parameters from localStorage')
+        } else {
+          console.warn('Invalid parameter data in localStorage, using defaults')
+          // Clear the corrupted data
+          localStorage.removeItem('timeHeroSim_parameters')
+          // Keep the default parameters that were already initialized
+        }
       }
     } catch (error) {
       console.warn('Failed to load parameters from localStorage:', error)
+      // Clear potentially corrupted data
+      localStorage.removeItem('timeHeroSim_parameters')
     }
   }
 

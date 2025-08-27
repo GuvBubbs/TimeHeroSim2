@@ -123,10 +123,61 @@
         
         <!-- Main Content Area -->
         <div class="flex-1 overflow-hidden">
-          <component
-            :is="currentScreenComponent"
-            :key="parameterStore.currentScreen"
-          />
+          <!-- Dynamic component loading with error boundary -->
+          <template v-if="parameterStore.currentScreen === 'farm'">
+            <Suspense>
+              <FarmParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'tower'">
+            <Suspense>
+              <TowerParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'town'">
+            <Suspense>
+              <TownParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'adventure'">
+            <Suspense>
+              <AdventureParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'forge'">
+            <Suspense>
+              <ForgeParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'mine'">
+            <Suspense>
+              <MineParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'helpers'">
+            <Suspense>
+              <HelperParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'resources'">
+            <Suspense>
+              <ResourceParameters />
+            </Suspense>
+          </template>
+          <template v-else-if="parameterStore.currentScreen === 'decisions'">
+            <Suspense>
+              <DecisionParameters />
+            </Suspense>
+          </template>
+          <template v-else>
+            <!-- Fallback -->
+            <div class="p-6">
+              <div class="text-center text-sim-muted">
+                <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                <p>Parameter screen not found: {{ parameterStore.currentScreen }}</p>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -165,11 +216,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, shallowRef } from 'vue'
 import { useSimulationStore } from '@/stores/simulation'
 import { useParameterStore } from '@/stores/parameters'
 
-// Lazy-loaded parameter screen components
+// Import all parameter components directly
 import FarmParameters from '@/components/parameters/FarmParameters.vue'
 import TowerParameters from '@/components/parameters/TowerParameters.vue'
 import TownParameters from '@/components/parameters/TownParameters.vue'
@@ -186,22 +237,10 @@ const parameterStore = useParameterStore()
 const showImportModal = ref(false)
 const importData = ref('')
 
-// Component mapping
-const components = {
-  FarmParameters,
-  TowerParameters,
-  TownParameters,
-  AdventureParameters,
-  ForgeParameters,
-  MineParameters,
-  HelperParameters,
-  ResourceParameters,
-  DecisionParameters
-}
-
+// Remove the unused component mapping
 const currentScreenComponent = computed(() => {
   const screenInfo = parameterStore.filteredScreens.find(s => s.id === parameterStore.currentScreen)
-  return screenInfo ? components[screenInfo.component as keyof typeof components] : FarmParameters
+  return screenInfo ? screenInfo.component : 'FarmParameters'
 })
 
 function getScreenOverrideCount(screenId: string): number {

@@ -3,6 +3,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { compileConfiguration } from '@/utils/ConfigurationCompiler'
 import type { 
   QuickSetup, 
   SimulationConfig, 
@@ -36,7 +37,7 @@ const createDefaultQuickSetup = (): QuickSetup => ({
     mode: 'completion'
   },
   dataSource: 'current',
-  enableParameterOverrides: false,
+  enableParameterOverrides: true,
   generateDetailedLogs: false
 })
 
@@ -276,13 +277,33 @@ export const useSimulationStore = defineStore('simulation', () => {
   function launchSimulation(): SimulationConfig | null {
     if (!isValid.value) return null
 
-    const config = saveConfig()
-    if (config) {
-      // TODO: Phase 6 - Actually launch the simulation
-      console.log('Launching simulation with config:', config)
+    // Use Configuration Compiler to create the final simulation config
+    const compiledConfig = compileConfiguration(currentConfig.value)
+    
+    if (!compiledConfig) {
+      console.error('Failed to compile simulation configuration')
+      return null
     }
     
-    return config
+    // Save the compiled configuration
+    const savedConfig = saveConfig()
+    
+    if (savedConfig && compiledConfig) {
+      // TODO: Phase 6 - Actually launch the simulation engine
+      console.log('Launching simulation with compiled config:', {
+        basic: savedConfig,
+        compiled: compiledConfig,
+        overrideCount: compiledConfig.parameterOverrides?.size || 0
+      })
+      
+      // The compiled config contains all the data needed for the simulation engine:
+      // - quickSetup: Basic simulation settings
+      // - parameterOverrides: All parameter modifications
+      // - isValid: Whether configuration passed validation
+      // - validationErrors: Any issues that need to be addressed
+    }
+    
+    return compiledConfig
   }
 
   // Initialize

@@ -518,7 +518,7 @@ export interface DecisionParameters {
   }
   
   optimization: {
-    primaryGoal: 'speed' | 'efficiency' | 'completion' | 'exploration'
+    primaryGoal: 'speed' | 'efficiency' | 'completion' | 'exploration' | 'balanced'
     
     subGoals: {
       minimizeDays: number

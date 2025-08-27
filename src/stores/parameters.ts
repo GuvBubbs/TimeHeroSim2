@@ -534,6 +534,11 @@ export const useParameterStore = defineStore('parameters', () => {
     isDirty.value = true
   }
 
+  function applyArrayOverride(basePath: string, index: number, value: any, description?: string) {
+    const fullPath = `${basePath}.${index}`
+    applyOverride(fullPath, value, description)
+  }
+
   function removeOverride(path: string) {
     overrides.value.delete(path)
     isDirty.value = true
@@ -616,6 +621,7 @@ export const useParameterStore = defineStore('parameters', () => {
     
     // Actions
     applyOverride,
+    applyArrayOverride,
     removeOverride,
     clearAllOverrides,
     resetParameters,

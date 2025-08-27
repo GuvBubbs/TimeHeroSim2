@@ -227,6 +227,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Parameter Editor Modal -->
+    <ParameterEditor />
   </div>
 </template>
 
@@ -235,6 +238,7 @@ import { computed } from 'vue'
 import { useSimulationStore, durationModeOptions } from '@/stores/simulation'
 import { usePersonaStore } from '@/stores/personas'
 import type { DurationModeOption } from '@/types'
+import ParameterEditor from '@/components/ParameterEditor.vue'
 
 const simulationStore = useSimulationStore()
 const personaStore = usePersonaStore()
@@ -271,3 +275,13 @@ function launchSimulation() {
   }
 }
 </script>
+
+<style scoped>
+/* Ensure consistent styling */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

@@ -480,7 +480,7 @@ const specializedFields = computed(() => {
 
 // Helper functions
 const hasField = (fieldName: string) => {
-  return props.item && (fieldName in props.item) && props.item[fieldName] !== undefined && props.item[fieldName] !== null && props.item[fieldName] !== ''
+  return props.item && (fieldName in props.item) && (props.item as any)[fieldName] !== undefined && (props.item as any)[fieldName] !== null && (props.item as any)[fieldName] !== ''
 }
 
 const formatFieldLabel = (field: string) => {
@@ -616,7 +616,7 @@ const handleSave = () => {
   
   // Convert prerequisites back to the expected format
   if (cleanData.prerequisites && Array.isArray(cleanData.prerequisites)) {
-    cleanData.prerequisites = cleanData.prerequisites.filter(p => p.trim())
+    cleanData.prerequisites = cleanData.prerequisites.filter((p: string) => p.trim())
   }
 
   // Remove the UI-specific arrays from the saved data

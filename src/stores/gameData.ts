@@ -167,7 +167,7 @@ export const useGameDataStore = defineStore('gameData', () => {
           ].filter(Boolean)
           
           const matches = searchFields.some(field => 
-            field.toLowerCase().includes(searchLower)
+            field?.toLowerCase().includes(searchLower)
           )
           
           if (!matches) {

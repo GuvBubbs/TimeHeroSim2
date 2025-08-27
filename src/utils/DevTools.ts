@@ -40,11 +40,17 @@ export class DevTools {
       }
       
       // Factory functions to create instances
-      (window as any).createBridge = () => new SimulationBridge()
-      (window as any).createTestConfig = () => SimulationBridgeTest.createTestConfig()
+      (window as any).createBridge = () => {
+        return new SimulationBridge()
+      }
+      (window as any).createTestConfig = () => {
+        return SimulationBridgeTest.createTestConfig()
+      }
       
-      // Static method access
-      (window as any).serializeConfig = (config: any) => MapSerializer.serialize(config)
+      // Static method access  
+      (window as any).serializeConfig = (config: any) => {
+        return MapSerializer.serialize(config)
+      }
       (window as any).deserializeConfig = (data: any) => MapSerializer.deserialize(data)
       
       console.log('🛠️ DevTools loaded! Available commands:')

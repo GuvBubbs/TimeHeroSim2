@@ -470,7 +470,7 @@ const handleSubmit = () => {
   })
 
   // Add to configuration store as a new item
-  configStore.setItemValue(newItem.id, 'id', newItem.id, undefined)
+  configStore.setItemValue(newItem.id, 'id', newItem.id, newItem.id)
   
   // Add the complete item data
   Object.entries(newItem).forEach(([field, value]) => {

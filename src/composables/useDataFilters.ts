@@ -29,7 +29,7 @@ export function useDataFilters(items: GameDataItem[]) {
         ].filter(Boolean)
 
         return searchableFields.some(field => 
-          field.toLowerCase().includes(query)
+          field?.toLowerCase().includes(query)
         )
       })
     }

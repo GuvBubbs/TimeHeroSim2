@@ -1,13 +1,23 @@
 <template>
-  <div class="space-y-2">
-    <label class="block text-sm font-medium text-sim-text">
+  <div class="space-y-3">
+    <label class="block text-sm font-semibold text-sim-text">
       {{ label }}
-      <span v-if="unit" class="text-sim-muted text-xs">
+      <span v-if="unit" class="text-sim-primary text-sm font-medium ml-2">
         ({{ formatValue(value) }}{{ unit }})
       </span>
     </label>
     
     <div class="relative">
+      <!-- Track background - always visible -->
+      <div class="w-full h-3 bg-sim-border rounded-lg"></div>
+      
+      <!-- Value indicator -->
+      <div
+        class="absolute top-0 h-3 bg-gradient-to-r from-sim-primary to-sim-primary-light rounded-lg pointer-events-none"
+        :style="{ width: `${((value - min) / (max - min)) * 100}%` }"
+      ></div>
+      
+      <!-- Invisible input slider -->
       <input
         :value="value"
         @input="handleInput"
@@ -15,44 +25,39 @@
         :max="max"
         :step="step"
         type="range"
-        class="w-full h-2 bg-sim-surface rounded-lg appearance-none cursor-pointer slider"
+        class="absolute top-0 w-full h-3 opacity-0 cursor-pointer focus:outline-none"
       />
-      
-      <!-- Value indicator -->
-      <div
-        class="absolute top-0 h-2 bg-sim-primary rounded-lg pointer-events-none"
-        :style="{ width: `${((value - min) / (max - min)) * 100}%` }"
-      ></div>
       
       <!-- Thumb -->
       <div
-        class="absolute top-0 w-4 h-4 bg-sim-primary rounded-full transform -translate-y-1 -translate-x-2 pointer-events-none shadow-lg"
+        class="absolute top-0 w-5 h-5 bg-white border-2 border-sim-primary rounded-full transform -translate-y-1 -translate-x-2.5 pointer-events-none shadow-lg"
         :style="{ left: `${((value - min) / (max - min)) * 100}%` }"
       ></div>
     </div>
     
-    <div class="flex justify-between text-xs text-sim-muted">
+    <div class="flex justify-between text-xs text-sim-muted font-medium">
       <span>{{ formatValue(min) }}{{ unit || '' }}</span>
       <span>{{ formatValue(max) }}{{ unit || '' }}</span>
     </div>
     
-    <p v-if="description" class="text-xs text-sim-muted leading-relaxed">
+    <p v-if="description" class="text-sm text-sim-muted leading-relaxed">
       {{ description }}
     </p>
     
     <!-- Override indicator -->
     <div
       v-if="hasOverride"
-      class="flex items-center justify-between p-2 bg-sim-primary/10 border border-sim-primary/30 rounded text-xs"
+      class="flex items-center justify-between p-3 bg-sim-primary/20 border border-sim-primary/50 rounded-lg text-sm"
     >
-      <span class="text-sim-primary">
-        <i class="fas fa-edit mr-1"></i>
+      <span class="text-sim-primary font-medium">
+        <i class="fas fa-edit mr-2"></i>
         Override: {{ formatValue(value) }}{{ unit || '' }}
-        (default: {{ formatValue(originalValue) }}{{ unit || '' }})
+        <span class="text-sim-muted ml-1">(default: {{ formatValue(originalValue) }}{{ unit || '' }})</span>
       </span>
       <button
         @click="removeOverride"
-        class="text-sim-primary hover:text-sim-primary-light"
+        class="ml-3 px-2 py-1 text-sim-primary hover:text-white hover:bg-sim-primary rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-sim-primary"
+        title="Remove override"
       >
         <i class="fas fa-times"></i>
       </button>
@@ -96,6 +101,10 @@ const originalValue = computed(() => {
     const override = parameterStore.overrides.get(props.path)
     return override?.originalValue ?? props.value
   }
+  // If no override, get the default value from the parameters
+  if (props.path) {
+    return parameterStore.getNestedValue(parameterStore.parameters, props.path)
+  }
   return props.value
 })
 
@@ -122,8 +131,11 @@ function handleInput(event: Event) {
 
 function removeOverride() {
   if (props.path) {
+    // Get the original value from the default parameters before removing override
+    const defaultValue = parameterStore.getNestedValue(parameterStore.parameters, props.path)
     parameterStore.removeOverride(props.path)
-    emit('update', originalValue.value)
+    // Emit the default value to update the component
+    emit('update', defaultValue)
   }
 }
 </script>

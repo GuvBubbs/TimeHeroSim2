@@ -14,11 +14,18 @@ export default {
         'sim-surface-hover': '#334155', // slate-700 - Hover state for surfaces
         'sim-border': '#475569',     // slate-600 - Default borders
         'sim-border-light': '#64748b', // slate-500 - Lighter borders
-        'sim-text': '#f1f5f9',       // slate-100 - Primary text (lighter)
-        'sim-muted': '#94a3b8',      // slate-400 - Disabled/placeholder text
+        'sim-text': '#f8fafc',       // slate-50 - Primary text (brighter)
+        'sim-muted': '#cbd5e1',      // slate-300 - Disabled/placeholder text (brighter)
         
-        // Interactive colors
+        // Interactive colors - much brighter
+        'sim-primary': '#3b82f6',    // blue-500 - Primary action color
+        'sim-primary-light': '#60a5fa', // blue-400 - Lighter primary
+        'sim-primary-dark': '#2563eb', // blue-600 - Darker primary
         'sim-accent': '#3b82f6',     // blue-500 - Primary action color
+        
+        // Card variations
+        'sim-card': '#1e293b',       // slate-800 - Card background
+        'sim-card-dark': '#0f172a',  // slate-900 - Darker card variant
         
         // State colors
         'sim-success': '#10b981',    // emerald-500

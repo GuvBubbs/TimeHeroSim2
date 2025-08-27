@@ -194,40 +194,52 @@ const createDefaultParameters = (): AllParameters => ({
   
   forge: {
     craftingMechanics: {
-      baseSuccessRate: 0.8,
-      heatBandWidth: 50,
-      heatDecayRate: 1.0,
-      craftTimeMultiplier: 1.0,
-      batchSizeOverride: 0, // 0 means use default
-      masterCraftChance: 0.1
-    },
-    refinement: {
-      refinementTimeMultiplier: 1.0,
-      refinementEnergyMultiplier: 1.0,
-      autoRefineThreshold: 10,
-      refinementStrategy: 'as-needed'
-    },
-    toolPriorities: {
-      toolOrder: [],
-      weaponOrder: [],
-      upgradeThresholds: {
-        toolUpgrade: 50,
-        weaponUpgrade: 3,
-        skipToNext: false
-      }
-    },
-    decisionLogic: {
-      visitFrequency: 3,
-      energyReserve: 20,
-      materialReserve: new Map(),
-      priorityQueue: [],
-      emergencyCrafting: true
+      craftingSpeed: 1.0,
+      successRateBonus: 0.0,
+      qualityImprovement: 1.0,
+      materialEfficiency: 1.0,
+      autoSelectMaterials: true,
+      batchCrafting: false
     },
     heatManagement: {
-      manualBellowsEfficiency: 1.0,
-      autoBellowsRate: 1.0,
-      optimalHeatRange: [400, 450],
-      perfectHeatBonus: 1.2
+      heatGainMultiplier: 1.0,
+      heatLossRate: 1.0,
+      optimalHeatRange: 0.6,
+      maxHeatThreshold: 0.9,
+      heatStrategy: 'optimal',
+      autoCooling: true
+    },
+    recipeSelection: {
+      strategy: 'balanced',
+      upgradePriority: 'balanced',
+      priorityFactors: {
+        profit: 1.0,
+        materialAvailability: 2.0,
+        equipmentNeed: 3.0,
+        craftingTime: 1.0
+      },
+      materialReserve: 0.1,
+      useRareMaterials: false
+    },
+    alloyPreferences: {
+      alloyStrategy: 'balanced',
+      preferredStat: 'adaptive',
+      statWeights: {
+        damage: 1.0,
+        defense: 1.0,
+        speed: 1.0,
+        durability: 1.0
+      },
+      experimentationRate: 0.1,
+      saveSuccessfulRecipes: true
+    },
+    automation: {
+      autoCraftEquipment: true,
+      autoRepairItems: true,
+      queueManagement: true,
+      materialOptimization: true,
+      queueSize: 5,
+      efficiencyThreshold: 0.8
     }
   },
   
@@ -270,7 +282,7 @@ const createDefaultParameters = (): AllParameters => ({
   
   helpers: {
     acquisition: {
-      rescueOrder: [],
+      rescueOrder: ['Waterer', 'Harvester', 'Sower', 'Pump', 'Miner', 'Fighter', 'Support', 'Catcher', 'Forager', 'Refiner'],
       housingStrategy: 'optimal',
       buildHousingAhead: false
     },
@@ -291,15 +303,15 @@ const createDefaultParameters = (): AllParameters => ({
       },
       adaptiveThresholds: {
         switchToWaterer: 0.2,
-        switchToHarvester: 3,
-        switchToMiner: 1
+        switchToHarvester: 0.8,
+        switchToMiner: 0.3
       }
     },
     training: {
       enableTraining: true,
       trainingEnergyBudget: 50,
       levelTargets: new Map(),
-      trainingPriority: [],
+      trainingPriority: ['Waterer', 'Harvester', 'Miner', 'Fighter', 'Sower'],
       trainingSchedule: 'periodic',
       stopAtLevel: 10
     },
@@ -308,7 +320,21 @@ const createDefaultParameters = (): AllParameters => ({
       levelScaling: 0.1,
       fatigueRate: 0.01,
       synergyBonus: 0.1,
-      specialization: 0.2
+      specialization: 0.2,
+      roleSwitchFrequency: 10,
+      efficiencyThreshold: 0.8,
+      workloadBalanceFactor: 1.0,
+      specializationBonus: 1.2,
+      autoRoleOptimization: true,
+      preventOverassignment: true
+    },
+    decisionLogic: {
+      managementFrequency: 5,
+      emergencyResponseTime: 2,
+      priorityOverrideThreshold: 2.0,
+      idleHelperThreshold: 10,
+      emergencyReassignment: true,
+      crossTrainingPriority: false
     }
   },
   
@@ -428,7 +454,7 @@ export const parameterScreens: ParameterScreen[] = [
     id: 'adventure',
     name: 'Adventure System',
     description: 'Combat, risk assessment, route selection, and loot',
-    icon: 'fa-sword',
+    icon: 'fa-fist-raised',
     component: 'AdventureParameters'
   },
   {
@@ -629,6 +655,7 @@ export const useParameterStore = defineStore('parameters', () => {
     exportConfiguration,
     importConfiguration,
     saveToLocalStorage,
-    loadFromLocalStorage
+    loadFromLocalStorage,
+    getNestedValue
   }
 })

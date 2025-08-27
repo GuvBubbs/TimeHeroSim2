@@ -82,7 +82,7 @@
             >
               <div class="flex items-start justify-between">
                 <div class="flex items-center space-x-3">
-                  <i :class="['text-lg', screen.icon]"></i>
+                  <i :class="['fas text-lg', getScreenIconColor(screen.id), screen.icon]"></i>
                   <div>
                     <div class="font-medium">{{ screen.name }}</div>
                     <div class="text-xs text-sim-muted mt-1 leading-relaxed">
@@ -212,6 +212,21 @@ function getScreenOverrideCount(screenId: string): number {
     }
   }
   return count
+}
+
+function getScreenIconColor(screenId: string): string {
+  const colorMap: Record<string, string> = {
+    'farm': 'text-green-400',
+    'tower': 'text-blue-400', 
+    'town': 'text-yellow-400',
+    'adventure': 'text-red-400',
+    'forge': 'text-orange-400',
+    'mine': 'text-gray-400',
+    'helpers': 'text-green-400',
+    'resources': 'text-cyan-400',
+    'decisions': 'text-pink-400'
+  }
+  return colorMap[screenId] || 'text-sim-primary'
 }
 
 function closeEditor() {

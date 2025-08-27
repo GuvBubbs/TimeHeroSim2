@@ -1,40 +1,42 @@
 <template>
-  <div class="space-y-2">
-    <label class="block text-sm font-medium text-sim-text">
+  <div class="space-y-3">
+    <label class="block text-sm font-semibold text-sim-text">
       {{ label }}
     </label>
     
     <select
       :value="value"
       @change="handleChange"
-      class="w-full px-3 py-2 bg-sim-surface border border-sim-border rounded-lg focus:ring-2 focus:ring-sim-primary focus:border-transparent"
+      class="w-full px-4 py-3 bg-sim-surface border border-sim-border rounded-lg focus:ring-2 focus:ring-sim-primary focus:border-sim-primary text-sim-text font-medium appearance-none cursor-pointer hover:border-sim-primary-light transition-colors"
     >
       <option
         v-for="option in options"
         :key="option.value"
         :value="option.value"
+        class="bg-sim-surface text-sim-text"
       >
         {{ option.label }}
       </option>
     </select>
     
-    <p v-if="description" class="text-xs text-sim-muted leading-relaxed">
+    <p v-if="description" class="text-sm text-sim-muted leading-relaxed">
       {{ description }}
     </p>
     
     <!-- Override indicator -->
     <div
       v-if="hasOverride"
-      class="flex items-center justify-between p-2 bg-sim-primary/10 border border-sim-primary/30 rounded text-xs"
+      class="flex items-center justify-between p-3 bg-sim-primary/20 border border-sim-primary/50 rounded-lg text-sm"
     >
-      <span class="text-sim-primary">
-        <i class="fas fa-edit mr-1"></i>
+      <span class="text-sim-primary font-medium">
+        <i class="fas fa-edit mr-2"></i>
         Override: {{ getCurrentLabel(value) }}
-        (default: {{ getCurrentLabel(originalValue) }})
+        <span class="text-sim-muted ml-1">(default: {{ getCurrentLabel(originalValue) }})</span>
       </span>
       <button
         @click="removeOverride"
-        class="text-sim-primary hover:text-sim-primary-light"
+        class="ml-3 px-2 py-1 text-sim-primary hover:text-white hover:bg-sim-primary rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-sim-primary"
+        title="Remove override"
       >
         <i class="fas fa-times"></i>
       </button>
@@ -76,6 +78,10 @@ const originalValue = computed(() => {
     const override = parameterStore.overrides.get(props.path)
     return override?.originalValue ?? props.value
   }
+  // If no override, get the default value from the parameters
+  if (props.path) {
+    return parameterStore.getNestedValue(parameterStore.parameters, props.path)
+  }
   return props.value
 })
 
@@ -96,8 +102,11 @@ function handleChange(event: Event) {
 
 function removeOverride() {
   if (props.path) {
+    // Get the original value from the default parameters before removing override
+    const defaultValue = parameterStore.getNestedValue(parameterStore.parameters, props.path)
     parameterStore.removeOverride(props.path)
-    emit('update', originalValue.value)
+    // Emit the default value to update the component
+    emit('update', defaultValue)
   }
 }
 </script>

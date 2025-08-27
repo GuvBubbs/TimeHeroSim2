@@ -276,45 +276,56 @@ export interface AdventureParameters {
 // Forge System Parameters
 export interface ForgeParameters {
   craftingMechanics: {
-    baseSuccessRate: number
-    heatBandWidth: number
-    heatDecayRate: number
-    craftTimeMultiplier: number
-    batchSizeOverride: number
-    masterCraftChance: number
-  }
-  
-  refinement: {
-    refinementTimeMultiplier: number
-    refinementEnergyMultiplier: number
-    autoRefineThreshold: number
-    refinementStrategy: 'immediate' | 'batch' | 'as-needed'
-  }
-  
-  toolPriorities: {
-    toolOrder: string[]
-    weaponOrder: string[]
-    
-    upgradeThresholds: {
-      toolUpgrade: number
-      weaponUpgrade: number
-      skipToNext: boolean
-    }
-  }
-  
-  decisionLogic: {
-    visitFrequency: number
-    energyReserve: number
-    materialReserve: Map<string, number>
-    priorityQueue: string[]
-    emergencyCrafting: boolean
+    craftingSpeed: number
+    successRateBonus: number
+    qualityImprovement: number
+    materialEfficiency: number
+    autoSelectMaterials: boolean
+    batchCrafting: boolean
   }
   
   heatManagement: {
-    manualBellowsEfficiency: number
-    autoBellowsRate: number
-    optimalHeatRange: [number, number]
-    perfectHeatBonus: number
+    heatGainMultiplier: number
+    heatLossRate: number
+    optimalHeatRange: number
+    maxHeatThreshold: number
+    heatStrategy: 'optimal' | 'maxEfficiency' | 'conservative' | 'aggressive'
+    autoCooling: boolean
+  }
+  
+  recipeSelection: {
+    strategy: 'profit' | 'materials' | 'upgrades' | 'balanced' | 'scripted'
+    upgradePriority: 'weapons' | 'armor' | 'tools' | 'balanced'
+    priorityFactors: {
+      profit: number
+      materialAvailability: number
+      equipmentNeed: number
+      craftingTime: number
+    }
+    materialReserve: number
+    useRareMaterials: boolean
+  }
+  
+  alloyPreferences: {
+    alloyStrategy: 'balanced' | 'specialized' | 'efficient' | 'experimental'
+    preferredStat: 'damage' | 'defense' | 'speed' | 'durability' | 'adaptive'
+    statWeights: {
+      damage: number
+      defense: number
+      speed: number
+      durability: number
+    }
+    experimentationRate: number
+    saveSuccessfulRecipes: boolean
+  }
+  
+  automation: {
+    autoCraftEquipment: boolean
+    autoRepairItems: boolean
+    queueManagement: boolean
+    materialOptimization: boolean
+    queueSize: number
+    efficiencyThreshold: number
   }
 }
 
@@ -407,6 +418,21 @@ export interface HelperParameters {
     fatigueRate: number
     synergyBonus: number
     specialization: number
+    roleSwitchFrequency: number
+    efficiencyThreshold: number
+    workloadBalanceFactor: number
+    specializationBonus: number
+    autoRoleOptimization: boolean
+    preventOverassignment: boolean
+  }
+  
+  decisionLogic: {
+    managementFrequency: number
+    emergencyResponseTime: number
+    priorityOverrideThreshold: number
+    idleHelperThreshold: number
+    emergencyReassignment: boolean
+    crossTrainingPriority: boolean
   }
 }
 

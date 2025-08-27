@@ -3,6 +3,8 @@ export * from './csv-data'
 export * from './game-data'
 export * from './personas'
 export * from './simulation'
+export * from './game-state'
+export * from './worker-messages'
 
 // Navigation types
 export interface NavigationTab {

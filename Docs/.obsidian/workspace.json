@@ -186,6 +186,10 @@
   },
   "active": "2952c2bb9b8f86e1",
   "lastOpenFiles": [
+    "Sim Design/simulation-phased-development-plan.md",
+    "Sim Design/simulation-logic-overview.md",
+    "concise_context.md",
+    "Sim Design/concise_context.md",
     "Sim Design/05-simulation-setup-updated.md",
     "Sim Design/06-live-monitor.md",
     "Archive/phase6-prompt.md",
@@ -212,11 +216,7 @@
     "Sim Design/03-upgrade-tree.md",
     "Sim Design/02-game-configuration.md",
     "Time Hero Game Design Reference/Time Hero - Combat Mechanics & Balance.md",
-    "Sim Design/phased-development-plan.md",
-    "Prompts/phase-0-build-prompt.md",
     "Prompts",
-    "concise_context.md",
-    "Sim Design/00-tech-stack-architecture.md",
     "Sim Design"
   ]
 }

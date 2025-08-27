@@ -1,6 +1,7 @@
 // SimulationEngine - Phase 6A Core Implementation
 // Main simulation engine that runs the game logic
 
+import { MapSerializer } from './MapSerializer'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -41,11 +42,21 @@ export class SimulationEngine {
    * Note: Maps should already be deserialized by MapSerializer in worker
    */
   private extractParametersFromConfig(config: SimulationConfig): AllParameters {
-    // This would normally come from the parameter store, but in the worker
-    // we need to reconstruct it from the configuration
-    // For now, we'll use placeholder parameters
-    // TODO: Integrate with actual parameter extraction
-    return this.createDefaultParameters()
+    // First, create baseline parameters
+    let parameters = this.createDefaultParameters()
+    
+    // Apply parameter overrides from Phase 5 parameter system
+    if (config.parameterOverrides && config.parameterOverrides.size > 0) {
+      parameters = this.applyParameterOverrides(parameters, config.parameterOverrides)
+    }
+    
+    // If config contains serialized parameters directly (future enhancement)
+    if ((config as any).serializedParameters) {
+      // Merge with serialized parameters if available
+      parameters = this.mergeParameters(parameters, (config as any).serializedParameters)
+    }
+    
+    return parameters
   }
 
   /**
@@ -106,12 +117,56 @@ export class SimulationEngine {
   }
 
   /**
+   * Applies parameter overrides to the base parameters
+   */
+  private applyParameterOverrides(baseParameters: AllParameters, overrides: Map<string, any>): AllParameters {
+    const parameters = JSON.parse(JSON.stringify(baseParameters)) // Deep clone
+    
+    for (const [path, value] of overrides.entries()) {
+      this.setParameterByPath(parameters, path, value)
+    }
+    
+    return parameters
+  }
+
+  /**
+   * Sets a parameter value by dot-notation path (e.g., "farm.automation.autoPlant")
+   */
+  private setParameterByPath(obj: any, path: string, value: any): void {
+    const keys = path.split('.')
+    let current = obj
+    
+    // Navigate to the parent object
+    for (let i = 0; i < keys.length - 1; i++) {
+      const key = keys[i]
+      if (!(key in current)) {
+        current[key] = {}
+      }
+      current = current[key]
+    }
+    
+    // Set the final value
+    const finalKey = keys[keys.length - 1]
+    current[finalKey] = value
+  }
+
+  /**
+   * Merges serialized parameters with base parameters
+   */
+  private mergeParameters(base: AllParameters, serialized: any): AllParameters {
+    // Deep merge logic - for now, just return base
+    // TODO: Implement proper deep merge when needed
+    return base
+  }
+
+  /**
    * Initializes the game state based on parameters
    */
   private initializeGameState(): GameState {
     const farmParams = this.parameters.farm
+    console.log('🔧 SimulationEngine: Initializing game state with enhanced seeds/materials')
 
-    return {
+    const gameState = {
       time: {
         day: 1,
         hour: 8,
@@ -132,10 +187,17 @@ export class SimulationEngine {
           pumpRate: 10 * farmParams.waterSystem.pumpEfficiency
         },
         seeds: {
-          'turnip': 5,
-          'beet': 3
+          'turnip': 12,
+          'beet': 8,
+          'carrot': 5,
+          'potato': 15
         },
-        materials: {}
+        materials: {
+          'wood': 25,
+          'stone': 18,
+          'iron': 7,
+          'silver': 2
+        }
       },
       progression: {
         heroLevel: 1,
@@ -155,7 +217,26 @@ export class SimulationEngine {
         currentWeight: 0
       },
       processes: {
-        crops: [],
+        crops: [
+          {
+            plotId: 'plot_1',
+            cropId: 'turnip',
+            plantedAt: 0,
+            growthTimeRequired: 60, // 1 hour
+            waterLevel: 80,
+            isWithered: false,
+            readyToHarvest: false
+          },
+          {
+            plotId: 'plot_2', 
+            cropId: 'beet',
+            plantedAt: -30,
+            growthTimeRequired: 90, // 1.5 hours  
+            waterLevel: 60,
+            isWithered: false,
+            readyToHarvest: false
+          }
+        ],
         adventure: null,
         crafting: [],
         mining: null
@@ -167,9 +248,9 @@ export class SimulationEngine {
         rescueQueue: farmParams.landExpansion?.prioritizeCleanupOrder || []
       },
       location: {
-        currentScreen: 'farm',
+        currentScreen: 'farm' as GameScreen,
         timeOnScreen: 0,
-        screenHistory: ['farm'],
+        screenHistory: ['farm' as GameScreen],
         navigationReason: 'Initial state'
       },
       automation: {
@@ -190,6 +271,11 @@ export class SimulationEngine {
         vendorPriority: []
       }
     }
+
+    console.log('🔧 SimulationEngine: Created game state with seeds:', gameState.resources.seeds)
+    console.log('🔧 SimulationEngine: Created game state with materials:', gameState.resources.materials)
+    
+    return gameState
   }
 
   /**
@@ -344,30 +430,119 @@ export class SimulationEngine {
   private makeDecisions(): GameAction[] {
     const actions: GameAction[] = []
     
-    // Simple decision making for now
+    // Comprehensive decision making using parameter system
     
-    // Check if we need to water crops
-    const needsWatering = this.gameState.processes.crops.filter(crop => 
-      crop.waterLevel < this.gameState.automation.wateringThreshold && !crop.isWithered
+    // 1. Emergency actions first (based on decision parameters)
+    if (this.parameters.decisions?.interrupts?.enabled) {
+      const emergencyActions = this.evaluateEmergencyActions()
+      actions.push(...emergencyActions)
+    }
+    
+    // 2. Screen-specific actions based on current location
+    const screenActions = this.evaluateScreenActions()
+    actions.push(...screenActions)
+    
+    // 3. Screen navigation decisions
+    const navigationActions = this.evaluateNavigationActions()
+    actions.push(...navigationActions)
+    
+    // 4. Score and prioritize all actions
+    const scoredActions = actions.map(action => ({
+      action,
+      score: this.scoreAction(action)
+    }))
+    
+    // Sort by score and return top actions
+    scoredActions.sort((a, b) => b.score - a.score)
+    
+    // Return top 3 actions (don't overwhelm the system)
+    return scoredActions.slice(0, 3).map(item => {
+      item.action.score = item.score
+      return item.action
+    })
+  }
+
+  /**
+   * Evaluates emergency actions based on critical thresholds
+   */
+  private evaluateEmergencyActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const farmParams = this.parameters.farm
+    
+    // Emergency energy management
+    if (this.gameState.resources.energy.current <= 10) {
+      // Consider energy-generating activities
+      const readyToHarvest = this.gameState.processes.crops.filter(crop => crop.readyToHarvest)
+      if (readyToHarvest.length > 0) {
+        actions.push({
+          id: `emergency_harvest_${Date.now()}`,
+          type: 'harvest',
+          screen: 'farm',
+          target: readyToHarvest[0].plotId,
+          duration: 2,
+          energyCost: 3,
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: { gold: 10, items: [readyToHarvest[0].cropId] }
+        })
+      }
+    }
+    
+    // Emergency watering
+    const criticallyDryPlots = this.gameState.processes.crops.filter(
+      crop => crop.waterLevel < 10 && !crop.isWithered && !crop.readyToHarvest
     )
     
-    if (needsWatering.length > 0 && this.gameState.automation.wateringEnabled) {
+    if (criticallyDryPlots.length > 0 && this.gameState.automation.wateringEnabled) {
       actions.push({
-        id: `water_${Date.now()}`,
+        id: `emergency_water_${Date.now()}`,
         type: 'water',
         screen: 'farm',
-        target: needsWatering[0].plotId,
+        target: criticallyDryPlots[0].plotId,
         duration: 1,
-        energyCost: 5,
+        energyCost: 1,
         goldCost: 0,
         prerequisites: [],
         expectedRewards: {}
       })
     }
     
-    // Check if we can harvest ready crops
-    const readyToHarvest = this.gameState.processes.crops.filter(crop => crop.readyToHarvest)
+    return actions
+  }
+
+  /**
+   * Evaluates actions for the current screen
+   */
+  private evaluateScreenActions(): GameAction[] {
+    const screen = this.gameState.location.currentScreen
     
+    switch (screen) {
+      case 'farm':
+        return this.evaluateFarmActions()
+      case 'tower':
+        return this.evaluateTowerActions()
+      case 'town':
+        return this.evaluateTownActions()
+      case 'adventure':
+        return this.evaluateAdventureActions()
+      case 'forge':
+        return this.evaluateForgeActions()
+      case 'mine':
+        return this.evaluateMineActions()
+      default:
+        return []
+    }
+  }
+
+  /**
+   * Evaluates farm-specific actions
+   */
+  private evaluateFarmActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const farmParams = this.parameters.farm
+    
+    // Harvest ready crops (highest priority)
+    const readyToHarvest = this.gameState.processes.crops.filter(crop => crop.readyToHarvest)
     if (readyToHarvest.length > 0 && this.gameState.automation.harvestingEnabled) {
       actions.push({
         id: `harvest_${Date.now()}`,
@@ -378,23 +553,38 @@ export class SimulationEngine {
         energyCost: 3,
         goldCost: 0,
         prerequisites: [],
-        expectedRewards: {
-          gold: 10,
-          items: [readyToHarvest[0].cropId]
-        }
+        expectedRewards: { gold: 10, items: [readyToHarvest[0].cropId] }
       })
     }
     
-    // Check if we should plant new crops
-    const emptyPlots = this.parameters.farm.initialState.plots - this.gameState.processes.crops.length
+    // Water crops that need it
+    const needsWatering = this.gameState.processes.crops.filter(crop => 
+      crop.waterLevel < this.gameState.automation.wateringThreshold && 
+      !crop.isWithered && 
+      !crop.readyToHarvest
+    )
     
+    if (needsWatering.length > 0 && this.gameState.automation.wateringEnabled) {
+      actions.push({
+        id: `water_${Date.now()}`,
+        type: 'water',
+        screen: 'farm',
+        target: needsWatering[0].plotId,
+        duration: 1,
+        energyCost: 1,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {}
+      })
+    }
+    
+    // Plant new crops if we have empty plots and energy
+    const emptyPlots = farmParams.initialState.plots - this.gameState.processes.crops.length
     if (emptyPlots > 0 && 
         this.gameState.automation.plantingEnabled && 
         this.gameState.resources.energy.current > this.gameState.automation.energyReserve) {
       
-      // Find best crop to plant based on strategy
       const bestCrop = this.selectCropToPlant()
-      
       if (bestCrop) {
         actions.push({
           id: `plant_${Date.now()}`,
@@ -414,6 +604,75 @@ export class SimulationEngine {
   }
 
   /**
+   * Placeholder methods for other screen actions
+   */
+  private evaluateTowerActions(): GameAction[] { return [] }
+  private evaluateTownActions(): GameAction[] { return [] }
+  private evaluateAdventureActions(): GameAction[] { return [] }
+  private evaluateForgeActions(): GameAction[] { return [] }
+  private evaluateMineActions(): GameAction[] { return [] }
+
+  /**
+   * Evaluates screen navigation decisions
+   */
+  private evaluateNavigationActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const current = this.gameState.location.currentScreen
+    
+    // Use screen priorities from decision parameters
+    if (this.parameters.decisions?.screenPriorities?.weights) {
+      const weights = this.parameters.decisions.screenPriorities.weights
+      
+      for (const [screen, weight] of weights.entries()) {
+        if (screen !== current && weight > 0) {
+          const reason = this.getNavigationReason(screen as GameScreen)
+          if (reason.score > 5) { // Only navigate if there's a good reason
+            actions.push({
+              id: `navigate_${screen}_${Date.now()}`,
+              type: 'move',
+              screen: screen as GameScreen,
+              target: screen,
+              duration: 1, // 1 minute to change screens
+              energyCost: 0,
+              goldCost: 0,
+              prerequisites: [],
+              expectedRewards: {}
+            })
+          }
+        }
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * Gets the reason and score for navigating to a specific screen
+   */
+  private getNavigationReason(screen: GameScreen): { reason: string; score: number } {
+    switch (screen) {
+      case 'farm':
+        const farmTasks = this.gameState.processes.crops.filter(
+          c => c.readyToHarvest || c.waterLevel < 25
+        ).length
+        return { reason: `${farmTasks} farm tasks pending`, score: farmTasks * 2 }
+        
+      case 'tower':
+        // Navigate to tower if we need seeds
+        const totalSeeds = Object.values(this.gameState.resources.seeds).reduce((a, b) => a + b, 0)
+        return { reason: 'Need seeds', score: totalSeeds < 10 ? 8 : 2 }
+        
+      case 'town':
+        // Navigate to town if we have gold to spend
+        const goldScore = this.gameState.resources.gold > 100 ? 6 : 1
+        return { reason: 'Purchase upgrades', score: goldScore }
+        
+      default:
+        return { reason: 'General exploration', score: 1 }
+    }
+  }
+
+  /**
    * Selects the best crop to plant based on current strategy
    */
   private selectCropToPlant(): string | null {
@@ -423,9 +682,170 @@ export class SimulationEngine {
     
     if (availableSeeds.length === 0) return null
     
-    // Simple strategy: plant highest value crop for now
-    // TODO: Implement full strategy logic based on parameters
-    return availableSeeds[0]
+    // Use planting strategy from parameters
+    const strategy = this.gameState.automation.plantingStrategy
+    
+    switch (strategy) {
+      case 'highest-value':
+        // Simple value-based selection (in real game, would use crop data)
+        return availableSeeds[0] // Placeholder
+        
+      case 'fastest-growth':
+        // Would select fastest growing crop
+        return availableSeeds[0] // Placeholder
+        
+      case 'balanced':
+        // Would balance value and growth time
+        return availableSeeds[0] // Placeholder
+        
+      case 'diverse':
+        // Would ensure variety in planted crops
+        return availableSeeds[0] // Placeholder
+        
+      default:
+        return availableSeeds[0]
+    }
+  }
+
+  /**
+   * Enhanced action scoring using parameter-based evaluation
+   */
+  private scoreAction(action: GameAction): number {
+    let score = 0
+    const farmParams = this.parameters.farm
+    const decisionParams = this.parameters.decisions
+    
+    // Base scoring by action type
+    switch (action.type) {
+      case 'harvest':
+        // Harvesting is always high priority
+        score = 100
+        
+        // Bonus for energy when low
+        if (this.gameState.resources.energy.current < 50) {
+          score += 20
+        }
+        break
+        
+      case 'water':
+        // Water urgency based on crop water levels
+        score = 60
+        
+        // Higher score if automation is enabled
+        if (this.gameState.automation.wateringEnabled) {
+          score += 10
+        }
+        break
+        
+      case 'plant':
+        // Planting score based on available space and energy
+        score = 40
+        
+        // Higher score if we have excess energy
+        if (this.gameState.resources.energy.current > this.gameState.automation.energyReserve + 20) {
+          score += 15
+        }
+        
+        // Use planting strategy weights if available
+        if (farmParams.automation?.priorityWeights?.planting) {
+          score *= farmParams.automation.priorityWeights.planting
+        }
+        break
+        
+      case 'move':
+        // Navigation scoring based on screen priorities
+        if (decisionParams?.screenPriorities?.weights) {
+          const targetScreen = action.target as string
+          const weight = decisionParams.screenPriorities.weights.get(targetScreen) || 1
+          score = weight * 10
+          
+          // Apply dynamic adjustments based on resource levels
+          if (decisionParams.screenPriorities.adjustmentFactors) {
+            const adjustments = decisionParams.screenPriorities.adjustmentFactors
+            
+            // Low energy adjustments
+            if (this.gameState.resources.energy.current < 30 && adjustments.energyLow) {
+              const energyAdjustment = adjustments.energyLow.get(targetScreen) || 1
+              score *= energyAdjustment
+            }
+            
+            // High gold adjustments
+            if (this.gameState.resources.gold > 200 && adjustments.goldHigh) {
+              const goldAdjustment = adjustments.goldHigh.get(targetScreen) || 1
+              score *= goldAdjustment
+            }
+          }
+        } else {
+          score = 20 // Default navigation score
+        }
+        break
+        
+      default:
+        score = 10 // Default score for other actions
+    }
+    
+    // Apply global decision parameters
+    if (decisionParams?.actionEvaluation) {
+      const evalParams = decisionParams.actionEvaluation
+      
+      // Immediate value vs future value weighting
+      const immediateValue = action.expectedRewards?.gold || 0
+      const futureValue = this.calculateFutureValue(action)
+      
+      const weightedValue = 
+        (immediateValue * evalParams.immediateValueWeight) +
+        (futureValue * evalParams.futureValueWeight)
+      
+      score += weightedValue
+      
+      // Risk adjustment
+      const risk = this.calculateActionRisk(action)
+      score -= (risk * evalParams.riskWeight)
+    }
+    
+    // Energy efficiency bonus
+    if (action.energyCost > 0) {
+      const efficiency = (action.expectedRewards?.gold || 0) / action.energyCost
+      score += efficiency * 5
+    }
+    
+    // Randomness factor for more realistic behavior
+    if (decisionParams?.globalBehavior?.randomness) {
+      const randomFactor = 1 + (Math.random() - 0.5) * decisionParams.globalBehavior.randomness
+      score *= randomFactor
+    }
+    
+    return Math.max(0, score)
+  }
+
+  /**
+   * Calculates the future value of an action
+   */
+  private calculateFutureValue(action: GameAction): number {
+    // Simplified future value calculation
+    switch (action.type) {
+      case 'plant':
+        return 15 // Planting has future harvest value
+      case 'move':
+        return action.target === 'town' ? 5 : 2 // Moving to town enables purchases
+      default:
+        return 0
+    }
+  }
+
+  /**
+   * Calculates the risk associated with an action
+   */
+  private calculateActionRisk(action: GameAction): number {
+    // Simplified risk calculation
+    switch (action.type) {
+      case 'adventure':
+        return 10 // Adventures are risky
+      case 'move':
+        return 1 // Low risk for navigation
+      default:
+        return 0 // Most actions are safe
+    }
   }
 
   /**

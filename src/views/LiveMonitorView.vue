@@ -94,49 +94,108 @@
       </div>
     </div>
 
-    <!-- Widget Grid -->
-    <div class="grid grid-cols-12 gap-4 h-[calc(100vh-300px)]">
-      <!-- Top Row -->
-      <div class="col-span-4 h-64">
-        <CurrentLocation :gameState="currentState" />
-      </div>
-      <div class="col-span-4 h-64">
-        <ResourcesWidget :gameState="currentState" />
-      </div>
-      <div class="col-span-4 h-64">
-        <CurrentAction 
-          :gameState="currentState"
-          :currentAction="mockCurrentAction"
-          :nextAction="mockNextAction"
-        />
+    <!-- Restructured Layout -->
+    <div class="space-y-4">
+      
+      <!-- Top Row: 4 Widgets -->
+      <div class="grid grid-cols-12 gap-4">
+        <!-- Current Location -->
+        <div class="col-span-3 h-80">
+          <CurrentLocation :gameState="currentState" />
+        </div>
+        
+        <!-- Resources -->
+        <div class="col-span-3 h-80">
+          <ResourcesWidget :gameState="currentState" />
+        </div>
+        
+        <!-- Equipment -->
+        <div class="col-span-3 h-80">
+          <EquipmentWidget :gameState="currentState" />
+        </div>
+        
+        <!-- Current Action -->
+        <div class="col-span-3 h-80">
+          <CurrentAction 
+            :gameState="currentState"
+            :currentAction="mockCurrentAction"
+            :nextAction="mockNextAction"
+          />
+        </div>
       </div>
 
-      <!-- Middle Row -->
-      <div class="col-span-8 h-96">
-        <ActionLog :events="recentEvents" />
-      </div>
-      <div class="col-span-4 h-96">
-        <!-- Performance Monitor Placeholder -->
-        <BaseWidget title="Performance Monitor" icon="fas fa-tachometer-alt">
-          <div class="space-y-3">
-            <div class="flex justify-between">
-              <span>Sim Speed:</span>
-              <span class="font-mono">{{ currentStats?.averageTickTime?.toFixed(0) || 0 }} ms/tick</span>
-            </div>
-            <div class="flex justify-between">
-              <span>UI FPS:</span>
-              <span class="font-mono">{{ Math.floor(Math.random() * 10) + 55 }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Memory:</span>
-              <span class="font-mono">{{ Math.floor(Math.random() * 50) + 100 }} MB</span>
-            </div>
-            <div class="flex justify-between">
-              <span>CPU:</span>
-              <span class="font-mono">{{ Math.floor(Math.random() * 15) + 5 }}%</span>
-            </div>
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-12 gap-4">
+        <!-- Left Column: Main Content (3/4 width) -->
+        <div class="col-span-9 space-y-4">
+          <!-- Farm Visualizer -->
+          <div class="h-80">
+            <FarmVisualizerWidget :gameState="currentState" />
           </div>
-        </BaseWidget>
+          
+          <!-- Mini Upgrade Tree -->
+          <div class="h-48">
+            <MiniUpgradeTreeWidget :gameState="currentState" />
+          </div>
+          
+          <!-- Timeline -->
+          <div class="h-32">
+            <TimelineWidget :gameState="currentState" />
+          </div>
+        </div>
+        
+        <!-- Right Column: Action Log (Tall & Narrow) -->
+        <div class="col-span-3">
+          <div class="h-[640px]">
+            <ActionLog :events="recentEvents" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Row: Screen Time + Helper Management + Next Decision -->
+      <div class="grid grid-cols-12 gap-4">
+        <!-- Screen Time -->
+        <div class="col-span-4 h-80">
+          <ScreenTimeWidget :gameState="currentState" />
+        </div>
+        
+        <!-- Helper Management -->
+        <div class="col-span-4 h-80">
+          <HelperManagementWidget :gameState="currentState" />
+        </div>
+        
+        <!-- Next Decision -->
+        <div class="col-span-4 h-80">
+          <NextDecisionWidget :gameState="currentState" />
+        </div>
+      </div>
+
+      <!-- Performance Monitor (Full Width Strip) -->
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-12 h-32">
+          <BaseWidget title="Performance Monitor" icon="fas fa-tachometer-alt">
+            <div class="flex justify-between items-center h-full">
+              <div class="flex gap-8 text-sm w-full">
+                <div class="flex flex-col items-center justify-center flex-1">
+                  <span class="text-sim-text-secondary text-xs">Sim Speed</span>
+                  <span class="font-mono text-lg">{{ currentStats?.averageTickTime?.toFixed(0) || 0 }} ms/tick</span>
+                </div>
+                <div class="flex flex-col items-center justify-center flex-1">
+                  <span class="text-sim-text-secondary text-xs">UI FPS</span>
+                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 10) + 55 }}</span>
+                </div>
+                <div class="flex flex-col items-center justify-center flex-1">
+                  <span class="text-sim-text-secondary text-xs">Memory</span>
+                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 50) + 100 }} MB</span>
+                </div>
+                <div class="flex flex-col items-center justify-center flex-1">
+                  <span class="text-sim-text-secondary text-xs">CPU</span>
+                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 15) + 5 }}%</span>
+                </div>
+              </div>
+            </div>
+          </BaseWidget>
+        </div>
       </div>
     </div>
 
@@ -168,6 +227,15 @@ import ResourcesWidget from '@/components/monitor/ResourcesWidget.vue'
 import CurrentAction from '@/components/monitor/CurrentAction.vue'
 import ActionLog from '@/components/monitor/ActionLog.vue'
 import BaseWidget from '@/components/monitor/BaseWidget.vue'
+
+// Import new Phase 6C widgets
+import EquipmentWidget from '@/components/monitor/EquipmentWidget.vue'
+import FarmVisualizerWidget from '@/components/monitor/FarmVisualizerWidget.vue'
+import HelperManagementWidget from '@/components/monitor/HelperManagementWidget.vue'
+import MiniUpgradeTreeWidget from '@/components/monitor/MiniUpgradeTreeWidget.vue'
+import TimelineWidget from '@/components/monitor/TimelineWidget.vue'
+import ScreenTimeWidget from '@/components/monitor/ScreenTimeWidget.vue'
+import NextDecisionWidget from '@/components/monitor/NextDecisionWidget.vue'
 
 // State
 const bridge = ref<SimulationBridge | null>(null)
@@ -314,7 +382,7 @@ const formatTime = (time: any): string => {
 
 // Lifecycle
 onMounted(() => {
-  console.log('📊 LiveMonitor mounted - Phase 6C Widget Implementation')
+  console.log('📊 LiveMonitor mounted - Phase 6D Core Widget Implementation Complete')
   
   // Poll for stats every second
   statsInterval.value = setInterval(async () => {

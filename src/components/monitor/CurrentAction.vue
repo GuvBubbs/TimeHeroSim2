@@ -27,23 +27,23 @@
           ></div>
         </div>
 
-        <!-- Action Details -->
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div>
+        <!-- Action Details - Horizontal Layout -->
+        <div class="flex gap-3 text-xs">
+          <div class="flex-1 bg-sim-background-darker rounded p-2 text-center">
             <div class="text-sim-text-secondary">Duration</div>
-            <div class="font-mono">{{ formatDuration(currentAction.duration) }}</div>
+            <div class="font-mono text-sm">{{ formatDuration(currentAction.duration) }}</div>
           </div>
-          <div>
+          <div class="flex-1 bg-sim-background-darker rounded p-2 text-center">
             <div class="text-sim-text-secondary">Remaining</div>
-            <div class="font-mono">{{ formatDuration(timeRemaining) }}</div>
+            <div class="font-mono text-sm">{{ formatDuration(timeRemaining) }}</div>
           </div>
-          <div v-if="currentAction.energyCost">
-            <div class="text-sim-text-secondary">Energy Cost</div>
-            <div class="font-mono text-yellow-400">{{ currentAction.energyCost }}</div>
+          <div v-if="currentAction.energyCost" class="flex-1 bg-sim-background-darker rounded p-2 text-center">
+            <div class="text-sim-text-secondary">Energy</div>
+            <div class="font-mono text-sm text-yellow-400">{{ currentAction.energyCost }}</div>
           </div>
-          <div v-if="(currentAction as any).expectedGain">
-            <div class="text-sim-text-secondary">Expected Gain</div>
-            <div class="font-mono text-green-400">{{ (currentAction as any).expectedGain }}</div>
+          <div v-if="(currentAction as any).expectedGain" class="flex-1 bg-sim-background-darker rounded p-2 text-center">
+            <div class="text-sim-text-secondary">Gain</div>
+            <div class="font-mono text-sm text-green-400">{{ (currentAction as any).expectedGain }}</div>
           </div>
         </div>
 
@@ -99,60 +99,105 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Mock current action if not provided
+// Real current action from simulation state
 const currentAction = computed(() => {
+  // First priority: use explicitly passed action
   if (props.currentAction) return props.currentAction
   
-  // Mock action for demonstration
-  if (props.gameState && Math.random() > 0.3) {
-    return {
-      id: 'mock-action',
-      type: 'plant',
-      name: 'plant_carrot',
-      duration: 300, // 5 minutes in seconds
-      energyCost: 1,
-      expectedGain: 3,
-      target: 'Plot 7',
-      startTime: Date.now() - 120000, // Started 2 minutes ago
-      score: 8.5,
-      reason: 'Low energy, high value crop'
+  // Second priority: derive from game state (ongoing processes)
+  if (props.gameState) {
+    // Check for ongoing adventure
+    if (props.gameState.processes.adventure && !props.gameState.processes.adventure.isComplete) {
+      const adventure = props.gameState.processes.adventure
+      return {
+        id: adventure.adventureId,
+        type: 'adventure',
+        name: adventure.adventureId,
+        duration: adventure.duration * 60, // Convert minutes to seconds for UI
+        target: adventure.adventureId,
+        startTime: adventure.startedAt * 60 * 1000, // Convert to milliseconds
+        progress: adventure.progress * 100,
+        expectedRewards: adventure.rewards
+      }
+    }
+    
+    // Check for ongoing crafting
+    if (props.gameState.processes.crafting && props.gameState.processes.crafting.length > 0) {
+      const crafting = props.gameState.processes.crafting[0] // First in queue
+      return {
+        id: crafting.itemId,
+        type: 'craft',
+        name: crafting.itemId,
+        duration: crafting.duration * 60, // Convert minutes to seconds
+        target: crafting.itemId,
+        startTime: crafting.startedAt * 60 * 1000, // Convert to milliseconds  
+        progress: crafting.progress * 100
+      }
+    }
+    
+    // Check for ongoing mining
+    if (props.gameState.processes.mining && props.gameState.processes.mining.isActive) {
+      const mining = props.gameState.processes.mining
+      return {
+        id: 'mining',
+        type: 'mine',
+        name: `mining_depth_${mining.depth}`,
+        target: `Depth ${mining.depth}`,
+        energyCost: mining.energyDrain,
+        duration: 0, // Mining is continuous
+        progress: 0 // Continuous activity
+      }
     }
   }
+  
   return null
 })
 
 const nextAction = computed(() => {
+  // Use explicitly passed next action if available
   if (props.nextAction) return props.nextAction
   
-  // Mock next action
-  if (!currentAction.value && Math.random() > 0.5) {
-    return {
-      id: 'mock-next',
-      type: 'water',
-      name: 'water_crops',
-      score: 6.2,
-      reason: 'Dry plots detected'
-    }
-  }
+  // For now, return null - real next action would come from simulation engine's decision queue
+  // TODO: Integrate with simulation engine's decision preview system
   return null
 })
 
 const progress = computed(() => {
-  if (!currentAction.value || !(currentAction.value as any).startTime) return 0
+  if (!currentAction.value) return 0
   
-  const elapsed = Date.now() - (currentAction.value as any).startTime
-  const duration = (currentAction.value.duration || 0) * 1000 // Convert to milliseconds
+  // If action already has progress (from ongoing processes), use it
+  if ((currentAction.value as any).progress !== undefined) {
+    return (currentAction.value as any).progress
+  }
   
-  return Math.min((elapsed / duration) * 100, 100)
+  // Calculate progress from start time and duration
+  if ((currentAction.value as any).startTime && currentAction.value.duration) {
+    const elapsed = Date.now() - (currentAction.value as any).startTime
+    const duration = (currentAction.value.duration || 0) * 1000 // Convert to milliseconds
+    return Math.min((elapsed / duration) * 100, 100)
+  }
+  
+  return 0
 })
 
 const timeRemaining = computed(() => {
-  if (!currentAction.value || !(currentAction.value as any).startTime) return 0
+  if (!currentAction.value) return 0
   
-  const elapsed = (Date.now() - (currentAction.value as any).startTime) / 1000
-  const remaining = (currentAction.value.duration || 0) - elapsed
+  // For ongoing processes that have progress, calculate from progress
+  if ((currentAction.value as any).progress !== undefined) {
+    const progressPercent = (currentAction.value as any).progress / 100
+    const totalDuration = currentAction.value.duration || 0
+    return totalDuration * (1 - progressPercent)
+  }
   
-  return Math.max(remaining, 0)
+  // Calculate from start time
+  if ((currentAction.value as any).startTime && currentAction.value.duration) {
+    const elapsed = (Date.now() - (currentAction.value as any).startTime) / 1000
+    const remaining = (currentAction.value.duration || 0) - elapsed
+    return Math.max(remaining, 0)
+  }
+  
+  return 0
 })
 
 const getActionIcon = (type: string): string => {

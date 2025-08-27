@@ -1,65 +1,31 @@
 <!-- Phase Progress Widget - Game progression bar -->
 <template>
   <BaseWidget title="Game Phase Progress" icon="fas fa-chart-line">
-    <div class="space-y-4">
-      <!-- Phase Timeline -->
-      <div class="relative">
-        <div class="flex justify-between text-xs text-sim-text-secondary mb-2">
-          <span>Tutorial</span>
-          <span>Early</span>
-          <span>Mid</span>
-          <span>Late</span>
-          <span>End</span>
-        </div>
-        
-        <!-- Progress Bar -->
-        <div class="h-3 bg-sim-background rounded-full overflow-hidden">
-          <div 
-            class="h-full transition-all duration-1000 bg-gradient-to-r from-green-500 to-blue-500"
-            :style="{ width: `${progressPercent}%` }"
-          ></div>
-        </div>
-        
-        <!-- Phase Markers -->
-        <div class="flex justify-between mt-1">
-          <div 
-            v-for="(phase, index) in phases" 
-            :key="phase.name"
-            class="flex flex-col items-center"
-            :class="{
-              'text-sim-accent': currentPhaseIndex >= index,
-              'text-sim-text-secondary': currentPhaseIndex < index
-            }"
-          >
+    <div class="space-y-2">
+      <!-- Compact Phase Timeline -->
+      <div class="flex items-center justify-between">
+        <div class="flex-1">
+          <div class="flex justify-between text-xs text-sim-text-secondary mb-1">
+            <span>Tutorial</span>
+            <span>Early</span>
+            <span>Mid</span>
+            <span>Late</span>
+            <span>End</span>
+          </div>
+          
+          <!-- Progress Bar -->
+          <div class="h-2 bg-sim-background rounded-full overflow-hidden">
             <div 
-              class="w-2 h-2 rounded-full"
-              :class="{
-                'bg-sim-accent': currentPhaseIndex >= index,
-                'bg-sim-text-secondary': currentPhaseIndex < index
-              }"
+              class="h-full transition-all duration-1000 bg-gradient-to-r from-green-500 to-blue-500"
+              :style="{ width: `${progressPercent}%` }"
             ></div>
           </div>
         </div>
-      </div>
-      
-      <!-- Current Phase Info -->
-      <div class="bg-sim-background rounded p-3">
-        <div class="flex justify-between items-center mb-2">
-          <span class="font-semibold">{{ currentPhase?.name || 'Unknown' }}</span>
-          <span class="text-sm text-sim-text-secondary">
-            Day {{ gameState?.time.day || 0 }}
-          </span>
-        </div>
         
-        <div class="text-sm text-sim-text-secondary">
-          {{ currentPhase?.description || 'No phase information available' }}
-        </div>
-        
-        <div class="mt-2 text-xs">
-          <div class="flex justify-between">
-            <span>Progress:</span>
-            <span>{{ progressPercent.toFixed(1) }}%</span>
-          </div>
+        <!-- Compact Info -->
+        <div class="ml-4 text-right">
+          <div class="text-sm font-semibold">{{ currentPhase?.name || 'Tutorial' }}</div>
+          <div class="text-xs text-sim-text-secondary">Day {{ gameState?.time.day || 0 }} • {{ progressPercent.toFixed(1) }}%</div>
         </div>
       </div>
     </div>

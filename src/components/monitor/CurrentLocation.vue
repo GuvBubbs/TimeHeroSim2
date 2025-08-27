@@ -1,58 +1,52 @@
 <!-- Current Location Widget - Screen navigation display -->
 <template>
   <BaseWidget title="Current Location" icon="fas fa-map-marker-alt">
-    <div class="space-y-4">
-      <!-- Location Map (4x3 Grid) -->
-      <!-- Row 1 -->
-      <div class="grid grid-cols-3 gap-2">
-        <LocationButton
-          v-for="location in locations.slice(0, 3)"
-          :key="location.screen"
-          :screen="location.screen"
-          :current="currentLocation"
-          :icon="location.icon"
-          :name="location.name"
-          :hasHelper="hasHelper && location.screen === 'farm'"
-        />
+    <div class="space-y-2">
+      <!-- Cross-shaped Layout -->
+      <!-- Row 1: Tower -->
+      <div class="grid grid-cols-3 gap-1">
+        <div></div>
+        <div class="bg-sim-background rounded px-2 py-1.5 text-center border text-sm"
+             :class="currentLocation === 'tower' ? 'bg-sim-accent text-white' : ''">
+          Tower
+        </div>
+        <div></div>
       </div>
       
-      <!-- Row 2 -->
-      <div class="grid grid-cols-3 gap-2">
-        <LocationButton
-          v-for="location in locations.slice(3, 6)"
-          :key="location.screen"
-          :screen="location.screen"
-          :current="currentLocation"
-          :icon="location.icon"
-          :name="location.name"
-          :hasHelper="hasHelper && location.screen === 'farm'"
-        />
+      <!-- Row 2: Town - Farm - Adventure -->
+      <div class="grid grid-cols-3 gap-1">
+        <div class="bg-sim-background rounded px-2 py-1.5 text-center border text-sm"
+             :class="currentLocation === 'town' ? 'bg-sim-accent text-white' : ''">
+          Town
+        </div>
+        <div class="bg-sim-background rounded px-2 py-1.5 text-center border text-sm relative"
+             :class="currentLocation === 'farm' ? 'bg-sim-accent text-white' : ''">
+          Farm <span class="ml-1">👤</span>
+        </div>
+        <div class="bg-sim-background rounded px-2 py-1.5 text-center border text-sm"
+             :class="currentLocation === 'adventure' ? 'bg-sim-accent text-white' : ''">
+          Adventure
+        </div>
       </div>
       
-      <!-- Row 3 -->
-      <div class="grid grid-cols-3 gap-2">
-        <LocationButton
-          v-for="location in locations.slice(6, 9)"
-          :key="location.screen"
-          :screen="location.screen"
-          :current="currentLocation"
-          :icon="location.icon"
-          :name="location.name"
-          :hasHelper="hasHelper && location.screen === 'farm'"
-        />
+      <!-- Row 3: Forge -->
+      <div class="grid grid-cols-3 gap-1">
+        <div></div>
+        <div class="bg-sim-background rounded px-2 py-1.5 text-center border text-sm"
+             :class="currentLocation === 'forge' ? 'bg-sim-accent text-white' : ''">
+          Forge
+        </div>
+        <div></div>
       </div>
       
-      <!-- Row 4 -->
-      <div class="grid grid-cols-3 gap-2">
-        <LocationButton
-          v-for="location in locations.slice(9, 12)"
-          :key="location.screen"
-          :screen="location.screen"
-          :current="currentLocation"
-          :icon="location.icon"
-          :name="location.name"
-          :hasHelper="hasHelper && location.screen === 'farm'"
-        />
+      <!-- Row 4: Mine -->
+      <div class="grid grid-cols-3 gap-1">
+        <div></div>
+        <div class="bg-sim-background rounded px-2 py-1.5 text-center border text-sm"
+             :class="currentLocation === 'mine' ? 'bg-sim-accent text-white' : ''">
+          Mine
+        </div>
+        <div></div>
       </div>
       
       <!-- Location Stats -->
@@ -78,7 +72,6 @@
 import { computed } from 'vue'
 import type { GameState } from '@/types'
 import BaseWidget from './BaseWidget.vue'
-import LocationButton from './LocationButton.vue'
 
 interface Props {
   gameState?: GameState | null
@@ -94,29 +87,12 @@ const hasHelper = computed(() => {
   ) || false
 })
 
-const locations = [
-  { screen: 'tower', name: 'Tower', icon: 'fas fa-chess-rook' },
-  { screen: 'town', name: 'Town', icon: 'fas fa-city' },
-  { screen: 'cave', name: 'Cave', icon: 'fas fa-dungeon' },
-  
-  { screen: 'farm', name: 'Farm', icon: 'fas fa-seedling' },
-  { screen: 'adventure', name: 'Adventure', icon: 'fas fa-sword' },
-  { screen: 'forge', name: 'Forge', icon: 'fas fa-hammer' },
-  
-  { screen: 'mine', name: 'Mine', icon: 'fas fa-mountain' },
-  { screen: 'shop', name: 'Shop', icon: 'fas fa-store' },
-  { screen: 'castle', name: 'Castle', icon: 'fas fa-chess-queen' },
-  
-  { screen: 'volcano', name: 'Volcano', icon: 'fas fa-volcano' },
-  { screen: 'forest', name: 'Forest', icon: 'fas fa-tree' },
-  { screen: 'beach', name: 'Beach', icon: 'fas fa-umbrella-beach' }
-]
-
-// Mock visit statistics
+// Mock visit statistics for main screens
 const visitStats = computed(() => {
+  const screens = ['tower', 'town', 'farm', 'adventure', 'forge', 'mine']
   const stats: Record<string, number> = {}
-  locations.forEach(loc => {
-    stats[loc.screen] = Math.floor(Math.random() * 50) + 1
+  screens.forEach(screen => {
+    stats[screen] = Math.floor(Math.random() * 50) + 1
   })
   return stats
 })

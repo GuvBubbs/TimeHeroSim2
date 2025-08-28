@@ -299,7 +299,7 @@ const paginatedItems = computed(() => {
 })
 
 // Helper functions
-const getFieldValue = (item: GameDataItem, field: string): any => {
+const getFieldValue = (item: GameDataItem | Record<string, any>, field: string): any => {
   if (field === 'prerequisites') {
     return item.prerequisites || []
   }

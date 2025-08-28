@@ -496,7 +496,7 @@ const handleSaveEditedItem = (updatedItem: GameDataItem | Record<string, any>) =
   Object.entries(updatedItem).forEach(([field, value]) => {
     if (field === 'id') return // Skip ID field updates
     
-    const originalValue = editingItem.value?.[field]
+    const originalValue = (editingItem.value as any)?.[field]
     if (originalValue !== value) {
       configStore.setItemValue(
         updatedItem.id as string,

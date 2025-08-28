@@ -4,6 +4,9 @@ import App from './App.vue'
 import router from './router'
 import './styles/main.css'
 
+// Import DevTools for testing in development
+import './utils/DevTools'
+
 const app = createApp(App)
 const pinia = createPinia()
 

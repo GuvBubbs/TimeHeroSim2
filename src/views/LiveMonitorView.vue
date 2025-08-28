@@ -140,7 +140,7 @@
           
           <!-- Timeline -->
           <div class="h-32">
-            <TimelineWidget :gameState="currentState" />
+            <TimelineWidget :gameState="currentState" :events="recentEvents" />
           </div>
         </div>
         

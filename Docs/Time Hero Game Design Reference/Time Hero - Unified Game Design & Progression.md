@@ -88,13 +88,13 @@ Phases are defined by the farm's **land deeds** (purchased in Town) and the clea
 
 Farm unlocks are grouped by **farm stage** (based on plot count). This section removes deed references; purchases happen elsewhere.
 
-| Order | Farm Stage | Plots Range | What it does | Cleanups (on Farm) |
-| ----- | ----- | ----- | ----- | ----- |
-| 1 | **Stage 1 – Starter Plot** | 3→8 | Teaches core loop; small, safe workspace to learn water/carry rhythm | Clear Weeds → Till |
-| 2 | **Stage 2 – Small Hold** | 8→20 | Expands field; introduces rocks; raises energy/water demands modestly | Rocks → Till batches |
-| 3 | **Stage 3 – Homestead** | 20→40 | Major capacity jump; unlocks tougher obstacles; sets up mid-tier crops/routes | Boulders → Stumps → Till |
-| 4 | **Stage 4 – Manor Grounds** | 40→65 | Broad expansion; requires advanced tools; supports late-tier crops & longer runs | Excavations → Thickets → Terraform |
-| 5 | **Stage 5 – Great Estate** | 65→90 | Endgame farmland size; enables heavy automation and late cleanups | Blasts → Ancient Roots → Sacred Clearing |
+| Order | Farm Stage                  | Plots Range | What it does                                                                     | Cleanups (on Farm)                 |
+| ----- | --------------------------- | ----------- | -------------------------------------------------------------------------------- | ---------------------------------- |
+| 1     | **Stage 1 – Starter Plot**  | 3→8         | Teaches core loop; small, safe workspace to learn water/carry rhythm             | Clear Weeds → Till                 |
+| 2     | **Stage 2 – Small Hold**    | 8→20        | Expands field; introduces rocks; raises energy/water demands modestly            | Rocks → Till batches               |
+| 3     | **Stage 3 – Homestead**     | 20→40       | Major capacity jump; unlocks tougher obstacles; sets up mid-tier crops/routes    | Boulders → Stumps → Till           |
+| 4     | **Stage 4 – Manor Grounds** | 40→65       | Broad expansion; requires advanced tools; supports late-tier crops & longer runs | Excavations → Thickets → Terraform |
+| 5     | **Stage 5 – Great Estate**  | 65→90       | Endgame farmland size; enables heavy automation and late cleanups                | Ancient Roots → Sacred Clearing    |
 
 ### **3.2 Land Cleanups (Ticks – done on the Farm)**
 
@@ -102,84 +102,141 @@ Ticks cost **energy** and require the right **tool**. This section lists on-farm
 
 #### **Stage 1 – Starter Plot (3→8 plots)**
 
-| Cleanup | Plots \+ | Total Plots | Energy Cost | Tool Required | Yields |
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| Clear Weeds \#1 | \+2 | 5 | 5/weed (×3) | Hands | \- |
-| Clear Weeds \#2 | \+3 | 8 | 10/weed (×5) | Hands | \- |
+| Clear Weeds #1 | +2 | 5 | 15 | Hands | - |
+| Clear Weeds #2 | +3 | 8 | 50 | Hands | - |
 
 **Repeatable Actions (Tutorial area):**
 
 | Action | Energy Cost | Tool Required | Yields | Cooldown |
 | ----- | ----- | ----- | ----- | ----- |
-| Gather Sticks | 5 energy | Hands | Wood ×1 | None |
-| Break Branches | 10 energy | Hands | Wood ×2 | None |
+| Gather Sticks | 5 | Hands | Wood ×1 | None |
+| Break Branches | 10 | Hands | Wood ×2 | None |
 
 #### **Stage 2 – Small Hold (8→20 plots)**
 
-| Cleanup | Plots \+ | Total Plots | Energy Cost | Tool Required | Yields |
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| Collect Dead Trees | \+2 | 10 | 15/tree (×4) | Hands | Wood ×8 |
-| Till Soil \#1 | \+3 | 13 | 20/plot | Hoe | \- |
-| Clear Rocks \#1 | \+3 | 16 | 30/rock (×4) | Hands | Stone ×8 |
-| Till Soil \#2 | \+4 | 20 | 40/plot | Hoe | \- |
+| Collect Dead Trees | Unlocks tilling | 8 | 60 | Hands | Wood ×8 |
+| Small Hold Till Soil #1 | +2 | 10 | 40 | Hoe | - |
+| Clear Small Rocks | Unlocks tilling | 10 | 75 | Hands | Stone ×6 |
+| Small Hold Till Soil #2 | +3 | 13 | 60 | Hoe | - |
+| Remove Rock Pile | Unlocks tilling | 13 | 120 | Hands | Stone ×8 |
+| Small Hold Till Soil #3 | +3 | 16 | 120 | Hoe | - |
+| Clear Field Stones | Unlocks tilling | 16 | 175 | Hands | Stone ×10 |
+| Small Hold Till Soil #4 | +4 | 20 | 160 | Hoe | - |
 
 **Repeatable Actions (Off-screen forest):**
 
 | Action | Energy Cost | Tool Required | Yields | Cooldown |
 | ----- | ----- | ----- | ----- | ----- |
-| Gather Branches | 15 energy | Hands | Wood ×1 | None |
-| Chop Saplings | 25 energy | Hands | Wood ×2 | None |
-| Fell Small Tree | 50 energy | Axe | Wood ×5 | None |
+| Chop Saplings | 25 | Hands | Wood ×2 | None |
+| Fell Small Tree | 50 | Axe | Wood ×5 | None |
 
 #### **Stage 3 – Homestead (20→40 plots)**
 
-| Cleanup | Plots \+ | Total Plots | Energy Cost | Tool Required | Yields |
+**Three parallel routes available after purchasing Homestead Deed:**
+
+**Route 1 - Boulder Path:**
+
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| Clear Boulders \#1 | \+4 | 24 | 100/boulder (×6) | Hammer+ | Stone ×12 |
-| Remove Stumps \#1 | \+4 | 28 | 150/stump (×5) | Axe | Wood ×20 |
-| Clear Boulders \#2 | \+4 | 32 | 200/boulder (×6) | Hammer+ | Stone ×18 |
-| Remove Stumps \#2 | \+4 | 36 | 300/stump (×5) | Axe | Wood ×30 |
-| Till New Land | \+4 | 40 | 400/section | Hoe+ | \- |
+| Crack Small Boulders | Unlocks tilling | 20 | 600 | Hammer | Stone ×15 |
+| Homestead Till Soil #1 | +3 | 23 | 400 | Hoe | - |
+| Break Boulders | Unlocks tilling | 23 | 1,500 | Hammer | Stone ×30 |
+| Homestead Till Soil #4 | +3 | 26 | 1,600 | Hoe+ | - |
+
+**Route 2 - Stump Path:**
+
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
+| ----- | ----- | ----- | ----- | ----- | ----- |
+| Split Small Stumps | Unlocks tilling | 20 | 750 | Axe | Wood ×25 |
+| Homestead Till Soil #2 | +3 | 23 | 800 | Hoe | - |
+| Remove Stumps | Unlocks tilling | 23 | 2,800 | Axe | Wood ×35 |
+| Homestead Till Soil #5 | +4 | 27 | 1,600 | Hoe+ | - |
+
+**Route 3 - Excavation Path:**
+
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
+| ----- | ----- | ----- | ----- | ----- | ----- |
+| Level Molehills | Unlocks tilling | 20 | 1,200 | Shovel | - |
+| Homestead Till Soil #3 | +3 | 23 | 1,200 | Hoe | - |
+| Dig Buried Stones | Unlocks tilling | 23 | 2,800 | Shovel | Stone ×35 |
+| Homestead Till Soil #6 | +4 | 27 | 1,600 | Hoe+ | - |
+
+*Note: All three routes must be completed to reach 40 plots total*
 
 **Repeatable Actions (Off-screen forest):**
 
 | Action | Energy Cost | Tool Required | Yields | Cooldown |
 | ----- | ----- | ----- | ----- | ----- |
-| Chop Trees | 100 energy | Axe | Wood ×10 | None |
-| Clear Grove | 200 energy | Axe+ | Wood ×25 | None |
+| Chop Trees | 100 | Axe | Wood ×10 | None |
+| Clear Grove | 200 | Axe+ | Wood ×25 | None |
 
 #### **Stage 4 – Manor Grounds (40→65 plots)**
 
-| Cleanup | Plots \+ | Total Plots | Energy Cost | Tool Required | Yields |
+**Three parallel routes available after purchasing Manor Grounds Deed:**
+
+**Route 1 - Stone Path:**
+
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| Excavate Rocks \#1 | \+5 | 45 | 500/buried (×8) | Shovel | Stone ×24 |
-| Clear Thickets \#1 | \+5 | 50 | 600/thicket (×6) | Earth Mover | Wood ×36 |
-| Excavate Rocks \#2 | \+5 | 55 | 800/buried (×8) | Shovel+ | Stone ×32 |
-| Clear Thickets \#2 | \+5 | 60 | 1,000/thicket (×6) | Earth Mover | Wood ×48 |
-| Terraform | \+5 | 65 | 1,500/section | Advanced Tools | \- |
+| Crack Boulders | Unlocks tilling | 40 | 4,000 | Hammer+ | Stone ×30 |
+| Till Manor Grounds #1 | +3 | 43 | 2,500 | Hoe+ | - |
+| Break Mineral Deposit | Unlocks tilling | 43 | 6,000 | Hammer+ | Copper ×20 |
+| Till Manor Grounds #4 | +4 | 47 | 5,000 | Terra Former | - |
+
+**Route 2 - Forest Path:**
+
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
+| ----- | ----- | ----- | ----- | ----- | ----- |
+| Clear Thickets | Unlocks tilling | 40 | 3,600 | Axe+ | Wood ×40 |
+| Till Manor Grounds #2 | +4 | 44 | 3,000 | Hoe+ | - |
+| Buck Fallen Trunks | Unlocks tilling | 44 | 7,500 | Axe+ | Wood ×50 |
+| Till Manor Grounds #5 | +5 | 49 | 7,500 | Terra Former | - |
+
+**Route 3 - Land Path:**
+
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
+| ----- | ----- | ----- | ----- | ----- | ----- |
+| Eliminate Molehills | Unlocks tilling | 40 | 6,400 | Shovel+ | - |
+| Till Manor Grounds #3 | +4 | 44 | 4,000 | Hoe+ | - |
+| Landscape Section | Unlocks tilling | 44 | 7,500 | Shovel+ | Stone ×25, Wood ×25 |
+| Till Manor Grounds #6 | +5 | 49 | 7,500 | Terra Former | - |
+
+*Note: All three routes must be completed to reach 65 plots total*
 
 **Repeatable Actions (Off-screen forest):**
 
 | Action | Energy Cost | Tool Required | Yields | Cooldown |
 | ----- | ----- | ----- | ----- | ----- |
-| Harvest Forest | 400 energy | Shovel+ | Wood ×40 | None |
-| Clear Old Growth | 800 energy | Earth Mover | Wood ×100 | None |
+| Harvest Forest | 400 | Shovel+ | Wood ×40 | None |
+| Clear Old Growth | 800 | Earth Mover | Wood ×100 | None |
 
 #### **Stage 5 – Great Estate (65→90 plots)**
 
-| Cleanup | Plots \+ | Total Plots | Energy Cost | Tool Required | Yields |
+**Three initial routes converging to final expansion:**
+
+| Cleanup | Plots + | Total Plots | Energy Cost | Tool Required | Yields |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| Stone Monoliths \#1 | \+5 | 70 | 2,000/monolith (×10) | Stone Breaker | Stone ×50 |
-| Ancient Roots \#1 | \+5 | 75 | 2,500/root (×8) | World Splitter | Wood ×100 |
-| Stone Monoliths \#2 | \+5 | 80 | 3,000/monolith (×10) | Stone Breaker | Stone ×75 |
-| Sacred Clearing | \+10 | 90 | 5,000/section | World Splitter \+ Stone Breaker | \- |
+| Break Stone Monoliths | Unlocks tilling | 65 | 20,000 | Stone Breaker | Stone ×60 |
+| Till Estate Grounds #1 | +5 | 70 | 10,000 | Terra Former | - |
+| Cut Ancient Roots | Unlocks tilling | 65 | 20,000 | World Splitter | Wood ×120 |
+| Till Estate Grounds #2 | +5 | 70 | 12,500 | Terra Former | - |
+| Flatten Hill | Unlocks tilling | 65 | 30,000 | Earth Mover | Stone ×85 |
+| Till Estate Grounds #3 | +5 | 70 | 15,000 | Terra Former | - |
+| Sacred Clearing* | Unlocks tilling | 80 | 50,000 | World Splitter, Stone Breaker, Earth Mover | Wood ×50, Stone ×50 |
+| Till Estate Grounds #4 | +10 | 90 | 50,000 | Terra Former | - |
+
+*Requires all three Till Estate Grounds tasks (#1-3) to be completed first
 
 **Repeatable Actions (Off-screen forest):**
 
 | Action | Energy Cost | Tool Required | Yields | Cooldown |
 | ----- | ----- | ----- | ----- | ----- |
-| Mystic Grove | 1,500 energy | World Splitter | Wood ×200 | None |
-| Enchanted Forest | 3,000 energy | World Splitter \+ Stone Breaker | Wood ×500, Enchanted Wood ×1 (5% chance) | None |
+| Mystic Grove | 1,500 | World Splitter | Wood ×200 | None |
+| Enchanted Forest | 3,000 | World Splitter + Stone Breaker | Wood ×500, Enchanted Wood ×1 (5% chance) | None |
 
 **Automatic Planting Priority:** The hero automatically plants seeds in this order:
 

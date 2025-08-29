@@ -54,33 +54,55 @@ auto_pump_3,Auto-Pump III,blueprint_auto_pump_3,auto_pump,,,,2500,20,Crystal x3,
 crystal_auto_pump,Crystal Auto-Pump,blueprint_crystal_auto_pump,auto_pump,,,,12000,30,Wood x200;Silver x10;Cave Crystal x2,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,+50% water cap/hour offline
 training_grounds,Training Grounds,blueprint_training_grounds,gnome_training,,,,10000,60,Wood x500;Crystal x5;Frozen Heart x1,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Reduces training time by 25%
 master_academy,Master Academy,blueprint_master_academy,gnome_training,,,,50000,120,,,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Reduces training time by 50%; enables dual-role gnomes
-clear_weeds_1,Clear Weeds #1,,clean_up,progress_clean,,,15,,,,,,,,,,,,,,,,,,,,,,,,2,5,hands,FALSE,
-clear_weeds_2,Clear Weeds #2,clear_weeds_1,clean_up,progress_clean,,,50,,,,,,,,,,,,,,,,,,,,,,,,3,8,hands,FALSE,
-gather_sticks,Gather Sticks,,clean_up,clean_repeat_a,,,5,,,Wood x1,,,,,,,,,,,,,,,,,,,,,0,0,hands,TRUE,
-break_branches,Break Branches,,clean_up,clean_repeat_b,,,10,,,Wood x2,,,,,,,,,,,,,,,,,,,,,0,0,hands,TRUE,
-collect_dead_trees,Collect Dead Trees,farm_stage_2,clean_up,progress_clean,,,60,,,Wood x8,,,,,,,,,,,,,,,,,,,,,2,10,hands,FALSE,
-till_soil_1,Till Soil #1,collect_dead_trees,clean_up,progress_clean,,,60,,,,,,,,,,,,,,,,,,,,,,,,3,13,hoe,FALSE,
-clear_rocks_1,Clear Rocks #1,till_soil_1,clean_up,progress_clean,,,120,,,Stone x8,,,,,,,,,,,,,,,,,,,,,3,16,hands,FALSE,
-till_soil_2,Till Soil #2,clear_rocks_1,clean_up,progress_clean,,,160,,,,,,,,,,,,,,,,,,,,,,,,4,20,hoe,FALSE,
-chop_saplings,Chop Saplings,farm_stage_2,clean_up,clean_repeat_a,,,25,,,Wood x2,,,,,,,,,,,,,,,,,,,,,0,0,hands,TRUE,
-fell_small_tree,Fell Small Tree,craft_axe;farm_stage_2,clean_up,clean_repeat_b,,,50,,,Wood x5,,,,,,,,,,,,,,,,,,,,,0,0,axe,TRUE,
-clear_boulders_1,Clear Boulders #1,farm_stage_3,clean_up,progress_clean,,,600,,,Stone x12,,,,,,,,,,,,,,,,,,,,,4,24,hammer_plus,FALSE,
-remove_stumps_1,Remove Stumps #1,clear_boulders_1,clean_up,progress_clean,,,750,,,Wood x20,,,,,,,,,,,,,,,,,,,,,4,28,axe,FALSE,
-clear_boulders_2,Clear Boulders #2,remove_stumps_1,clean_up,progress_clean,,,1200,,,Stone x18,,,,,,,,,,,,,,,,,,,,,4,32,hammer_plus,FALSE,
-remove_stumps_2,Remove Stumps #2,clear_boulders_2,clean_up,progress_clean,,,1500,,,Wood x30,,,,,,,,,,,,,,,,,,,,,4,36,axe,FALSE,
-till_new_land,Till New Land,remove_stumps_2,clean_up,progress_clean,,,1600,,,,,,,,,,,,,,,,,,,,,,,,4,40,hoe_plus,FALSE,
-chop_trees,Chop Trees,craft_axe;farm_stage_3,clean_up,clean_repeat_a,,,100,,,Wood x10,,,,,,,,,,,,,,,,,,,,,0,0,axe,TRUE,
-clear_grove,Clear Grove,craft_axe_plus;farm_stage_3,clean_up,clean_repeat_b,,,200,,,Wood x25,,,,,,,,,,,,,,,,,,,,,0,0,axe_plus,TRUE,
-excavate_rocks_1,Excavate Rocks #1,farm_stage_4,clean_up,progress_clean,,,4000,,,Stone x24,,,,,,,,,,,,,,,,,,,,,5,45,shovel,FALSE,
-clear_thickets_1,Clear Thickets #1,excavate_rocks_1,clean_up,progress_clean,,,3600,,,Wood x36,,,,,,,,,,,,,,,,,,,,,5,50,earth_mover,FALSE,
-excavate_rocks_2,Excavate Rocks #2,clear_thickets_1,clean_up,progress_clean,,,6400,,,Stone x32,,,,,,,,,,,,,,,,,,,,,5,55,shovel_plus,FALSE,
-clear_thickets_2,Clear Thickets #2,excavate_rocks_2,clean_up,progress_clean,,,6000,,,Wood x48,,,,,,,,,,,,,,,,,,,,,5,60,earth_mover,FALSE,
-terraform,Terraform,clear_thickets_2;terra_former;stone_breaker;world_splitter;earth_mover,clean_up,progress_clean,,,7500,,,,,,,,,,,,,,,,,,,,,,,,5,65,terra_former;stone_breaker;world_splitter;earth_mover,FALSE,
-harvest_forest,Harvest Forest,craft_shovel_plus;farm_stage_4,clean_up,clean_repeat_a,,,400,,,Wood x40,,,,,,,,,,,,,,,,,,,,,0,0,shovel_plus,TRUE,
-clear_old_growth,Clear Old Growth,craft_earth_mover;farm_stage_4,clean_up,clean_repeat_b,,,800,,,Wood x100,,,,,,,,,,,,,,,,,,,,,0,0,earth_mover,TRUE,
-stone_monoliths_1,Stone Monoliths #1,farm_stage_5,clean_up,progress_clean,,,20000,,,Stone x50,,,,,,,,,,,,,,,,,,,,,5,70,stone_breaker,FALSE,
-ancient_roots_1,Ancient Roots #1,stone_monoliths_1,clean_up,progress_clean,,,20000,,,Wood x100,,,,,,,,,,,,,,,,,,,,,5,75,world_splitter,FALSE,
-stone_monoliths_2,Stone Monoliths #2,ancient_roots_1,clean_up,progress_clean,,,30000,,,Stone x75,,,,,,,,,,,,,,,,,,,,,5,80,stone_breaker,FALSE,
-sacred_clearing,Sacred Clearing,stone_monoliths_2,clean_up,progress_clean,,,50000,,,,,,,,,,,,,,,,,,,,,,,,10,90,world_splitter;stone_breaker,FALSE,
-mystic_grove,Mystic Grove,craft_world_splitter;farm_stage_5,clean_up,clean_repeat_a,,,1500,,,Wood x200,,,,,,,,,,,,,,,,,,,,,0,0,world_splitter,TRUE,
-enchanted_forest,Enchanted Forest,craft_world_splitter;craft_stone_breaker;farm_stage_5,clean_up,clean_repeat_b,,,3000,,,Wood x500;Enchanted Wood x1 (5% chance),,,,,,,,,,,,,,,,,,,,,0,0,world_splitter;stone_breaker,TRUE,
+clear_weeds_1,Clear Weeds #1,,cleanup,farm_clean_up_route_1,,,15,,,,,,,,,,,,,,,,,,,,,,,,2,,hands,FALSE,Clear small weeds to open 2 new plots
+clear_weeds_2,Clear Weeds #2,clear_weeds_1,cleanup,farm_clean_up_route_1,,,50,,,,,,,,,,,,,,,,,,,,,,,,3,,hands,FALSE,Clear dense weeds to open 3 more plots
+gather_sticks,Gather Sticks,,clean_up,clean_repeat_a,,,5,,,Wood x1,,,,,,,,,,,,,,,,,,,,,,,hands,TRUE,Collect loose sticks for wood
+break_branches,Break Branches,,clean_up,clean_repeat_b,,,10,,,Wood x2,,,,,,,,,,,,,,,,,,,,,,,hands,TRUE,Break fallen branches for wood
+collect_dead_trees,Collect Dead Trees,farm_stage_2,cleanup,farm_clean_up_route_1,,,60,,,Wood x8,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Remove dead trees and collect wood
+small_hold_till_soil_1,Small Hold Till Soil #1,collect_dead_trees;craft_hoe,cleanup,farm_clean_up_route_1,,,40,,,,,,,,,,,,,,,,,,,,,,,,2,,hoe,FALSE,Till cleared land to add 2 plots
+clear_small_rocks,Clear Small Rocks,small_hold_till_soil_1,cleanup,farm_clean_up_route_1,,,75,,,Stone x6,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Clear small rocks and collect stone
+small_hold_till_soil_2,Small Hold Till Soil #2,clear_small_rocks,cleanup,farm_clean_up_route_1,,,60,,,,,,,,,,,,,,,,,,,,,,,,3,,hoe,FALSE,Till rocky ground to add 3 plots
+remove_rock_pile,Remove Rock Pile,small_hold_till_soil_2,cleanup,farm_clean_up_route_1,,,120,,,Stone x8,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Clear large rock pile for stone
+small_hold_till_soil_3,Small Hold Till Soil #3,remove_rock_pile,cleanup,farm_clean_up_route_1,,,120,,,,,,,,,,,,,,,,,,,,,,,,3,,hoe,FALSE,Till cleared area to add 3 plots
+clear_field_stones,Clear Field Stones,small_hold_till_soil_3,cleanup,farm_clean_up_route_1,,,175,,,Stone x10,,,,,,,,,,,,,,,,,,,,,,,hands,FALSE,Remove scattered field stones
+small_hold_till_soil_4,Small Hold Till Soil #4,clear_field_stones,cleanup,farm_clean_up_route_1,,,160,,,,,,,,,,,,,,,,,,,,,,,,4,,hoe,FALSE,Till final section to add 4 plots
+chop_saplings,Chop Saplings,farm_stage_2,clean_up,clean_repeat_a,,,25,,,Wood x2,,,,,,,,,,,,,,,,,,,,,,,hands,TRUE,Cut down young trees for wood
+fell_small_tree,Fell Small Tree,craft_axe;farm_stage_2,clean_up,clean_repeat_b,,,50,,,Wood x5,,,,,,,,,,,,,,,,,,,,,,,axe,TRUE,Chop down small tree with axe
+crack_small_boulders,Crack Small Boulders,homestead_deed;craft_hammer,cleanup,farm_clean_up_route_1,,,600,,,Stone x15,,,,,,,,,,,,,,,,,,,,,,,hammer,FALSE,Break apart small boulders with hammer
+homestead_till_soil_1,Homestead Till Soil #1,crack_small_boulders,cleanup,farm_clean_up_route_1,,,400,,,,,,,,,,,,,,,,,,,,,,,,3,,hoe,FALSE,Till boulder-cleared land to add 3 plots
+split_small_stumps,Split Small Stumps,homestead_deed;craft_axe,cleanup,farm_clean_up_route_2,,,750,,,Wood x25,,,,,,,,,,,,,,,,,,,,,,,axe,FALSE,Remove tree stumps with axe for wood
+homestead_till_soil_2,Homestead Till Soil #2,split_small_stumps,cleanup,farm_clean_up_route_2,,,800,,,,,,,,,,,,,,,,,,,,,,,,3,,hoe,FALSE,Till stump-cleared land to add 3 plots
+level_molehills,Level Molehills,homestead_deed;craft_shovel,cleanup,farm_clean_up_route_3,,,1200,,,,,,,,,,,,,,,,,,,,,,,,,,shovel,FALSE,Level molehill mounds with shovel
+homestead_till_soil_3,Homestead Till Soil #3,level_molehills,cleanup,farm_clean_up_route_3,,,1200,,,,,,,,,,,,,,,,,,,,,,,,3,,hoe,FALSE,Till leveled ground to add 3 plots
+break_boulders,Break Boulders,homestead_till_soil_1,cleanup,farm_clean_up_route_1,,,1500,,,Stone x30,,,,,,,,,,,,,,,,,,,,,,,hammer,FALSE,Shatter large boulders for stone
+homestead_till_soil_4,Homestead Till Soil #4,break_boulders;craft_hoe_plus,cleanup,farm_clean_up_route_1,,,1600,,,,,,,,,,,,,,,,,,,,,,,,3,,hoe_plus,FALSE,Till with improved hoe to add 3 plots
+remove_stumps,Remove Stumps,homestead_till_soil_2,cleanup,farm_clean_up_route_2,,,2800,,,Wood x35,,,,,,,,,,,,,,,,,,,,,,,axe,FALSE,Clear old growth stumps for wood
+homestead_till_soil_5,Homestead Till Soil #5,remove_stumps;craft_hoe_plus,cleanup,farm_clean_up_route_2,,,1600,,,,,,,,,,,,,,,,,,,,,,,,4,,hoe_plus,FALSE,Till with improved hoe to add 4 plots
+dig_buried_stones,Dig Buried Stones,homestead_till_soil_3,cleanup,farm_clean_up_route_3,,,2800,,,Stone x35,,,,,,,,,,,,,,,,,,,,,,,shovel,FALSE,Excavate buried stones with shovel
+homestead_till_soil_6,Homestead Till Soil #6,dig_buried_stones;craft_hoe_plus,cleanup,farm_clean_up_route_3,,,1600,,,,,,,,,,,,,,,,,,,,,,,,4,,hoe_plus,FALSE,Till final section to add 4 plots and complete Homestead
+chop_trees,Chop Trees,craft_axe;farm_stage_3,clean_up,clean_repeat_a,,,100,,,Wood x10,,,,,,,,,,,,,,,,,,,,,,,axe,TRUE,Harvest mature trees for wood
+clear_grove,Clear Grove,craft_axe_plus;farm_stage_3,clean_up,clean_repeat_b,,,200,,,Wood x25,,,,,,,,,,,,,,,,,,,,,,,axe_plus,TRUE,Clear entire grove with improved axe
+crack_boulders,Crack Boulders,manor_grounds_deed;craft_hammer_plus,cleanup,farm_clean_up_route_1,,,4000,,,Stone x30,,,,,,,,,,,,,,,,,,,,,,,hammer_plus,FALSE,Demolish massive boulders with improved hammer
+till_manor_grounds_1,Till Manor Grounds #1,crack_boulders,cleanup,farm_clean_up_route_1,,,2500,,,,,,,,,,,,,,,,,,,,,,,,3,,hoe_plus,FALSE,Till boulder field to add 3 plots
+clear_thickets,Clear Thickets,manor_grounds_deed;craft_axe_plus,cleanup,farm_clean_up_route_2,,,3600,,,Wood x40,,,,,,,,,,,,,,,,,,,,,,,axe_plus,FALSE,Clear dense thickets with improved axe
+till_manor_grounds_2,Till Manor Grounds #2,clear_thickets,cleanup,farm_clean_up_route_2,,,3000,,,,,,,,,,,,,,,,,,,,,,,,4,,hoe_plus,FALSE,Till thicket land to add 4 plots
+eliminate_molehills,Eliminate Molehills,manor_grounds_deed;craft_shovel_plus,cleanup,farm_clean_up_route_3,,,6400,,,,,,,,,,,,,,,,,,,,,,,,,,shovel_plus,FALSE,Remove extensive molehill network with improved shovel
+till_manor_grounds_3,Till Manor Grounds #3,eliminate_molehills,cleanup,farm_clean_up_route_3,,,4000,,,,,,,,,,,,,,,,,,,,,,,,4,,hoe_plus,FALSE,Till excavated area to add 4 plots
+break_mineral_depost,Break Mineral Depost,till_manor_grounds_1,cleanup,farm_clean_up_route_1,,,6000,,,Copper x20,,,,,,,,,,,,,,,,,,,,,,,hammer_plus,FALSE,Mine surface copper deposit with hammer
+till_manor_grounds_4,Till Manor Grounds #4,break_mineral_depost;craft_terra_former,cleanup,farm_clean_up_route_1,,,5000,,,,,,,,,,,,,,,,,,,,,,,,4,,terra_former,FALSE,Terraform land to add 4 plots
+buck_fallen_trunks,Buck Fallen Trunks,till_manor_grounds_2,cleanup,farm_clean_up_route_2,,,7500,,,Wood x50,,,,,,,,,,,,,,,,,,,,,,,axe_plus,FALSE,Process massive fallen trunks for wood
+till_manor_grounds_5,Till Manor Grounds #5,buck_fallen_trunks;craft_terra_former,cleanup,farm_clean_up_route_2,,,7500,,,,,,,,,,,,,,,,,,,,,,,,5,,terra_former,FALSE,Terraform cleared area to add 5 plots
+landscape_section,Landscape Section,till_manor_grounds_3,cleanup,farm_clean_up_route_3,,,7500,,,Stone x25;Wood x25,,,,,,,,,,,,,,,,,,,,,,,shovel_plus,FALSE,Major landscaping project yields mixed materials
+till_manor_grounds_6,Till Manor Grounds #6,landscape_section;craft_terra_former,cleanup,farm_clean_up_route_3,,,7500,,,,,,,,,,,,,,,,,,,,,,,,5,,terra_former,FALSE,Terraform final section to add 5 plots and complete Manor Grounds
+harvest_forest,Harvest Forest,craft_shovel_plus;farm_stage_4,clean_up,clean_repeat_a,,,400,,,Wood x40,,,,,,,,,,,,,,,,,,,,,,,shovel_plus,TRUE,Harvest forest section for bulk wood
+clear_old_growth,Clear Old Growth,craft_earth_mover;farm_stage_4,clean_up,clean_repeat_b,,,800,,,Wood x100,,,,,,,,,,,,,,,,,,,,,,,earth_mover,TRUE,Clear ancient forest with Earth Mover
+break_stone_monoliths,Break Stone Monoliths,great_estate_deed; craft_stone_breaker,cleanup,farm_clean_up_route_1,,,20000,,,Stone x60,,,,,,,,,,,,,,,,,,,,,,,stone_breaker,FALSE,Demolish ancient stone monoliths with Stone Breaker
+till_estate_grounds_1,Till Estate Grounds #1,break_stone_monoliths,cleanup,farm_clean_up_route_1,,,10000,,,,,,,,,,,,,,,,,,,,,,,,5,,terra_former,FALSE,Terraform monolith site to add 5 plots
+cut_ancient_roots,Cut Ancient Roots ,great_estate_deed;craft_world_splitter,cleanup,farm_clean_up_route_2,,,20000,,,Wood x120,,,,,,,,,,,,,,,,,,,,,,,world_splitter,FALSE,Sever ancient root system with World Splitter
+till_estate_grounds_2,Till Estate Grounds #2,cut_ancient_roots,cleanup,farm_clean_up_route_2,,,12500,,,,,,,,,,,,,,,,,,,,,,,,5,,terra_former,FALSE,Terraform root-cleared land to add 5 plots
+flatten_hill,Flatten Hill,great_estate_deed;craft_earth_mover,cleanup,farm_clean_up_route_3,,,30000,,,Stone x85,,,,,,,,,,,,,,,,,,,,,,,earth_mover,FALSE,Level entire hillside with Earth Mover
+till_estate_grounds_3,Till Estate Grounds #3,flatten_hill,cleanup,farm_clean_up_route_3,,,15000,,,,,,,,,,,,,,,,,,,,,,,,5,,terra_former,FALSE,Terraform flattened area to add 5 plots
+sacred_clearing,Sacred Clearing,till_estate_grounds_1;till_estate_grounds_2;till_estate_grounds_3,cleanup,farm_clean_up_route_1,,,50000,,,Wood x50;Stone x50,,,,,,,,,,,,,,,,,,,,,,,world_splitter;stone_breaker;earth_mover,FALSE,Consecrate sacred ground using all master tools
+till_estate_grounds_4,Till Estate Grounds #4,sacred_clearing,cleanup,farm_clean_up_route_1,,,50000,,,,,,,,,,,,,,,,,,,,,,,,10,,terra_former,FALSE,Terraform sacred ground to add 10 plots and complete Great Estate
+mystic_grove,Mystic Grove,craft_world_splitter;farm_stage_5,clean_up,clean_repeat_a,,,1500,,,Wood x200,,,,,,,,,,,,,,,,,,,,,,,world_splitter,TRUE,Harvest mystical grove for enchanted wood
+enchanted_forest,Enchanted Forest,craft_world_splitter;craft_stone_breaker;farm_stage_5,clean_up,clean_repeat_b,,,3000,,,Wood x500;Enchanted Wood x1 (5% chance),,,,,,,,,,,,,,,,,,,,,,,world_splitter;stone_breaker,TRUE,Clear enchanted forest with master tools for rare materials

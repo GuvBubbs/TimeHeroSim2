@@ -1,7 +1,7 @@
 id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-farm_stage_1,Starter Plot,,,,,,,,,,,3,clear_weeds_1;clear_weeds_2,,,,,,,,,,,,,,,,,,,,,,Tutorial area 3>8
-farm_stage_2,Small Hold,clear_weeds_2;craft_hoe,,,,,,,,,,8,collect_dead_trees;till_soil_1;clear_rocks_1;till_soil_2,,,,,,,,,,,,,,,,,,,,,,No deed required 8>20
-farm_stage_3,Homestead,till_soil_2;homestead_deed,,,,,,,,,,20,clear_boulders_1;remove_stumps_1;clear_boulders_2;remove_stumps_2;till_new_land,,,,,,,,,,,,,,,,,,,,,,Requires Homestead Deed 20>40
-farm_stage_4,Manor Grounds,till_new_land;manor_grounds_deed,,,,,,,,,,40,excavate_rocks_1;clear_thickets_1;excavate_rocks_2;clear_thickets_2;terraform,,,,,,,,,,,,,,,,,,,,,,Requires Manor Grounds Deed 40>65
-farm_stage_5,Great Estate,terraform;great_estate_deed,,,,,,,,,,65,stone_monoliths_1;ancient_roots_1;stone_monoliths_2;sacred_clearing,,,,,,,,,,,,,,,,,,,,,,Requires Great Estate Deed 65 > 90
-farm_stage_6,Legacy Estate,sacred_clearing,,,,,,,,,,90,Future content,,,,,,,,,,,,,,,,,,,,,,Post-game content 90 >130
+farm_stage_1,Starter Plot,,,,,,,,,,,,clear_weeds_1;clear_weeds_2;gather_sticks;break_branches,,,,,,,,,,,,,,,,,,,8,,,Tutorial area 3>8
+farm_stage_2,Small Hold,clear_weeds_2;craft_hoe,,,,,,,,,,,collect_dead_trees;small_hold_till_soil_1;clear_small_rocks;small_hold_till_soil_2;remove_rock_pile;small_hold_till_soil_3;clear_field_stones;small_hold_till_soil_4;chop_saplings;fell_small_tree,,,,,,,,,,,,,,,,,,,20,,,No deed required 8>20
+farm_stage_3,Homestead,homestead_deed,,,,,,,,,,,crack_small_boulders;homestead_till_soil_1;split_small_stumps;homestead_till_soil_2;level_molehills;homestead_till_soil_3;break_boulders;homestead_till_soil_4;remove_stumps;homestead_till_soil_5;dig_buried_stones;homestead_till_soil_6,,,,,,,,,,,,,,,,,,,40,,,Requires Homestead Deed 20>40
+farm_stage_4,Manor Grounds,manor_grounds_deed,,,,,,,,,,,crack_boulders;till_manor_grounds_1;clear_thickets;till_manor_grounds_2;eliminate_molehills;till_manor_grounds_3;break_mineral_depost;till_manor_grounds_4;buck_fallen_trunks;till_manor_grounds_5;landscape_section;till_manor_grounds_6,,,,,,,,,,,,,,,,,,,65,,,Requires Manor Grounds Deed 40>65
+farm_stage_5,Great Estate,great_estate_deed,,,,,,,,,,,stone_monoliths_1;ancient_roots_1;stone_monoliths_2;sacred_clearing,,,,,,,,,,,,,,,,,,,90,,,Requires Great Estate Deed 65 > 90
+farm_stage_6,Legacy Estate,sacred_clearing,,,,,,,,,,,Future content,,,,,,,,,,,,,,,,,,,130,,,Post-game content 90 >130

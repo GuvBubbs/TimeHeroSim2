@@ -19,20 +19,16 @@ export interface ResourceState {
   energy: {
     current: number
     max: number
-    regenRate: number     // Per minute
+    regenerationRate: number     // Per minute
   }
   gold: number
   water: {
     current: number
     max: number
-    pumpRate: number      // Per minute when pumping
+    autoGenRate: number      // Per minute when auto-pumping
   }
-  seeds: {
-    [cropType: string]: number
-  }
-  materials: {
-    [materialId: string]: number
-  }
+  seeds: Map<string, number>
+  materials: Map<string, number>
 }
 
 /**
@@ -42,8 +38,11 @@ export interface ProgressionState {
   heroLevel: number
   experience: number
   farmStage: number           // Land expansion level
+  farmPlots: number           // Current number of farm plots
+  availablePlots: number      // Plots that can be used (not withered/blocked)
   currentPhase: string        // Early, Mid, Late game phase
   completedAdventures: string[]
+  completedCleanups: Set<string>  // Cleanup actions that have been completed
   unlockedUpgrades: string[]
   unlockedAreas: string[]
   victoryConditionsMet: boolean

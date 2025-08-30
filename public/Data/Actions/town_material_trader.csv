@@ -1,14 +1,14 @@
 id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-sell_stone,Sell Stone,depth_1,town,material_trades,,,,,,,,,,,2,10,,,,,,,,,,,,,,,,,,TRUE,Common excess
-sell_wood,Sell Wood,farm_stage_2,town,material_trades,,,,,,,,,,,3,10,,,,,,,,,,,,,,,,,,TRUE,Valuable early
-sell_copper,Sell Copper,depth_2,town,material_trades,,,,,,,,,,,5,5,,,,,,,,,,,,,,,,,,TRUE,
-sell_iron,Sell Iron,depth_3,town,material_trades,,,,,,,,,,,10,5,,,,,,,,,,,,,,,,,,TRUE,
-sell_silver,Sell Silver,depth_5,town,material_trades,,,,,,,,,,,25,3,,,,,,,,,,,,,,,,,,TRUE,
-sell_crystal,Sell Crystal,depth_7,town,material_trades,,,,,,,,,,,100,1,,,,,,,,,,,,,,,,,,TRUE,Rare excess
-sell_mythril,Sell Mythril,depth_9,town,material_trades,,,,,,,,,,,500,1,,,,,,,,,,,,,,,,,,TRUE,Very rare
-sell_obsidian,Sell Obsidian,depth_10,town,material_trades,,,,,,,,,,,1000,1,,,,,,,,,,,,,,,,,,TRUE,Endgame only
-trade_common_materials,Common Materials Trading,,town,gold_conversion_a,,,,,,,,,,2:01,,20,Stone>Wood,,,,,,,,,,,,,,,,,TRUE,
-trade_metal,Metal Trading,homestead_deed,town,gold_conversion_a,,,,,,,,,,2:01,,10,Copper>Iron,,,,,,,,,,,,,,,,,TRUE,
-trade_rare,Rare Trading,manor_grounds_deed,town,gold_conversion_a,,,,,,,,,,3:01,,3,Silver>Crystal,,,,,,,,,,,,,,,,,TRUE,
-trade_cross_tier_up,Cross-Tier Trading Up,great_estate_deed,town,gold_conversion_a,,,,,,,,,,5:01,,5,Iron>Silver,,,,,,,,,,,,,,,,,TRUE,
-trade_cross_tier_down,Cross-Tier Trading Down,great_estate_deed,town,gold_conversion_b,,,,,,,,,,1:03,,1,Silver>Iron,,,,,,,,,,,,,,,,,TRUE,
+sell_stone,Sell Stone,depth_1;material_trader,town,material_trades_basics_a,,,,,,,,,,,2,10,,,,,,,,,,,,,,,,,,TRUE,Common excess
+sell_wood,Sell Wood,farm_stage_2;material_trader,town,material_trades_basics,,,,,,,,,,,3,10,,,,,,,,,,,,,,,,,,TRUE,Valuable early
+sell_copper,Sell Copper,depth_2;material_trader,town,material_trades_a,,,,,,,,,,,5,5,,,,,,,,,,,,,,,,,,TRUE,
+sell_iron,Sell Iron,depth_3;material_trader,town,material_trades,,,,,,,,,,,10,5,,,,,,,,,,,,,,,,,,TRUE,
+sell_silver,Sell Silver,depth_5;material_trader,town,material_trades,,,,,,,,,,,25,3,,,,,,,,,,,,,,,,,,TRUE,
+sell_crystal,Sell Crystal,depth_7;material_trader,town,material_trades,,,,,,,,,,,100,1,,,,,,,,,,,,,,,,,,TRUE,Rare excess
+sell_mythril,Sell Mythril,depth_9;material_trader,town,material_trades,,,,,,,,,,,500,1,,,,,,,,,,,,,,,,,,TRUE,Very rare
+sell_obsidian,Sell Obsidian,depth_10;material_trader,town,material_trades,,,,,,,,,,,1000,1,,,,,,,,,,,,,,,,,,TRUE,Endgame only
+trade_common_materials,Common Materials Trading,material_trader,town,gold_conversion_a,,,,,,,,,,2:01,,20,Stone>Wood,,,,,,,,,,,,,,,,,TRUE,
+trade_metal,Metal Trading,homestead_deed;material_trader,town,gold_conversion_a,,,,,,,,,,2:01,,10,Copper>Iron,,,,,,,,,,,,,,,,,TRUE,
+trade_rare,Rare Trading,manor_grounds_deed;material_trader,town,gold_conversion_a,,,,,,,,,,3:01,,3,Silver>Crystal,,,,,,,,,,,,,,,,,TRUE,
+trade_cross_tier_up,Cross-Tier Trading Up,great_estate_deed;material_trader,town,gold_conversion_a,,,,,,,,,,5:01,,5,Iron>Silver,,,,,,,,,,,,,,,,,TRUE,
+trade_cross_tier_down,Cross-Tier Trading Down,great_estate_deed;material_trader,town,gold_conversion_b,,,,,,,,,,1:03,,1,Silver>Iron,,,,,,,,,,,,,,,,,TRUE,

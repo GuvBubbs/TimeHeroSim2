@@ -2,6 +2,7 @@
 // Main simulation engine that runs the game logic
 
 import { MapSerializer } from './MapSerializer'
+import { CSVDataParser } from './CSVDataParser'
 import { useGameDataStore } from '@/stores/gameData'
 import type { 
   SimulationConfig, 
@@ -227,6 +228,58 @@ export class SimulationEngine {
   }
 
   /**
+   * Initializes seeds with starting quantities
+   */
+  private initializeSeeds(): Map<string, number> {
+    const seeds = new Map<string, number>()
+    
+    // Starting seeds from game design
+    seeds.set('turnip', 12)
+    seeds.set('beet', 8) 
+    seeds.set('carrot', 5)
+    seeds.set('potato', 15)
+    
+    return seeds
+  }
+
+  /**
+   * Initializes materials with all standard and boss materials
+   */
+  private initializeMaterials(): Map<string, number> {
+    const materials = new Map<string, number>()
+    
+    // Standard materials from game design document
+    const standardMaterials = [
+      'wood', 'stone', 'copper', 'iron', 'silver', 'crystal', 'mythril', 'obsidian'
+    ]
+    
+    // Boss materials from adventure rewards
+    const bossMaterials = [
+      'pine_resin', 'shadow_bark', 'mountain_stone', 'cave_crystal', 
+      'frozen_heart', 'molten_core', 'enchanted_wood'
+    ]
+    
+    // Initialize standard materials with starting amounts
+    materials.set('wood', 25)
+    materials.set('stone', 18)
+    materials.set('copper', 3)
+    materials.set('iron', 7)
+    materials.set('silver', 2)
+    materials.set('crystal', 0)
+    materials.set('mythril', 0)
+    materials.set('obsidian', 0)
+    
+    // Initialize boss materials to 0 (earned through adventures)
+    for (const bossMaterial of bossMaterials) {
+      materials.set(bossMaterial, 0)
+    }
+    
+    console.log('🔧 SimulationEngine: Initialized materials:', Array.from(materials.entries()))
+    
+    return materials
+  }
+
+  /**
    * Initializes the game state based on parameters
    */
   private initializeGameState(): GameState {
@@ -245,33 +298,26 @@ export class SimulationEngine {
         energy: {
           current: farmParams.initialState.energy,
           max: farmParams.initialState.energy,
-          regenRate: 1 // 1 energy per minute base
+          regenerationRate: 1 // 1 energy per minute base
         },
         gold: 100, // Starting gold
         water: {
           current: farmParams.initialState.water,
           max: farmParams.waterSystem.maxWaterStorage,
-          pumpRate: 10 * farmParams.waterSystem.pumpEfficiency
+          autoGenRate: 10 * farmParams.waterSystem.pumpEfficiency
         },
-        seeds: {
-          'turnip': 12,
-          'beet': 8,
-          'carrot': 5,
-          'potato': 15
-        },
-        materials: {
-          'wood': 25,
-          'stone': 18,
-          'iron': 7,
-          'silver': 2
-        }
+        seeds: this.initializeSeeds(),
+        materials: this.initializeMaterials()
       },
       progression: {
         heroLevel: 1,
         experience: 0,
         farmStage: 1,
+        farmPlots: farmParams.initialState.plots || 4,
+        availablePlots: farmParams.initialState.plots || 4,
         currentPhase: 'Early',
         completedAdventures: [],
+        completedCleanups: new Set<string>(),
         unlockedUpgrades: [],
         unlockedAreas: ['farm'],
         victoryConditionsMet: false
@@ -485,7 +531,7 @@ export class SimulationEngine {
     // Regenerate energy
     this.gameState.resources.energy.current = Math.min(
       this.gameState.resources.energy.max,
-      this.gameState.resources.energy.current + this.gameState.resources.energy.regenRate * deltaTime
+      this.gameState.resources.energy.current + this.gameState.resources.energy.regenerationRate * deltaTime
     )
     
     return events
@@ -692,7 +738,7 @@ export class SimulationEngine {
     if (!towerParams) return actions
     
     // Manual seed catching
-    const totalSeeds = Object.values(this.gameState.resources.seeds).reduce((a, b) => a + b, 0)
+    const totalSeeds = Array.from(this.gameState.resources.seeds.values()).reduce((a, b) => a + b, 0)
     const needsSeeds = totalSeeds < (towerParams.decisionLogic?.seedTargetMultiplier || 2) * 10
     
     if (needsSeeds && this.gameState.resources.energy.current > 20) {
@@ -925,7 +971,7 @@ export class SimulationEngine {
     }
     
     // Heat management
-    if (this.getForgeHeat() < 30 && this.gameState.resources.materials['wood'] >= 5) {
+    if (this.getForgeHeat() < 30 && (this.gameState.resources.materials.get('wood') || 0) >= 5) {
       actions.push({
         id: `stoke_forge_${Date.now()}`,
         type: 'stoke',
@@ -1137,7 +1183,7 @@ export class SimulationEngine {
         
       case 'tower':
         // Navigate to tower if we need seeds
-        const totalSeeds = Object.values(this.gameState.resources.seeds).reduce((a, b) => a + b, 0)
+        const totalSeeds = Array.from(this.gameState.resources.seeds.values()).reduce((a, b) => a + b, 0)
         return { reason: 'Need seeds', score: totalSeeds < 10 ? 8 : 2 }
         
       case 'town':
@@ -1154,9 +1200,9 @@ export class SimulationEngine {
    * Selects the best crop to plant based on current strategy
    */
   private selectCropToPlant(): string | null {
-    const availableSeeds = Object.keys(this.gameState.resources.seeds).filter(
-      crop => this.gameState.resources.seeds[crop] > 0
-    )
+    const availableSeeds = Array.from(this.gameState.resources.seeds.entries())
+      .filter(([crop, amount]) => amount > 0)
+      .map(([crop, amount]) => crop)
     
     if (availableSeeds.length === 0) return null
     
@@ -1346,24 +1392,27 @@ export class SimulationEngine {
     // Execute action based on type
     switch (action.type) {
       case 'plant':
-        if (action.target && this.gameState.resources.seeds[action.target] > 0) {
-          this.gameState.resources.seeds[action.target]--
-          this.gameState.processes.crops.push({
-            plotId: `plot_${this.gameState.processes.crops.length + 1}`,
-            cropId: action.target,
-            plantedAt: this.gameState.time.totalMinutes,
-            growthTimeRequired: 120, // 2 hours base
-            waterLevel: 100,
-            isWithered: false,
-            readyToHarvest: false
-          })
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_plant',
-            description: `Planted ${action.target}`,
-            importance: 'low'
-          })
+        if (action.target) {
+          const currentSeeds = this.gameState.resources.seeds.get(action.target) || 0
+          if (currentSeeds > 0) {
+            this.gameState.resources.seeds.set(action.target, currentSeeds - 1)
+            this.gameState.processes.crops.push({
+              plotId: `plot_${this.gameState.processes.crops.length + 1}`,
+              cropId: action.target,
+              plantedAt: this.gameState.time.totalMinutes,
+              growthTimeRequired: 120, // 2 hours base
+              waterLevel: 100,
+              isWithered: false,
+              readyToHarvest: false
+            })
+            
+            events.push({
+              timestamp: this.gameState.time.totalMinutes,
+              type: 'action_plant',
+              description: `Planted ${action.target}`,
+              importance: 'low'
+            })
+          }
         }
         break
         
@@ -1405,9 +1454,10 @@ export class SimulationEngine {
         const seedsGained = action.expectedRewards.resources?.seeds || 0
         if (seedsGained > 0) {
           // Distribute seeds randomly among available types
-          const seedTypes = Object.keys(this.gameState.resources.seeds)
+          const seedTypes = Array.from(this.gameState.resources.seeds.keys())
           const seedType = seedTypes[Math.floor(Math.random() * seedTypes.length)]
-          this.gameState.resources.seeds[seedType] += seedsGained
+          const currentAmount = this.gameState.resources.seeds.get(seedType) || 0
+          this.gameState.resources.seeds.set(seedType, currentAmount + seedsGained)
           
           events.push({
             timestamp: this.gameState.time.totalMinutes,
@@ -2232,7 +2282,7 @@ export class SimulationEngine {
    */
   private checkMaterialRequirements(materials: { [key: string]: number }): boolean {
     for (const [material, required] of Object.entries(materials)) {
-      const available = this.gameState.resources.materials[material] || 0
+      const available = this.gameState.resources.materials.get(material) || 0
       if (available < required) return false
     }
     return true
@@ -2593,6 +2643,129 @@ export class SimulationEngine {
     }
     
     return false
+  }
+
+  /**
+   * Gets storage limit for a specific material based on purchased upgrades
+   */
+  private getStorageLimit(material: string): number {
+    const baseLimits: { [key: string]: number } = {
+      // Default storage limits from game design
+      'wood': 50,
+      'stone': 50, 
+      'copper': 50,
+      'iron': 50,
+      'silver': 50,
+      'crystal': 50,
+      'mythril': 50,
+      'obsidian': 50,
+      'pine_resin': 10,
+      'shadow_bark': 10,
+      'mountain_stone': 10,
+      'cave_crystal': 10,
+      'frozen_heart': 10,
+      'molten_core': 10,
+      'enchanted_wood': 5
+    }
+    
+    let limit = baseLimits[material] || 50 // Default limit
+    
+    // Check for storage upgrades in progression
+    const upgrades = this.gameState.progression.unlockedUpgrades
+    
+    if (upgrades.includes('material_crate_i')) {
+      limit = 50
+    }
+    if (upgrades.includes('material_crate_ii')) {
+      limit = 100
+    }
+    if (upgrades.includes('material_warehouse')) {
+      limit = 250
+    }
+    if (upgrades.includes('material_depot')) {
+      limit = 500
+    }
+    if (upgrades.includes('material_silo')) {
+      limit = 1000
+    }
+    if (upgrades.includes('grand_warehouse')) {
+      limit = 2500
+    }
+    if (upgrades.includes('infinite_vault')) {
+      limit = 10000
+    }
+    
+    return limit
+  }
+
+  /**
+   * Adds material with storage limits and normalization
+   */
+  private addMaterial(materialName: string, amount: number): boolean {
+    // Normalize material name using CSVDataParser
+    const normalizedName = CSVDataParser.normalizeMaterialName(materialName)
+    
+    if (!normalizedName || amount <= 0) {
+      return false
+    }
+    
+    const current = this.gameState.resources.materials.get(normalizedName) || 0
+    const storageLimit = this.getStorageLimit(normalizedName)
+    
+    const newAmount = Math.min(current + amount, storageLimit)
+    const actualAdded = newAmount - current
+    
+    this.gameState.resources.materials.set(normalizedName, newAmount)
+    
+    // Return true if hit storage cap (warning condition)
+    const hitStorageCap = actualAdded < amount
+    
+    if (hitStorageCap) {
+      console.warn(`⚠️ Storage limit reached for ${normalizedName}: ${newAmount}/${storageLimit}`)
+      
+      // Add warning event
+      this.addGameEvent({
+        timestamp: this.gameState.time.totalMinutes,
+        type: 'storage_warning',
+        description: `Storage full for ${materialName} (${newAmount}/${storageLimit})`,
+        importance: 'medium'
+      })
+    }
+    
+    return hitStorageCap
+  }
+
+  /**
+   * Consumes materials for crafting/actions
+   */
+  private consumeMaterials(materials: Map<string, number>): boolean {
+    // First check if we have enough of all materials
+    for (const [materialName, amount] of materials.entries()) {
+      const normalizedName = CSVDataParser.normalizeMaterialName(materialName)
+      const available = this.gameState.resources.materials.get(normalizedName) || 0
+      
+      if (available < amount) {
+        return false // Not enough materials
+      }
+    }
+    
+    // Consume the materials
+    for (const [materialName, amount] of materials.entries()) {
+      const normalizedName = CSVDataParser.normalizeMaterialName(materialName)
+      const current = this.gameState.resources.materials.get(normalizedName) || 0
+      this.gameState.resources.materials.set(normalizedName, current - amount)
+    }
+    
+    return true
+  }
+
+  /**
+   * Adds a game event to the current tick's events
+   */
+  private addGameEvent(event: GameEvent): void {
+    // Store events for the current tick - in a real implementation this would
+    // be added to the current tick's event list
+    console.log(`📅 Game Event: ${event.description}`)
   }
 
   /**

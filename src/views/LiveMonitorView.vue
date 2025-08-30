@@ -30,8 +30,8 @@
             </span>
           </div>
           
-          <div v-if="currentState" class="text-sm text-sim-text-secondary">
-            Day {{ currentState.time.day }}, {{ formatTime(currentState.time) }}
+          <div v-if="widgetData.time" class="text-sm text-sim-text-secondary">
+            Day {{ widgetData.time.day }}, {{ formatTime(widgetData.time) }}
           </div>
           
           <div v-if="currentStats" class="text-sm text-sim-text-secondary">
@@ -106,7 +106,7 @@
         
         <!-- Resources -->
         <div class="col-span-3 h-80">
-          <ResourcesWidget :gameState="currentState" />
+          <ResourcesWidget :gameState="currentState" :widgetResources="widgetData.resources" />
         </div>
         
         <!-- Equipment -->
@@ -218,6 +218,8 @@
 import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { SimulationBridge } from '@/utils/SimulationBridge'
 import { SimulationBridgeTest } from '@/utils/SimulationBridgeTest'
+import { WidgetDataAdapter } from '@/utils/WidgetDataAdapter'
+import { liveMonitorDebug } from '@/utils/LiveMonitorDebug'
 import type { GameState, GameEvent, SimulationStats } from '@/types'
 
 // Import widgets
@@ -251,6 +253,17 @@ const bridgeStatus = reactive({
   workerReady: false
 })
 
+// Widget-specific reactive data (transformed from GameState)
+const widgetData = reactive({
+  resources: WidgetDataAdapter.transformResources(null),
+  progression: WidgetDataAdapter.transformProgression(null),
+  location: WidgetDataAdapter.transformLocation(null),
+  time: WidgetDataAdapter.transformTime(null),
+  processes: WidgetDataAdapter.transformProcesses(null),
+  inventory: WidgetDataAdapter.transformInventory(null)
+})
+
+// For backwards compatibility with existing polling (will remove after testing)
 const statsInterval = ref<ReturnType<typeof setInterval> | null>(null)
 
 // Mock actions for demonstration
@@ -291,6 +304,47 @@ const mockNextAction = computed(() => {
   return null
 })
 
+// Widget Update Methods
+const updateWidgets = (gameState: GameState | null) => {
+  console.log('📊 LiveMonitor: Updating widgets with gameState:', gameState)
+  
+  if (!gameState) {
+    console.warn('⚠️ LiveMonitor: Received null gameState, using defaults')
+    return
+  }
+
+  // Validate the game state structure
+  if (!WidgetDataAdapter.validateGameState(gameState)) {
+    console.error('❌ LiveMonitor: Invalid GameState structure received')
+    return
+  }
+
+  try {
+    // Transform GameState to widget-friendly formats
+    widgetData.resources = WidgetDataAdapter.transformResources(gameState)
+    widgetData.progression = WidgetDataAdapter.transformProgression(gameState)
+    widgetData.location = WidgetDataAdapter.transformLocation(gameState)
+    widgetData.time = WidgetDataAdapter.transformTime(gameState)
+    widgetData.processes = WidgetDataAdapter.transformProcesses(gameState)
+    widgetData.inventory = WidgetDataAdapter.transformInventory(gameState)
+    
+    // Update the raw state for compatibility
+    currentState.value = gameState
+    
+    console.log('✅ LiveMonitor: Widgets updated successfully', {
+      energy: widgetData.resources.energy.current,
+      gold: widgetData.resources.gold,
+      day: widgetData.time.day,
+      seedTypes: Object.keys(widgetData.resources.seeds).length,
+      materialTypes: Object.keys(widgetData.resources.materials).length
+    })
+    
+  } catch (error) {
+    console.error('❌ LiveMonitor: Error updating widgets:', error)
+    errorMessage.value = `Widget update failed: ${error}`
+  }
+}
+
 // Methods
 const getStatusText = (): string => {
   if (!bridgeStatus.isInitialized) return 'Not Initialized'
@@ -311,9 +365,47 @@ const initializeSimulation = async () => {
     
     await bridge.value.initialize(testConfig)
     
+    // Set up event-driven updates instead of polling
+    bridge.value.onTick((tickData) => {
+      console.log('🔄 LiveMonitor: Received tick event', {
+        tickCount: tickData.tickCount,
+        hasGameState: !!tickData.gameState,
+        executedActions: tickData.executedActions.length,
+        events: tickData.events.length
+      })
+      
+      // Update widgets with real-time game state
+      updateWidgets(tickData.gameState)
+      
+      // Update events for ActionLog widget
+      if (tickData.events.length > 0) {
+        recentEvents.value = [...tickData.events.slice(-50), ...recentEvents.value.slice(0, 50)]
+      }
+    })
+    
+    bridge.value.onStats((statsData) => {
+      console.log('📈 LiveMonitor: Received stats update', statsData)
+      currentStats.value = statsData
+    })
+    
+    bridge.value.onError((errorData) => {
+      console.error('❌ LiveMonitor: Simulation error:', errorData)
+      errorMessage.value = errorData.message
+      if (errorData.fatal) {
+        bridgeStatus.isRunning = false
+        bridgeStatus.isInitialized = false
+      }
+    })
+    
+    bridge.value.onComplete((completeData) => {
+      console.log('🏁 LiveMonitor: Simulation completed:', completeData.reason)
+      bridgeStatus.isRunning = false
+      updateWidgets(completeData.finalState)
+    })
+    
     bridgeStatus.isInitialized = true
     
-    console.log('✅ LiveMonitor: Simulation initialized')
+    console.log('✅ LiveMonitor: Simulation initialized with event handlers')
   } catch (error) {
     console.error('❌ LiveMonitor: Initialization failed:', error)
     errorMessage.value = `Initialization failed: ${error}`
@@ -382,20 +474,29 @@ const formatTime = (time: any): string => {
 
 // Lifecycle
 onMounted(() => {
-  console.log('📊 LiveMonitor mounted - Phase 6D Core Widget Implementation Complete')
+  console.log('📊 LiveMonitor mounted - Event-driven widget system active')
   
-  // Poll for stats every second
-  statsInterval.value = setInterval(async () => {
-    if (bridge.value && bridgeStatus.isInitialized) {
-      try {
-        const result = await bridge.value.getState()
-        currentState.value = result.gameState
-        currentStats.value = result.stats
-      } catch (error) {
-        console.warn('Stats polling failed:', error)
-      }
+  // Initialize widget data with defaults
+  updateWidgets(null)
+  
+  // Make debug utilities available
+  if (import.meta.env.DEV) {
+    console.log('🧪 Debug utilities available:')
+    console.log('  - liveMonitorDebug.testDataTransformation()')
+    console.log('  - liveMonitorDebug.inspectLiveMonitorState()')
+    console.log('  - liveMonitorDebug.simulateTickEvent()')
+    
+    // Run a quick transformation test
+    const testResult = liveMonitorDebug.testDataTransformation()
+    if (testResult.isValid) {
+      console.log('✅ Data transformation pipeline working correctly')
+    } else {
+      console.error('❌ Data transformation pipeline has issues')
     }
-  }, 1000)
+  }
+  
+  // No more polling - using event-driven updates via bridge.onTick()
+  console.log('🔄 LiveMonitor: Event-driven updates enabled, polling disabled')
 })
 
 onBeforeUnmount(() => {

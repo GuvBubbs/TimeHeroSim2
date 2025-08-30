@@ -3397,12 +3397,21 @@ export class SimulationEngine {
     // Check if it's time for next check-in
     const timeSinceLastCheckin = this.gameState.time.totalMinutes - this.lastCheckinTime
     
+    // For the very first check-in (lastCheckinTime = 0), allow action immediately if within waking hours
+    if (this.lastCheckinTime === 0 && currentHour >= 6 && currentHour < 22) {
+      console.log('🎬 SimulationEngine: First check-in allowed at', currentHour + ':' + currentMinute.toString().padStart(2, '0'))
+      this.lastCheckinTime = this.gameState.time.totalMinutes
+      return true
+    }
+    
     if (timeSinceLastCheckin >= minutesPerCheckin) {
       // Add some persona-based variance
       const variance = this.persona.learningRate * 60 // More random = more variance
       const randomOffset = (Math.random() - 0.5) * variance
       
-      if (minutesSinceWakeup >= this.lastCheckinTime + minutesPerCheckin + randomOffset) {
+      // Fixed logic: check if enough time has passed since last check-in
+      if (timeSinceLastCheckin >= minutesPerCheckin + randomOffset) {
+        console.log('🎬 SimulationEngine: Scheduled check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(', timeSinceLastCheckin, 'min since last)')
         this.lastCheckinTime = this.gameState.time.totalMinutes
         return true
       }

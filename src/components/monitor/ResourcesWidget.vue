@@ -111,18 +111,33 @@
 import { computed } from 'vue'
 import BaseWidget from './BaseWidget.vue'
 import type { GameState } from '@/types'
+import type { WidgetResources } from '@/utils/WidgetDataAdapter'
 
 interface Props {
   gameState: GameState | null
+  widgetResources?: WidgetResources
 }
 
 const props = defineProps<Props>()
 
 const resources = computed(() => {
+  // Use transformed widget data if available (new event-driven approach)
+  if (props.widgetResources) {
+    console.log('🔄 ResourcesWidget: Using transformed widget data', {
+      energy: props.widgetResources.energy.current,
+      gold: props.widgetResources.gold,
+      seedTypes: Object.keys(props.widgetResources.seeds).length,
+      materialTypes: Object.keys(props.widgetResources.materials).length
+    })
+    return props.widgetResources
+  }
+  
+  // Fallback to old format for backward compatibility
+  console.log('⚠️ ResourcesWidget: Using fallback gameState resources')
   return props.gameState?.resources || {
-    energy: { current: 0, max: 100, regenRate: 1 },
+    energy: { current: 0, max: 100, regenerationRate: 1 },
     gold: 0,
-    water: { current: 0, max: 100, pumpRate: 10 },
+    water: { current: 0, max: 100, autoGenRate: 10 },
     seeds: {},
     materials: {}
   }
@@ -145,34 +160,62 @@ const getEnergyColor = (percent: number): string => {
   return 'bg-red-500'
 }
 
-// Real seed and material data from game state
+// Real seed and material data from game state or transformed widget data
 const totalSeeds = computed(() => {
   const seedsData = resources.value.seeds
-  if (!seedsData) return 0
+  if (!seedsData || typeof seedsData !== 'object') return 0
+  
+  // Handle both Map and plain object formats
+  if (seedsData instanceof Map) {
+    return Array.from(seedsData.values()).reduce((sum: number, count: number) => sum + count, 0)
+  }
   return Object.values(seedsData).reduce((sum: number, count: number) => sum + count, 0)
 })
 
 const seedTypes = computed(() => {
   const seedsData = resources.value.seeds
-  if (!seedsData) return []
-  return Object.entries(seedsData)
-    .filter(([_, count]) => (count as number) > 0)
-    .map(([type, count]) => ({ type, count: count as number }))
+  if (!seedsData || typeof seedsData !== 'object') return []
+  
+  // Handle both Map and plain object formats
+  let entries: [string, number][]
+  if (seedsData instanceof Map) {
+    entries = Array.from(seedsData.entries())
+  } else {
+    entries = Object.entries(seedsData) as [string, number][]
+  }
+  
+  return entries
+    .filter(([_, count]) => count > 0)
+    .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count) // Sort by count descending
 })
 
 const materialCount = computed(() => {
   const materialsData = resources.value.materials
-  if (!materialsData) return 0
+  if (!materialsData || typeof materialsData !== 'object') return 0
+  
+  // Handle both Map and plain object formats
+  if (materialsData instanceof Map) {
+    return Array.from(materialsData.values()).reduce((sum: number, count: number) => sum + count, 0)
+  }
   return Object.values(materialsData).reduce((sum: number, count: number) => sum + count, 0)
 })
 
 const topMaterials = computed(() => {
   const materialsData = resources.value.materials
-  if (!materialsData) return []
-  return Object.entries(materialsData)
-    .filter(([_, count]) => (count as number) > 0)
-    .map(([type, count]) => ({ type, count: count as number }))
+  if (!materialsData || typeof materialsData !== 'object') return []
+  
+  // Handle both Map and plain object formats
+  let entries: [string, number][]
+  if (materialsData instanceof Map) {
+    entries = Array.from(materialsData.entries())
+  } else {
+    entries = Object.entries(materialsData) as [string, number][]
+  }
+  
+  return entries
+    .filter(([_, count]) => count > 0)
+    .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count) // Sort by count descending
     .slice(0, 3) // Top 3 materials
 })

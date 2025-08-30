@@ -102,13 +102,14 @@ export class SimulationBridge {
       // Get game data from store (ensure it's loaded first)
       let gameData = null
       try {
+        console.log('🔄 SimulationBridge: Accessing game data store...')
         // Try to import and use the game data store
         const { useGameDataStore } = await import('@/stores/gameData')
         const gameDataStore = useGameDataStore()
         
         // Ensure CSV data is loaded before proceeding
         if (gameDataStore.items.length === 0 && !gameDataStore.isLoading) {
-          console.log('🔄 SimulationBridge: Loading CSV data...')
+          console.log('🔄 SimulationBridge: CSV data not loaded, initiating load...')
           await gameDataStore.loadGameData()
           await gameDataStore.loadSpecializedData()
           console.log('✅ SimulationBridge: CSV data loaded with', gameDataStore.items.length, 'items')
@@ -119,12 +120,25 @@ export class SimulationBridge {
             await new Promise(resolve => setTimeout(resolve, 100))
           }
           console.log('✅ SimulationBridge: CSV data loading completed with', gameDataStore.items.length, 'items')
+        } else {
+          console.log('✅ SimulationBridge: CSV data already loaded with', gameDataStore.items.length, 'items')
+        }
+        
+        // Validate we have data
+        if (gameDataStore.items.length === 0) {
+          throw new Error('No CSV data loaded - simulation cannot proceed without game data')
         }
         
         // Convert reactive objects to plain objects for serialization
         const plainItems = JSON.parse(JSON.stringify(gameDataStore.items))
         const plainItemsByGameFeature = JSON.parse(JSON.stringify(gameDataStore.itemsByGameFeature))
         const plainItemsByCategory = JSON.parse(JSON.stringify(gameDataStore.itemsByCategory))
+        
+        console.log('🔄 SimulationBridge: Serializing CSV data for worker...', {
+          totalItems: plainItems.length,
+          gameFeatures: Object.keys(plainItemsByGameFeature).length,
+          categories: Object.keys(plainItemsByCategory).length
+        })
         
         // Serialize the game data methods as data
         gameData = {
@@ -138,9 +152,13 @@ export class SimulationBridge {
           specializedData: {} // This would need to be populated if needed
         }
         
-        console.log('✅ SimulationBridge: Game data serialized with', plainItems.length, 'items')
+        console.log('✅ SimulationBridge: Game data serialized successfully', {
+          itemsById: Object.keys(gameData.itemsById).length,
+          sampleItems: Object.keys(gameData.itemsById).slice(0, 3)
+        })
       } catch (error) {
-        console.warn('🔧 SimulationBridge: Could not access game data store:', error)
+        console.error('❌ SimulationBridge: Failed to access game data store:', error)
+        throw new Error(`CSV data loading failed: ${error}`)
       }
       
       // Prepare message for worker
@@ -396,23 +414,52 @@ export class SimulationBridge {
    * Handles tick messages from worker
    */
   private handleTickMessage(data: any): void {
-    const gameState = this.deserializeGameState(data.gameState)
+    console.log('🔄 SimulationBridge: Processing tick message', {
+      hasGameState: !!data.gameState,
+      tickCount: data.tickCount,
+      executedActions: data.executedActions?.length || 0,
+      events: data.events?.length || 0,
+      handlersCount: this.tickHandlers.length
+    })
+    
+    if (!data.gameState) {
+      console.error('❌ SimulationBridge: Received tick with null gameState')
+      return
+    }
+    
+    let gameState: any
+    try {
+      gameState = this.deserializeGameState(data.gameState)
+      console.log('✅ SimulationBridge: GameState deserialized', {
+        hasTime: !!gameState.time,
+        hasResources: !!gameState.resources,
+        hasProgression: !!gameState.progression,
+        energyCurrent: gameState.resources?.energy?.current,
+        gold: gameState.resources?.gold,
+        day: gameState.time?.day
+      })
+    } catch (error) {
+      console.error('❌ SimulationBridge: Failed to deserialize GameState:', error)
+      return
+    }
     
     for (const handler of this.tickHandlers) {
       try {
         handler({
           gameState,
-          executedActions: data.executedActions,
-          events: data.events,
-          deltaTime: data.deltaTime,
-          tickCount: data.tickCount,
-          isComplete: data.isComplete,
-          isStuck: data.isStuck
+          executedActions: data.executedActions || [],
+          events: data.events || [],
+          deltaTime: data.deltaTime || 1,
+          tickCount: data.tickCount || 0,
+          isComplete: data.isComplete || false,
+          isStuck: data.isStuck || false
         })
       } catch (error) {
         console.error('❌ SimulationBridge: Tick handler error:', error)
       }
     }
+    
+    console.log(`📤 SimulationBridge: Tick processed, notified ${this.tickHandlers.length} handlers`)
   }
 
   /**

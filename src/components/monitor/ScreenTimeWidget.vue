@@ -4,65 +4,17 @@
     <div class="space-y-3">
       <!-- Screen Distribution -->
       <div class="bg-sim-background rounded p-3">
-        <div class="space-y-2">
-          <!-- Farm -->
-          <div class="flex items-center justify-between">
-            <span class="text-sm flex items-center">
-              <div class="w-3 h-3 bg-green-500 rounded mr-2"></div>
-              Farm
-            </span>
-            <span class="font-mono text-sm">42%</span>
+        <!-- Current Screen Only -->
+        <div class="text-center py-4">
+          <div v-if="props.widgetLocation?.currentScreen" class="space-y-2">
+            <div class="text-lg font-semibold text-sim-accent">{{ props.widgetLocation.currentScreen }}</div>
+            <div class="text-sm text-sim-text-secondary">Currently active screen</div>
+            <div v-if="props.widgetLocation.timeOnScreen" class="text-xs text-sim-text-secondary">
+              {{ Math.floor(props.widgetLocation.timeOnScreen / 60) }}m {{ props.widgetLocation.timeOnScreen % 60 }}s on screen
+            </div>
           </div>
-          <div class="w-full bg-sim-background-darker rounded-full h-2">
-            <div class="bg-green-500 h-2 rounded-full" style="width: 42%"></div>
-          </div>
-          
-          <!-- Tower -->
-          <div class="flex items-center justify-between">
-            <span class="text-sm flex items-center">
-              <div class="w-3 h-3 bg-blue-500 rounded mr-2"></div>
-              Tower
-            </span>
-            <span class="font-mono text-sm">18%</span>
-          </div>
-          <div class="w-full bg-sim-background-darker rounded-full h-2">
-            <div class="bg-blue-500 h-2 rounded-full" style="width: 18%"></div>
-          </div>
-          
-          <!-- Town -->
-          <div class="flex items-center justify-between">
-            <span class="text-sm flex items-center">
-              <div class="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
-              Town
-            </span>
-            <span class="font-mono text-sm">16%</span>
-          </div>
-          <div class="w-full bg-sim-background-darker rounded-full h-2">
-            <div class="bg-yellow-500 h-2 rounded-full" style="width: 16%"></div>
-          </div>
-          
-          <!-- Adventure -->
-          <div class="flex items-center justify-between">
-            <span class="text-sm flex items-center">
-              <div class="w-3 h-3 bg-red-500 rounded mr-2"></div>
-              Adventure
-            </span>
-            <span class="font-mono text-sm">20%</span>
-          </div>
-          <div class="w-full bg-sim-background-darker rounded-full h-2">
-            <div class="bg-red-500 h-2 rounded-full" style="width: 20%"></div>
-          </div>
-          
-          <!-- Mine -->
-          <div class="flex items-center justify-between">
-            <span class="text-sm flex items-center">
-              <div class="w-3 h-3 bg-purple-500 rounded mr-2"></div>
-              Mine
-            </span>
-            <span class="font-mono text-sm">4%</span>
-          </div>
-          <div class="w-full bg-sim-background-darker rounded-full h-2">
-            <div class="bg-purple-500 h-2 rounded-full" style="width: 4%"></div>
+          <div v-else class="text-sm text-sim-text-secondary">
+            No screen time data available
           </div>
         </div>
       </div>
@@ -75,15 +27,8 @@
             Trends
           </span>
         </div>
-        <div class="text-xs space-y-1">
-          <div class="flex justify-between">
-            <span>Farm</span>
-            <span class="text-green-400">↗ +5%</span>
-          </div>
-          <div class="flex justify-between">
-            <span>Tower</span>
-            <span class="text-red-400">↘ -2%</span>
-          </div>
+        <div class="text-xs text-sim-text-secondary text-center py-2">
+          Trend data available after simulation runs longer
         </div>
       </div>
     </div>
@@ -96,7 +41,9 @@ import type { GameState } from '@/types'
 
 interface Props {
   gameState: GameState | null
+  widgetLocation?: any
+  widgetTime?: any
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 </script>

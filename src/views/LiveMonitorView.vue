@@ -11,7 +11,11 @@
 
     <!-- Phase Progress Banner -->
     <div class="mb-6">
-      <PhaseProgress :gameState="currentState" />
+      <PhaseProgress 
+        :gameState="currentState"
+        :widgetPhaseProgress="widgetData.phaseProgress"
+        :widgetProgression="widgetData.progression"
+      />
     </div>
 
     <!-- Simulation Controls -->
@@ -101,25 +105,34 @@
       <div class="grid grid-cols-12 gap-4">
         <!-- Current Location -->
         <div class="col-span-3 h-80">
-          <CurrentLocation :gameState="currentState" />
+          <CurrentLocation 
+            :gameState="currentState" 
+            :widgetLocation="widgetData.location"
+          />
         </div>
         
         <!-- Resources -->
         <div class="col-span-3 h-80">
-          <ResourcesWidget :gameState="currentState" :widgetResources="widgetData.resources" />
+          <ResourcesWidget 
+            :gameState="currentState" 
+            :widgetResources="widgetData.resources" 
+          />
         </div>
         
         <!-- Equipment -->
         <div class="col-span-3 h-80">
-          <EquipmentWidget :gameState="currentState" />
+          <EquipmentWidget 
+            :gameState="currentState"
+            :widgetEquipment="widgetData.equipment"
+          />
         </div>
         
         <!-- Current Action -->
         <div class="col-span-3 h-80">
           <CurrentAction 
             :gameState="currentState"
-            :currentAction="mockCurrentAction"
-            :nextAction="mockNextAction"
+            :currentAction="widgetData.currentAction.action"
+            :nextAction="widgetData.currentAction.nextAction"
           />
         </div>
       </div>
@@ -130,24 +143,37 @@
         <div class="col-span-9 space-y-4">
           <!-- Farm Visualizer -->
           <div class="h-80">
-            <FarmVisualizerWidget :gameState="currentState" />
+            <FarmVisualizerWidget 
+              :gameState="currentState"
+              :widgetFarmGrid="widgetData.farmGrid"
+            />
           </div>
           
           <!-- Mini Upgrade Tree -->
           <div class="h-48">
-            <MiniUpgradeTreeWidget :gameState="currentState" />
+            <MiniUpgradeTreeWidget 
+              :gameState="currentState"
+              :widgetUpgrades="widgetData.upgrades"
+            />
           </div>
           
           <!-- Timeline -->
           <div class="h-32">
-            <TimelineWidget :gameState="currentState" :events="recentEvents" />
+            <TimelineWidget 
+              :gameState="currentState" 
+              :events="recentEvents"
+              :widgetTimeline="widgetData.timeline"
+            />
           </div>
         </div>
         
         <!-- Right Column: Action Log (Tall & Narrow) -->
         <div class="col-span-3">
           <div class="h-[640px]">
-            <ActionLog :events="recentEvents" />
+            <ActionLog 
+              :events="recentEvents"
+              :widgetTimeline="widgetData.timeline"
+            />
           </div>
         </div>
       </div>
@@ -156,17 +182,28 @@
       <div class="grid grid-cols-12 gap-4">
         <!-- Screen Time -->
         <div class="col-span-4 h-80">
-          <ScreenTimeWidget :gameState="currentState" />
+          <ScreenTimeWidget 
+            :gameState="currentState"
+            :widgetLocation="widgetData.location"
+            :widgetTime="widgetData.time"
+          />
         </div>
         
         <!-- Helper Management -->
         <div class="col-span-4 h-80">
-          <HelperManagementWidget :gameState="currentState" />
+          <HelperManagementWidget 
+            :gameState="currentState"
+            :widgetHelpers="widgetData.helpers"
+          />
         </div>
         
         <!-- Next Decision -->
         <div class="col-span-4 h-80">
-          <NextDecisionWidget :gameState="currentState" />
+          <NextDecisionWidget 
+            :gameState="currentState"
+            :widgetCurrentAction="widgetData.currentAction"
+            :widgetPhaseProgress="widgetData.phaseProgress"
+          />
         </div>
       </div>
 
@@ -260,49 +297,20 @@ const widgetData = reactive({
   location: WidgetDataAdapter.transformLocation(null),
   time: WidgetDataAdapter.transformTime(null),
   processes: WidgetDataAdapter.transformProcesses(null),
-  inventory: WidgetDataAdapter.transformInventory(null)
+  inventory: WidgetDataAdapter.transformInventory(null),
+  currentAction: WidgetDataAdapter.transformCurrentAction(null),
+  farmGrid: WidgetDataAdapter.transformFarmVisualization(null),
+  helpers: WidgetDataAdapter.transformHelpers(null),
+  equipment: WidgetDataAdapter.transformEquipment(null),
+  timeline: WidgetDataAdapter.transformTimeline(null),
+  upgrades: WidgetDataAdapter.transformUpgrades(null),
+  phaseProgress: WidgetDataAdapter.transformPhaseProgress(null)
 })
 
 // For backwards compatibility with existing polling (will remove after testing)
 const statsInterval = ref<ReturnType<typeof setInterval> | null>(null)
 
-// Mock actions for demonstration
-const mockCurrentAction = computed(() => {
-  if (Math.random() > 0.7) {
-    return {
-      id: 'demo-action',
-      type: 'plant' as const,
-      screen: 'farm' as const,
-      target: 'Plot 7',
-      duration: 5,
-      energyCost: 1,
-      goldCost: 0,
-      prerequisites: [],
-      expectedRewards: {
-        gold: 3
-      },
-      score: 8.5
-    }
-  }
-  return null
-})
-
-const mockNextAction = computed(() => {
-  if (!mockCurrentAction.value && Math.random() > 0.5) {
-    return {
-      id: 'demo-next',
-      type: 'water' as const,
-      screen: 'farm' as const,
-      duration: 2,
-      energyCost: 0,
-      goldCost: 0,
-      prerequisites: [],
-      expectedRewards: {},
-      score: 6.2
-    }
-  }
-  return null
-})
+// Mock actions no longer needed - using real data from widgetData.currentAction
 
 // Widget Update Methods
 const updateWidgets = (gameState: GameState | null) => {
@@ -320,23 +328,39 @@ const updateWidgets = (gameState: GameState | null) => {
   }
 
   try {
-    // Transform GameState to widget-friendly formats
-    widgetData.resources = WidgetDataAdapter.transformResources(gameState)
-    widgetData.progression = WidgetDataAdapter.transformProgression(gameState)
-    widgetData.location = WidgetDataAdapter.transformLocation(gameState)
-    widgetData.time = WidgetDataAdapter.transformTime(gameState)
-    widgetData.processes = WidgetDataAdapter.transformProcesses(gameState)
-    widgetData.inventory = WidgetDataAdapter.transformInventory(gameState)
+    // Transform GameState to widget-friendly formats - using transformAll for efficiency
+    const allTransforms = WidgetDataAdapter.transformAll(gameState, recentEvents.value)
+    
+    // Update all widget data
+    widgetData.resources = allTransforms.resources
+    widgetData.progression = allTransforms.progression
+    widgetData.location = allTransforms.location
+    widgetData.time = allTransforms.time
+    widgetData.processes = allTransforms.processes
+    widgetData.inventory = allTransforms.inventory
+    widgetData.currentAction = allTransforms.currentAction
+    widgetData.farmGrid = allTransforms.farmGrid
+    widgetData.helpers = allTransforms.helpers
+    widgetData.equipment = allTransforms.equipment
+    widgetData.timeline = allTransforms.timeline
+    widgetData.upgrades = allTransforms.upgrades
+    widgetData.phaseProgress = allTransforms.phaseProgress
     
     // Update the raw state for compatibility
     currentState.value = gameState
     
-    console.log('✅ LiveMonitor: Widgets updated successfully', {
+    console.log('✅ LiveMonitor: All widgets updated successfully', {
       energy: widgetData.resources.energy.current,
       gold: widgetData.resources.gold,
       day: widgetData.time.day,
+      farmPlots: widgetData.progression.farmPlots,
+      currentPhase: widgetData.phaseProgress.currentPhase,
+      activeGnomes: widgetData.helpers.gnomes.length,
+      currentActionType: widgetData.currentAction.action?.type,
       seedTypes: Object.keys(widgetData.resources.seeds).length,
-      materialTypes: Object.keys(widgetData.resources.materials).length
+      materialTypes: Object.keys(widgetData.resources.materials).length,
+      farmGridPlotsReady: widgetData.farmGrid.summary.ready,
+      recentEventsCount: widgetData.timeline.recentEvents.length
     })
     
   } catch (error) {

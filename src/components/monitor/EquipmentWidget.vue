@@ -4,53 +4,43 @@
     <div class="space-y-2">
       <!-- Tools and Weapons Split -->
       <div class="grid grid-cols-2 gap-2">
-        <!-- Tools (Left) -->
+        <!-- Tools -->
         <div class="bg-sim-background rounded p-2">
           <div class="text-xs font-semibold mb-1 text-orange-400">Tools</div>
-          <div class="space-y-1">
-            <div class="flex justify-between items-center text-xs">
-              <span>Hoe</span>
-              <span class="bg-sim-background-darker rounded px-1">🛠️</span>
+          <div class="space-y-1" v-if="props.widgetEquipment?.tools && Object.keys(props.widgetEquipment.tools).length > 0">
+            <div 
+              v-for="(tool, name) in props.widgetEquipment.tools" 
+              :key="name"
+              class="flex justify-between items-center text-xs"
+            >
+              <span>{{ tool.name || name }}</span>
+              <span class="bg-sim-background-darker rounded px-1" :class="tool.isEquipped ? 'text-green-400' : 'text-gray-400'">
+                {{ tool.isEquipped ? '✓' : '-' }}
+              </span>
             </div>
-            <div class="flex justify-between items-center text-xs">
-              <span>Hammer</span>
-              <span class="bg-sim-background-darker rounded px-1">🔨</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span>Axe</span>
-              <span class="bg-sim-background-darker rounded px-1">-</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span>Pickaxe</span>
-              <span class="bg-sim-background-darker rounded px-1">🏆</span>
-            </div>
+          </div>
+          <div class="text-xs text-sim-text-secondary" v-else>
+            No tools available
           </div>
         </div>
 
-        <!-- Weapons (Right) -->
+        <!-- Weapons -->
         <div class="bg-sim-background rounded p-2">
           <div class="text-xs font-semibold mb-1 text-red-400">Weapons</div>
-          <div class="space-y-1">
-            <div class="flex justify-between items-center text-xs">
-              <span>Sword</span>
-              <span class="bg-sim-background-darker rounded px-1">4️⃣</span>
+          <div class="space-y-1" v-if="props.widgetEquipment?.weapons && Object.keys(props.widgetEquipment.weapons).length > 0">
+            <div 
+              v-for="(weapon, name) in props.widgetEquipment.weapons" 
+              :key="name"
+              class="flex justify-between items-center text-xs"
+            >
+              <span>{{ weapon.name || name }}</span>
+              <span class="bg-sim-background-darker rounded px-1" :class="weapon.isEquipped ? 'text-green-400' : 'text-gray-400'">
+                {{ weapon.isEquipped ? '✓' : '-' }}
+              </span>
             </div>
-            <div class="flex justify-between items-center text-xs">
-              <span>Bow</span>
-              <span class="bg-sim-background-darker rounded px-1">2️⃣</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span>Spear</span>
-              <span class="bg-sim-background-darker rounded px-1">-</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span>Crossbow</span>
-              <span class="bg-sim-background-darker rounded px-1">3️⃣</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span>Wand</span>
-              <span class="bg-sim-background-darker rounded px-1">1️⃣</span>
-            </div>
+          </div>
+          <div class="text-xs text-sim-text-secondary" v-else>
+            No weapons available
           </div>
         </div>
       </div>
@@ -58,30 +48,23 @@
       <!-- Armor Section (Full Width) -->
       <div class="bg-sim-background rounded p-2">
         <div class="text-xs font-semibold mb-2 text-blue-400">Armor</div>
-        <div class="grid grid-cols-3 gap-2">
-          <!-- Armor Slot 1 -->
-          <div class="bg-sim-background-darker rounded p-2 h-12 flex items-center justify-center border border-dashed border-sim-border text-xs text-sim-text-secondary"
-               title="[15def/Regen] - Regeneration effect">
+        <div class="grid grid-cols-3 gap-2" v-if="props.widgetEquipment?.armor && Object.keys(props.widgetEquipment.armor).length > 0">
+          <div 
+            v-for="(armor, name) in props.widgetEquipment.armor" 
+            :key="name"
+            class="bg-sim-background-darker rounded p-2 h-12 flex items-center justify-center border border-dashed border-sim-border text-xs"
+            :class="armor.isEquipped ? 'border-green-400' : 'border-sim-border'"
+          >
             <div class="text-center">
-              <div class="text-xs">15def</div>
-              <div class="text-xs text-green-400">Regen</div>
+              <div class="text-xs">{{ armor.defense }}def</div>
+              <div class="text-xs" :class="armor.isEquipped ? 'text-green-400' : 'text-gray-400'">
+                {{ armor.isEquipped ? '✓' : armor.name || name }}
+              </div>
             </div>
           </div>
-          
-          <!-- Armor Slot 2 -->
-          <div class="bg-sim-background-darker rounded p-2 h-12 flex items-center justify-center border border-dashed border-sim-border text-xs text-sim-text-secondary"
-               title="[10def/Gold+] - Gold magnet effect">
-            <div class="text-center">
-              <div class="text-xs">10def</div>
-              <div class="text-xs text-yellow-400">Gold+</div>
-            </div>
-          </div>
-          
-          <!-- Armor Slot 3 -->
-          <div class="bg-sim-background-darker rounded p-2 h-12 flex items-center justify-center border border-dashed border-sim-border text-xs text-sim-text-secondary"
-               title="Empty armor slot">
-            <span class="text-sim-text-secondary">Empty</span>
-          </div>
+        </div>
+        <div class="text-xs text-sim-text-secondary text-center py-4" v-else>
+          No armor available
         </div>
       </div>
     </div>
@@ -94,7 +77,8 @@ import type { GameState } from '@/types'
 
 interface Props {
   gameState: GameState | null
+  widgetEquipment?: any
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 </script>

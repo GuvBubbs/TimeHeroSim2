@@ -110,6 +110,7 @@ interface ActionLogEntry {
 
 interface Props {
   events: GameEvent[]
+  widgetTimeline?: any
 }
 
 const props = defineProps<Props>()
@@ -121,48 +122,8 @@ const activeFilters = ref<string[]>([])
 
 // Convert events to log entries
 const logEntries = computed<ActionLogEntry[]>(() => {
-  // Mock entries for demonstration - in real implementation this would process props.events
-  const mockEntries: ActionLogEntry[] = [
-    {
-      timestamp: Date.now() - 300000,
-      type: 'plant',
-      action: 'Plant carrot on plot 7',
-      details: 'Low energy (450<500), high value crop',
-      score: 8.5,
-      result: { type: 'success', message: '+3 energy expected' }
-    },
-    {
-      timestamp: Date.now() - 240000,
-      type: 'harvest',
-      action: 'Harvest 3 ready carrots',
-      result: { type: 'success', message: '+3 energy gained' }
-    },
-    {
-      timestamp: Date.now() - 180000,
-      type: 'water',
-      action: 'Water 5 dry plots',
-      score: 6.2
-    },
-    {
-      timestamp: Date.now() - 120000,
-      type: 'water',
-      action: 'Pump water (20→45 units)',
-      result: { type: 'success', message: '+25 water' }
-    },
-    {
-      timestamp: Date.now() - 60000,
-      type: 'purchase',
-      action: 'Buy Storage Shed II',
-      details: 'Cost: 100g',
-      result: { type: 'success', message: 'Storage capacity +20' }
-    },
-    {
-      timestamp: Date.now() - 30000,
-      type: 'move',
-      action: 'Travel Farm → Town',
-      details: '1 minute travel time'
-    }
-  ]
+  // Only show real events - no mock data when simulation running
+  const mockEntries: ActionLogEntry[] = []
   
   return [...mockEntries, ...convertEventsToEntries(props.events)].sort((a, b) => b.timestamp - a.timestamp)
 })

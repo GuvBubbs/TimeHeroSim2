@@ -138,8 +138,113 @@ export class SimulationEngine {
           cleanupEnergyThreshold: 30
         },
         helperEfficiency: {}
+      },
+      // Adventure system parameters
+      adventure: {
+        combatMechanics: {
+          riskTolerance: 0.6
+        },
+        energyManagement: {
+          minimumEnergyReserve: 30
+        },
+        routing: {
+          priorityOrder: ['meadow_path', 'pine_vale', 'dark_forest']
+        }
+      },
+      // Decision system parameters
+      decisions: {
+        interrupts: {
+          enabled: true
+        },
+        screenPriorities: {
+          weights: new Map([
+            ['farm', 1.0],
+            ['tower', 0.7],
+            ['town', 0.6],
+            ['adventure', 0.8],
+            ['forge', 0.5],
+            ['mine', 0.4]
+          ]),
+          adjustmentFactors: {
+            energyLow: new Map([
+              ['farm', 1.2],
+              ['adventure', 0.3]
+            ]),
+            goldHigh: new Map([
+              ['town', 1.3],
+              ['forge', 1.1]
+            ])
+          }
+        },
+        actionEvaluation: {
+          immediateValueWeight: 0.7,
+          futureValueWeight: 0.3,
+          riskWeight: 0.4
+        },
+        globalBehavior: {
+          randomness: 0.1
+        }
+      },
+      // Tower system parameters
+      tower: {
+        decisionLogic: {
+          seedTargetMultiplier: 2,
+          catchDuration: 3,
+          upgradeThreshold: 0.5
+        },
+        catchMechanics: {
+          manualCatchRate: 60
+        },
+        autoCatcher: {
+          enabled: true
+        },
+        unlockProgression: {
+          reachLevelCosts: [100, 250, 500, 1000],
+          reachLevelEnergy: [20, 30, 50, 80]
+        }
+      },
+      // Town system parameters
+      town: {
+        purchasing: {
+          vendorPriorities: ['blacksmith', 'general', 'trainer']
+        },
+        blueprintStrategy: {
+          toolPriorities: ['hoe', 'watering_can', 'axe', 'pickaxe']
+        },
+        skillTraining: {
+          enabled: true
+        }
+      },
+      // Forge system parameters
+      forge: {
+        heatManagement: {
+          maxConcurrentItems: 3
+        },
+        craftingPriorities: {
+          toolOrder: ['hoe_i', 'watering_can_ii', 'axe_i', 'pickaxe_i']
+        }
+      },
+      // Mining system parameters
+      mine: {
+        depthStrategy: {
+          targetDepth: 5
+        },
+        energyManagement: {
+          minimumEnergyReserve: 40,
+          drainRate: 3
+        }
+      },
+      // Helper system parameters
+      helpers: {
+        roleAssignment: {
+          priorities: ['waterer', 'harvester', 'planter', 'cleaner']
+        },
+        training: {
+          enabled: true,
+          costPerSession: 50
+        }
       }
-    } as any // Simplified for now
+    } as any
   }
 
   /**
@@ -1356,10 +1461,13 @@ export class SimulationEngine {
     if (this.parameters.decisions?.screenPriorities?.weights) {
       const weights = this.parameters.decisions.screenPriorities.weights
       
-      for (const [screen, weight] of weights.entries()) {
+      // Handle both Map and plain object formats (after serialization)
+      const weightEntries = weights instanceof Map ? weights.entries() : Object.entries(weights)
+      
+      for (const [screen, weight] of weightEntries) {
         if (screen !== current && weight > 0) {
           const reason = this.getNavigationReason(screen as GameScreen)
-          if (reason.score > 5) { // Only navigate if there's a good reason
+          if (reason.score > 3) { // Navigate if there's a reasonable reason
             actions.push({
               id: `navigate_${screen}_${Date.now()}`,
               type: 'move',
@@ -1391,17 +1499,46 @@ export class SimulationEngine {
         return { reason: `${farmTasks} farm tasks pending`, score: farmTasks * 2 }
         
       case 'tower':
-        // Navigate to tower if we need seeds
+        // Navigate to tower if we need seeds or have energy to catch
         const totalSeeds = Array.from(this.gameState.resources.seeds.values()).reduce((a, b) => a + b, 0)
-        return { reason: 'Need seeds', score: totalSeeds < 10 ? 8 : 2 }
+        const seedScore = totalSeeds < 20 ? 8 : 3
+        const energyScore = this.gameState.resources.energy.current > 50 ? 2 : 0
+        return { reason: 'Need seeds', score: Math.max(seedScore, energyScore) }
         
       case 'town':
-        // Navigate to town if we have gold to spend
-        const goldScore = this.gameState.resources.gold > 100 ? 6 : 1
+        // Navigate to town if we have gold to spend or need upgrades
+        const gold = this.gameState.resources.gold
+        const goldScore = gold > 100 ? 7 : gold > 50 ? 5 : 2
         return { reason: 'Purchase upgrades', score: goldScore }
         
+      case 'adventure':
+        // Navigate for adventure if have good energy and equipment
+        const energy = this.gameState.resources.energy.current
+        const heroLevel = this.gameState.progression.heroLevel
+        const hasWeapons = this.gameState.inventory.weapons.size > 0
+        let adventureScore = 2 // Base exploration score
+        
+        if (energy > 80 && hasWeapons) adventureScore += 4
+        if (heroLevel >= 3) adventureScore += 2
+        if (energy > 60) adventureScore += 1
+        
+        return { reason: 'Ready for adventure', score: adventureScore }
+        
+      case 'forge':
+        // Navigate to forge if we have materials to craft
+        const materials = Array.from(this.gameState.resources.materials.values()).reduce((a, b) => a + b, 0)
+        const materialsScore = materials > 10 ? 6 : materials > 5 ? 4 : 1
+        const goldForTools = gold > 50 ? 2 : 0
+        return { reason: 'Craft tools/weapons', score: Math.max(materialsScore, goldForTools) }
+        
+      case 'mine':
+        // Navigate to mine if have good energy and need materials  
+        const mineScore = energy > 70 && materials < 20 ? 7 : 
+                          energy > 50 ? 4 : 2
+        return { reason: 'Gather materials', score: mineScore }
+        
       default:
-        return { reason: 'General exploration', score: 1 }
+        return { reason: 'General exploration', score: 3 }
     }
   }
 
@@ -1489,7 +1626,10 @@ export class SimulationEngine {
         // Navigation scoring based on screen priorities
         if (decisionParams?.screenPriorities?.weights) {
           const targetScreen = action.target as string
-          const weight = decisionParams.screenPriorities.weights.get(targetScreen) || 1
+          const weights = decisionParams.screenPriorities.weights
+          const weight = weights instanceof Map ? 
+            (weights.get(targetScreen) || 1) : 
+            (weights[targetScreen] || 1)
           score = weight * 10
           
           // Apply dynamic adjustments based on resource levels
@@ -1498,13 +1638,19 @@ export class SimulationEngine {
             
             // Low energy adjustments
             if (this.gameState.resources.energy.current < 30 && adjustments.energyLow) {
-              const energyAdjustment = adjustments.energyLow.get(targetScreen) || 1
+              const energyMap = adjustments.energyLow
+              const energyAdjustment = energyMap instanceof Map ? 
+                (energyMap.get(targetScreen) || 1) : 
+                (energyMap[targetScreen] || 1)
               score *= energyAdjustment
             }
             
             // High gold adjustments
             if (this.gameState.resources.gold > 200 && adjustments.goldHigh) {
-              const goldAdjustment = adjustments.goldHigh.get(targetScreen) || 1
+              const goldMap = adjustments.goldHigh
+              const goldAdjustment = goldMap instanceof Map ? 
+                (goldMap.get(targetScreen) || 1) : 
+                (goldMap[targetScreen] || 1)
               score *= goldAdjustment
             }
           }

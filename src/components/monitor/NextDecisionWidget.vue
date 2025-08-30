@@ -11,8 +11,15 @@
           </span>
         </div>
         <div class="text-sm mb-2">
-          <div class="text-sim-text">Water Crops</div>
-          <div class="text-xs text-sim-text-secondary">Score: 6.2</div>
+          <div v-if="props.widgetCurrentAction?.nextAction" class="text-sim-text">
+            {{ formatActionName(props.widgetCurrentAction.nextAction.id || props.widgetCurrentAction.nextAction.type) }}
+          </div>
+          <div v-else class="text-sim-text-secondary">
+            No next action queued
+          </div>
+          <div v-if="props.widgetCurrentAction?.nextAction?.score" class="text-xs text-sim-text-secondary">
+            Score: {{ props.widgetCurrentAction.nextAction.score.toFixed(1) }}
+          </div>
         </div>
       </div>
 
@@ -25,7 +32,12 @@
           </span>
         </div>
         <div class="text-xs text-sim-text-secondary">
-          5 plots below 30% water level. Water efficiency parameter = 1.2x
+          <div v-if="props.widgetCurrentAction?.nextAction">
+            Next action will be executed based on current game state analysis
+          </div>
+          <div v-else>
+            Waiting for next decision cycle
+          </div>
         </div>
       </div>
 
@@ -38,8 +50,9 @@
           </span>
         </div>
         <div class="text-xs">
-          <div class="text-sim-text">In: 30 seconds</div>
-          <div class="text-sim-text-secondary">Next check-in due</div>
+          <div class="text-sim-text-secondary">
+            Decision timing based on simulation speed
+          </div>
         </div>
       </div>
 
@@ -76,7 +89,17 @@ import type { GameState } from '@/types'
 
 interface Props {
   gameState: GameState | null
+  widgetCurrentAction?: any
+  widgetPhaseProgress?: any
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+
+// Format action names
+function formatActionName(actionId: string): string {
+  if (!actionId) return 'Unknown'
+  return actionId
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase())
+}
 </script>

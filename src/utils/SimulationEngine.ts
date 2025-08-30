@@ -3,7 +3,7 @@
 
 import { MapSerializer } from './MapSerializer'
 import { CSVDataParser } from './CSVDataParser'
-import { useGameDataStore } from '@/stores/gameData'
+import { PrerequisiteSystem } from './systems/PrerequisiteSystem'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -36,13 +36,20 @@ export class SimulationEngine {
   private isRunning: boolean = false
   private tickCount: number = 0
   
-  constructor(config: SimulationConfig) {
+  constructor(config: SimulationConfig, gameDataStore?: any) {
     this.config = config
     this.parameters = this.extractParametersFromConfig(config)
-    this.gameDataStore = useGameDataStore()
+    
+    if (!gameDataStore) {
+      throw new Error('SimulationEngine requires a valid gameDataStore with CSV data')
+    }
+    
+    this.gameDataStore = gameDataStore
     this.persona = this.extractPersonaFromConfig(config)
     this.gameState = this.initializeGameState()
   }
+
+
 
   /**
    * Extracts parameters from the compiled configuration
@@ -422,6 +429,9 @@ export class SimulationEngine {
     // Update automation systems
     this.updateAutomation()
     
+    // Update phase progression
+    this.updatePhaseProgression()
+    
     // Check victory/completion conditions
     const isComplete = this.checkVictoryConditions()
     const isStuck = this.checkBottleneckConditions()
@@ -725,7 +735,118 @@ export class SimulationEngine {
       }
     }
     
+    // Cleanup actions for farm expansion (Phase 8B Implementation)
+    const cleanupActions = this.evaluateCleanupActions()
+    actions.push(...cleanupActions)
+    
     return actions
+  }
+
+  /**
+   * Evaluates cleanup actions for farm expansion
+   */
+  private evaluateCleanupActions(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Get all cleanup actions from CSV data
+    const cleanupItems = this.gameDataStore.itemsByCategory?.cleanup || []
+    
+    // Prioritize cleanup actions that add plots (critical for early game)
+    const plotExpansionCleanups = cleanupItems.filter(item => 
+      item.plots_added && parseInt(item.plots_added) > 0
+    )
+    
+    // Also consider repeatable resource gathering cleanups
+    const resourceCleanups = cleanupItems.filter(item => 
+      item.repeatable === 'TRUE' && item.materials_gain
+    )
+    
+    // Evaluate plot expansion cleanups first (higher priority)
+    for (const cleanup of plotExpansionCleanups) {
+      if (this.shouldConsiderCleanup(cleanup)) {
+        const energyCost = parseInt(cleanup.energy_cost) || 0
+        const plotsAdded = parseInt(cleanup.plots_added) || 0
+        
+        actions.push({
+          id: `cleanup_${cleanup.id}_${Date.now()}`,
+          type: 'cleanup',
+          screen: 'farm',
+          target: cleanup.id,
+          duration: Math.ceil(energyCost / 10), // Rough duration estimate
+          energyCost: energyCost,
+          goldCost: 0,
+          prerequisites: cleanup.prerequisite ? cleanup.prerequisite.split(';') : [],
+          expectedRewards: { 
+            plots: plotsAdded,
+            materials: cleanup.materials_gain || ''
+          }
+        })
+      }
+    }
+    
+    // Evaluate resource gathering cleanups (lower priority)
+    for (const cleanup of resourceCleanups.slice(0, 2)) { // Limit to avoid spam
+      if (this.shouldConsiderCleanup(cleanup)) {
+        const energyCost = parseInt(cleanup.energy_cost) || 0
+        
+        actions.push({
+          id: `cleanup_${cleanup.id}_${Date.now()}`,
+          type: 'cleanup',
+          screen: 'farm',
+          target: cleanup.id,
+          duration: Math.ceil(energyCost / 10),
+          energyCost: energyCost,
+          goldCost: 0,
+          prerequisites: cleanup.prerequisite ? cleanup.prerequisite.split(';') : [],
+          expectedRewards: { 
+            materials: cleanup.materials_gain || ''
+          }
+        })
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * Determines if a cleanup action should be considered
+   */
+  private shouldConsiderCleanup(cleanup: any): boolean {
+    // Check if we have enough energy
+    const energyCost = parseInt(cleanup.energy_cost) || 0
+    if (this.gameState.resources.energy.current < energyCost + 20) { // Keep 20 energy reserve
+      return false
+    }
+    
+    // Check if already completed (for non-repeatable cleanups)
+    if (cleanup.repeatable !== 'TRUE' && 
+        this.gameState.progression.completedCleanups.has(cleanup.id)) {
+      return false
+    }
+    
+    // Check prerequisites using our PrerequisiteSystem
+    if (!PrerequisiteSystem.checkPrerequisites(cleanup, this.gameState, this.gameDataStore)) {
+      return false
+    }
+    
+    // Check tool requirements
+    if (cleanup.tool_required && cleanup.tool_required !== 'hands') {
+      if (!PrerequisiteSystem.checkToolRequirement(cleanup.tool_required, this.gameState)) {
+        return false
+      }
+    }
+    
+    // For plot expansion cleanups, prioritize if we have few plots
+    if (cleanup.plots_added && parseInt(cleanup.plots_added) > 0) {
+      return this.gameState.progression.farmPlots < 20 // High priority early game
+    }
+    
+    // For resource cleanups, consider if we need materials
+    if (cleanup.materials_gain) {
+      return true // Always useful for materials
+    }
+    
+    return false
   }
 
   /**
@@ -1376,6 +1497,79 @@ export class SimulationEngine {
   }
 
   /**
+   * Executes a cleanup action (farm expansion)
+   */
+  private executeCleanupAction(action: GameAction): { success: boolean; events: GameEvent[] } {
+    const events: GameEvent[] = []
+    
+    if (!action.target) {
+      return { success: false, events: [] }
+    }
+    
+    // Get cleanup data from CSV
+    const cleanup = this.gameDataStore.getItemById(action.target)
+    if (!cleanup) {
+      return { success: false, events: [] }
+    }
+    
+    // Check prerequisites using PrerequisiteSystem
+    if (!PrerequisiteSystem.checkPrerequisites(cleanup, this.gameState, this.gameDataStore)) {
+      return { success: false, events: [] }
+    }
+    
+    // Parse and check energy cost
+    const energyCost = CSVDataParser.parseNumericValue(cleanup.energy_cost, 0)
+    if (this.gameState.resources.energy.current < energyCost) {
+      return { success: false, events: [] }
+    }
+    
+    // Check tool requirement
+    if (!PrerequisiteSystem.checkToolRequirement(cleanup.tool_required, this.gameState)) {
+      return { success: false, events: [] }
+    }
+    
+    // Consume energy
+    this.gameState.resources.energy.current -= energyCost
+    
+    // CRITICAL: Add plots to farm
+    const plotsAdded = CSVDataParser.parseNumericValue(cleanup.plots_added, 0)
+    if (plotsAdded > 0) {
+      this.gameState.progression.farmPlots += plotsAdded
+      this.gameState.progression.availablePlots += plotsAdded
+    }
+    
+    // Mark cleanup as completed
+    this.gameState.progression.completedCleanups.add(action.target)
+    
+    // Parse and add material rewards
+    if (cleanup.materials_gain) {
+      const materials = CSVDataParser.parseMaterials(cleanup.materials_gain)
+      for (const [materialName, amount] of materials.entries()) {
+        this.addMaterial(materialName, amount)
+      }
+    }
+    
+    // Update farm stage based on new plot count
+    this.gameState.progression.farmStage = PrerequisiteSystem.getFarmStageFromPlots(
+      this.gameState.progression.farmPlots
+    )
+    
+    // Update game phase
+    this.gameState.progression.currentPhase = PrerequisiteSystem.getCurrentPhase(this.gameState)
+    
+    // Create event log
+    const materialRewards = cleanup.materials_gain ? ` (+${cleanup.materials_gain})` : ''
+    events.push({
+      timestamp: this.gameState.time.totalMinutes,
+      type: 'action_cleanup',
+      description: `Cleared ${cleanup.name}: +${plotsAdded} plots (total: ${this.gameState.progression.farmPlots})${materialRewards}`,
+      importance: 'high'
+    })
+    
+    return { success: true, events }
+  }
+
+  /**
    * Executes a game action
    */
   private executeAction(action: GameAction): { success: boolean; events: GameEvent[] } {
@@ -1655,9 +1849,62 @@ export class SimulationEngine {
           }
         }
         break
+        
+      case 'cleanup':
+        // Delegate to cleanup action handler
+        return this.executeCleanupAction(action)
     }
     
     return { success: true, events }
+  }
+
+  /**
+   * Updates phase progression based on current game state
+   * Called after significant progression events like cleanup completion
+   */
+  private updatePhaseProgression(): void {
+    const oldPhase = this.gameState.progression.currentPhase
+    const oldStage = this.gameState.progression.farmStage
+    
+    // Update farm stage based on plot count
+    this.gameState.progression.farmStage = PrerequisiteSystem.getFarmStageFromPlots(
+      this.gameState.progression.farmPlots
+    )
+    
+    // Update game phase based on plots and hero level
+    this.gameState.progression.currentPhase = PrerequisiteSystem.getCurrentPhase(this.gameState)
+    
+    // Log phase transitions
+    if (oldPhase !== this.gameState.progression.currentPhase) {
+      this.addEvent({
+        timestamp: this.gameState.time.totalMinutes,
+        type: 'phase_transition',
+        description: `Progressed from ${oldPhase} to ${this.gameState.progression.currentPhase} phase`,
+        importance: 'high'
+      })
+    }
+    
+    if (oldStage !== this.gameState.progression.farmStage) {
+      const stageNames = ['', 'Tutorial', 'Small Hold', 'Homestead', 'Manor Grounds', 'Great Estate']
+      const stageName = stageNames[this.gameState.progression.farmStage] || 'Unknown'
+      
+      this.addEvent({
+        timestamp: this.gameState.time.totalMinutes,
+        type: 'farm_stage_transition',
+        description: `Farm expanded to ${stageName} (Stage ${this.gameState.progression.farmStage})`,
+        importance: 'high'
+      })
+    }
+  }
+
+  /**
+   * Adds a game event to the current tick's events
+   */
+  private addEvent(event: GameEvent): void {
+    // Add event to current tick's events
+    // This would be collected and returned in the tick result
+    // For now, just log it
+    console.log(`📝 Event: ${event.description}`)
   }
 
   /**

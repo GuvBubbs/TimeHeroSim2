@@ -230,7 +230,7 @@ export interface GameState {
  */
 export interface GameAction {
   id: string
-  type: 'move' | 'plant' | 'water' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper'
+  type: 'move' | 'plant' | 'water' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper' | 'cleanup'
   screen: GameScreen
   target?: string          // Item ID, plot ID, etc.
   duration: number         // Expected duration in minutes

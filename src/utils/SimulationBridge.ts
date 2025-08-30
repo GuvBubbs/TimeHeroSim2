@@ -85,17 +85,84 @@ export class SimulationBridge {
       // Wait for worker to be ready
       await this.waitForWorkerReady()
       
-      // Serialize configuration for worker
-      const serializedConfig = MapSerializer.serialize(config)
+      // Serialize configuration for worker - properly handle Maps
+      let plainConfig = { ...config }
+      
+      // Convert Map to plain object before JSON serialization
+      if (config.parameterOverrides instanceof Map) {
+        plainConfig.parameterOverrides = Object.fromEntries(config.parameterOverrides.entries())
+      }
+      
+      // Now safely convert to plain object
+      plainConfig = JSON.parse(JSON.stringify(plainConfig))
+      const serializedConfig = MapSerializer.serialize(plainConfig)
+      console.log('🔧 SimulationBridge: Configuration serialized:', serializedConfig)
       console.log('🔧 SimulationBridge: Sending configuration to worker...')
       
-      // Send initialization message
-      this.sendMessage({
+      // Get game data from store (ensure it's loaded first)
+      let gameData = null
+      try {
+        // Try to import and use the game data store
+        const { useGameDataStore } = await import('@/stores/gameData')
+        const gameDataStore = useGameDataStore()
+        
+        // Ensure CSV data is loaded before proceeding
+        if (gameDataStore.items.length === 0 && !gameDataStore.isLoading) {
+          console.log('🔄 SimulationBridge: Loading CSV data...')
+          await gameDataStore.loadGameData()
+          await gameDataStore.loadSpecializedData()
+          console.log('✅ SimulationBridge: CSV data loaded with', gameDataStore.items.length, 'items')
+        } else if (gameDataStore.isLoading) {
+          console.log('⏳ SimulationBridge: Waiting for CSV data to finish loading...')
+          // Wait for loading to complete
+          while (gameDataStore.isLoading) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+          }
+          console.log('✅ SimulationBridge: CSV data loading completed with', gameDataStore.items.length, 'items')
+        }
+        
+        // Convert reactive objects to plain objects for serialization
+        const plainItems = JSON.parse(JSON.stringify(gameDataStore.items))
+        const plainItemsByGameFeature = JSON.parse(JSON.stringify(gameDataStore.itemsByGameFeature))
+        const plainItemsByCategory = JSON.parse(JSON.stringify(gameDataStore.itemsByCategory))
+        
+        // Serialize the game data methods as data
+        gameData = {
+          itemsByGameFeature: plainItemsByGameFeature,
+          itemsByCategory: plainItemsByCategory,
+          allItems: plainItems,
+          // Convert methods to data that can be serialized
+          itemsById: Object.fromEntries(
+            plainItems.map(item => [item.id, item])
+          ),
+          specializedData: {} // This would need to be populated if needed
+        }
+        
+        console.log('✅ SimulationBridge: Game data serialized with', plainItems.length, 'items')
+      } catch (error) {
+        console.warn('🔧 SimulationBridge: Could not access game data store:', error)
+      }
+      
+      // Prepare message for worker
+      const message = {
         type: 'initialize',
         data: {
-          config: serializedConfig
+          config: serializedConfig,
+          gameData: gameData
         }
-      })
+      }
+      
+      // Test serialization to catch proxy objects
+      try {
+        JSON.stringify(message)
+        console.log('✅ SimulationBridge: Message is serializable')
+      } catch (error) {
+        console.error('❌ SimulationBridge: Message contains non-serializable objects:', error)
+        throw new Error(`Message serialization failed: ${error.message}`)
+      }
+      
+      // Send initialization message
+      this.sendMessage(message)
       
       // Wait for initialization complete
       await this.waitForInitialization()

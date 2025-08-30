@@ -43,7 +43,7 @@ function handleMessage(event: MessageEvent<WorkerInputMessage>) {
     
     switch (message.type) {
       case 'initialize':
-        handleInitialize(message.data.config, message.data.serializedParameters)
+        handleInitialize(message.data.config, message.data.serializedParameters, message.data.gameData)
         break
         
       case 'start':
@@ -77,7 +77,7 @@ function handleMessage(event: MessageEvent<WorkerInputMessage>) {
 /**
  * Initializes the simulation engine with configuration
  */
-function handleInitialize(serializedConfig: any, serializedParameters?: any) {
+function handleInitialize(serializedConfig: any, serializedParameters?: any, gameData?: any) {
   try {
     console.log('🔧 Worker: Initializing simulation engine...')
     
@@ -85,8 +85,23 @@ function handleInitialize(serializedConfig: any, serializedParameters?: any) {
     const config = MapSerializer.deserialize(serializedConfig)
     console.log('✅ Worker: Configuration deserialized', config)
     
-    // Create simulation engine
-    workerState.engine = new SimulationEngine(config)
+    // Create game data store from passed data
+    if (!gameData || !gameData.allItems || gameData.allItems.length === 0) {
+      throw new Error('Worker initialization failed: No CSV data provided. Simulation requires real game data.')
+    }
+    
+    const gameDataStore = {
+      itemsByGameFeature: gameData.itemsByGameFeature || {},
+      itemsByCategory: gameData.itemsByCategory || {},
+      allItems: gameData.allItems || [],
+      getItemById: (id: string) => gameData.itemsById?.[id] || null,
+      getSpecializedDataByFile: (filename: string) => gameData.specializedData?.[filename] || []
+    }
+    
+    console.log('✅ Worker: Game data store created with', gameData.allItems.length, 'items')
+    
+    // Create simulation engine with game data
+    workerState.engine = new SimulationEngine(config, gameDataStore)
     workerState.initialized = true
     workerState.errorCount = 0
     

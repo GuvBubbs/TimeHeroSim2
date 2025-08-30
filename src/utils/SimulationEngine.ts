@@ -5,6 +5,7 @@ import { MapSerializer } from './MapSerializer'
 import { CSVDataParser } from './CSVDataParser'
 import { PrerequisiteSystem } from './systems/PrerequisiteSystem'
 import { CropSystem } from './systems/CropSystem'
+import { HelperSystem } from './systems/HelperSystem'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -414,6 +415,9 @@ export class SimulationEngine {
     
     // Process crop growth and water consumption
     CropSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
+    
+    // Process helper automation
+    HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
     
     // Make AI decisions
     const decisions = this.makeDecisions()
@@ -1912,44 +1916,13 @@ export class SimulationEngine {
         break
         
       case 'assign_role':
-        // Assign role to a helper
-        if (action.target) {
-          const [helperId, role] = action.target.split(':')
-          const helper = this.gameState.helpers.gnomes.find(g => g.id === helperId)
-          
-          if (helper) {
-            helper.role = role
-            helper.isAssigned = true
-            
-            events.push({
-              timestamp: this.gameState.time.totalMinutes,
-              type: 'action_assign_role',
-              description: `Assigned ${helper.name} to ${role} role`,
-              importance: 'medium'
-            })
-          }
-        }
-        break
+      case 'assign_helper':
+        // Delegate to helper assignment handler
+        return this.executeAssignHelperAction(action)
         
       case 'train_helper':
-        // Train a helper to increase efficiency
-        if (action.target) {
-          const helper = this.gameState.helpers.gnomes.find(g => g.id === action.target)
-          
-          if (helper) {
-            helper.experience += action.expectedRewards.experience || 0
-            helper.efficiency = Math.min(2.0, 1.0 + helper.experience / 100) // Cap at 2x efficiency
-            this.gameState.resources.gold -= action.goldCost
-            
-            events.push({
-              timestamp: this.gameState.time.totalMinutes,
-              type: 'action_train_helper',
-              description: `Trained ${helper.name} (${helper.experience} XP, ${helper.efficiency.toFixed(1)}x efficiency)`,
-              importance: 'medium'
-            })
-          }
-        }
-        break
+        // Delegate to helper training handler
+        return this.executeTrainHelperAction(action)
         
       case 'cleanup':
         // Delegate to cleanup action handler
@@ -1957,6 +1930,116 @@ export class SimulationEngine {
     }
     
     return { success: true, events }
+  }
+
+  /**
+   * Executes helper assignment action
+   */
+  private executeAssignHelperAction(action: GameAction): { success: boolean; events: GameEvent[] } {
+    const events: GameEvent[] = []
+    
+    if (!action.target) {
+      return { success: false, events: [] }
+    }
+    
+    const [helperId, role] = action.target.split(':')
+    const helper = this.gameState.helpers.gnomes.find(g => g.id === helperId)
+    
+    if (!helper) {
+      return { success: false, events: [] }
+    }
+    
+    // Check if helper is housed (using isAssigned as housing indicator)
+    if (!helper.isAssigned && this.gameState.helpers.housingCapacity <= this.gameState.helpers.gnomes.filter(g => g.isAssigned).length) {
+      return { success: false, events: [] }
+    }
+    
+    // Assign primary role
+    helper.role = role
+    helper.isAssigned = true
+    
+    // Handle secondary role if master_academy exists
+    if (this.gameState.progression.unlockedUpgrades.includes('master_academy')) {
+      // For now, store secondary role in currentTask with special prefix
+      const secondaryRole = this.getOptimalSecondaryRole(helper, role)
+      if (secondaryRole) {
+        helper.currentTask = `secondary_${secondaryRole}`
+      }
+    }
+    
+    events.push({
+      timestamp: this.gameState.time.totalMinutes,
+      type: 'action_assign_helper',
+      description: `Assigned ${helper.name} to ${role} role`,
+      importance: 'medium'
+    })
+    
+    return { success: true, events }
+  }
+
+  /**
+   * Executes helper training action
+   */
+  private executeTrainHelperAction(action: GameAction): { success: boolean; events: GameEvent[] } {
+    const events: GameEvent[] = []
+    
+    if (!action.target) {
+      return { success: false, events: [] }
+    }
+    
+    const helper = this.gameState.helpers.gnomes.find(g => g.id === action.target)
+    if (!helper) {
+      return { success: false, events: [] }
+    }
+    
+    // Calculate current level from efficiency (efficiency = 1.0 + level * 0.1)
+    const currentLevel = Math.floor((helper.efficiency - 1.0) / 0.1)
+    
+    // Calculate cost: 50 * 2^level energy
+    const energyCost = 50 * Math.pow(2, currentLevel)
+    const trainingTime = 30 * (currentLevel + 1) // 30 * (level + 1) minutes
+    
+    // Check if we have enough energy
+    if (this.gameState.resources.energy.current < energyCost) {
+      return { success: false, events: [] }
+    }
+    
+    // Consume energy
+    this.gameState.resources.energy.current -= energyCost
+    
+    // Start training process (simplified - in full implementation would be a process)
+    helper.experience += 100 // Gain experience
+    helper.efficiency = Math.min(2.0, 1.0 + (currentLevel + 1) * 0.1) // Increase efficiency
+    
+    events.push({
+      timestamp: this.gameState.time.totalMinutes,
+      type: 'action_train_helper',
+      description: `Started training ${helper.name} (Level ${currentLevel + 1}, ${trainingTime} min)`,
+      importance: 'medium'
+    })
+    
+    return { success: true, events }
+  }
+
+  /**
+   * Helper method to determine optimal secondary role for dual-role helpers
+   */
+  private getOptimalSecondaryRole(helper: GnomeState, primaryRole: string): string | null {
+    // Simple logic to assign complementary secondary roles
+    const complementaryRoles: { [key: string]: string } = {
+      'waterer': 'harvester',
+      'harvester': 'sower',
+      'sower': 'waterer',
+      'pump': 'waterer',
+      'miner': 'refiner',
+      'refiner': 'forager',
+      'forager': 'refiner',
+      'catcher': 'sower',
+      'fighter': 'support',
+      'support': 'fighter'
+    }
+    
+    return complementaryRoles[primaryRole] || null
   }
 
   /**

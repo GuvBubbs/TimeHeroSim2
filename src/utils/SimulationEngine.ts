@@ -40,6 +40,13 @@ export class SimulationEngine {
   private lastCheckinTime: number = 0
   private isRunning: boolean = false
   private tickCount: number = 0
+  private lastProgressCheck?: {
+    day: number
+    plots: number
+    level: number
+    gold: number
+    lastProgressDay: number
+  }
   
   constructor(config: SimulationConfig, gameDataStore?: any) {
     this.config = config
@@ -419,58 +426,103 @@ export class SimulationEngine {
     const startTime = this.gameState.time.totalMinutes
     const deltaTime = this.calculateDeltaTime()
     
-    // Update time
-    this.updateTime(deltaTime)
-    
-    // Process ongoing activities
-    const ongoingEvents = this.processOngoingActivities(deltaTime)
-    
-    // Process crop growth and water consumption
-    CropSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
-    
-    // Process helper automation
-    HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
-    
-    // Process crafting operations
-    CraftingSystem.processCrafting(this.gameState, deltaTime, this.gameDataStore)
-    
-    // Process mining operations
-    MiningSystem.processMining(this.gameState, deltaTime)
-    
-    // Make AI decisions
-    const decisions = this.makeDecisions()
-    
-    // Execute actions
-    const executedActions: GameAction[] = []
-    const actionEvents: GameEvent[] = []
-    
-    for (const action of decisions) {
-      const result = this.executeAction(action)
-      if (result.success) {
-        executedActions.push(action)
-        actionEvents.push(...result.events)
+    try {
+      // Update time
+      this.updateTime(deltaTime)
+      
+      // Process ongoing activities
+      const ongoingEvents = this.processOngoingActivities(deltaTime)
+      
+      // Process all game systems in order with error handling
+      try {
+        // Process crop growth and water consumption
+        CropSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
+      } catch (error) {
+        console.error('Error in CropSystem.processCropGrowth:', error)
       }
-    }
-    
-    // Update automation systems
-    this.updateAutomation()
-    
-    // Update phase progression
-    this.updatePhaseProgression()
-    
-    // Check victory/completion conditions
-    const isComplete = this.checkVictoryConditions()
-    const isStuck = this.checkBottleneckConditions()
-    
-    this.tickCount++
-    
-    return {
-      gameState: this.gameState,
-      executedActions,
-      events: [...ongoingEvents, ...actionEvents],
-      deltaTime,
-      isComplete,
-      isStuck
+      
+      try {
+        // Process crafting operations
+        CraftingSystem.processCrafting(this.gameState, deltaTime, this.gameDataStore)
+      } catch (error) {
+        console.error('Error in CraftingSystem.processCrafting:', error)
+      }
+      
+      try {
+        // Process mining operations
+        MiningSystem.processMining(this.gameState, deltaTime)
+      } catch (error) {
+        console.error('Error in MiningSystem.processMining:', error)
+      }
+      
+      try {
+        // Process helper automation
+        HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
+      } catch (error) {
+        console.error('Error in HelperSystem.processHelpers:', error)
+      }
+      
+      // Process adventures if active
+      this.processActiveAdventures(deltaTime)
+      
+      // Process resource regeneration
+      this.processResourceRegeneration(deltaTime)
+      
+      // Make AI decisions
+      const decisions = this.makeDecisions()
+      
+      // Execute actions
+      const executedActions: GameAction[] = []
+      const actionEvents: GameEvent[] = []
+      
+      for (const action of decisions) {
+        try {
+          const result = this.executeAction(action)
+          if (result.success) {
+            executedActions.push(action)
+            actionEvents.push(...result.events)
+          }
+        } catch (error) {
+          console.error(`Error executing action ${action.type}:`, error)
+        }
+      }
+      
+      // Update automation systems
+      this.updateAutomation()
+      
+      // Update phase progression
+      this.updatePhaseProgression()
+      
+      // Check victory/completion conditions
+      const isComplete = this.checkVictoryConditions()
+      const isStuck = this.checkBottleneckConditions()
+      
+      this.tickCount++
+      
+      return {
+        gameState: this.gameState,
+        executedActions,
+        events: [...ongoingEvents, ...actionEvents],
+        deltaTime,
+        isComplete,
+        isStuck
+      }
+    } catch (error) {
+      console.error('Critical error in simulation tick:', error)
+      // Return safe fallback state
+      return {
+        gameState: this.gameState,
+        executedActions: [],
+        events: [{
+          timestamp: this.gameState.time.totalMinutes,
+          type: 'error',
+          description: `Simulation error: ${error}`,
+          importance: 'high'
+        }],
+        deltaTime,
+        isComplete: false,
+        isStuck: true
+      }
     }
   }
 
@@ -502,6 +554,39 @@ export class SimulationEngine {
     
     // Update time on current screen
     this.gameState.location.timeOnScreen += deltaTime
+  }
+
+  /**
+   * Processes active adventures (if any)
+   */
+  private processActiveAdventures(deltaTime: number): void {
+    // Adventures are processed immediately in executeAction for now
+    // Future enhancement: support for longer adventures that take time
+    if (this.gameState.processes.adventure) {
+      // Adventure in progress - could add time-based processing here
+      // For now, adventures complete immediately when executed
+    }
+  }
+
+  /**
+   * Processes resource regeneration (energy and water)
+   */
+  private processResourceRegeneration(deltaTime: number): void {
+    // Energy regeneration: +0.5 per minute up to max
+    const energyRegen = 0.5 * deltaTime
+    this.gameState.resources.energy.current = Math.min(
+      this.gameState.resources.energy.max,
+      this.gameState.resources.energy.current + energyRegen
+    )
+
+    // Water auto-pump generation if unlocked
+    if (this.gameState.resources.water.autoGenRate > 0) {
+      const waterRegen = this.gameState.resources.water.autoGenRate * deltaTime
+      this.gameState.resources.water.current = Math.min(
+        this.gameState.resources.water.max,
+        this.gameState.resources.water.current + waterRegen
+      )
+    }
   }
 
   /**
@@ -2271,17 +2356,91 @@ export class SimulationEngine {
    * Checks if victory conditions are met
    */
   private checkVictoryConditions(): boolean {
-    // Simple victory condition: reach day 35 or hero level 10
-    return this.gameState.time.day >= 35 || this.gameState.progression.heroLevel >= 10
+    // Victory conditions based on game design:
+    // 1. Great Estate reached (90 plots)
+    // 2. Hero level 15 (max level)
+    return this.gameState.progression.farmPlots >= 90 || 
+           this.gameState.progression.heroLevel >= 15
   }
 
   /**
    * Checks if simulation is stuck (bottleneck detection)
    */
   private checkBottleneckConditions(): boolean {
-    // Simple bottleneck: no energy and no progress for extended time
-    return this.gameState.resources.energy.current <= 0 && 
-           this.gameState.location.timeOnScreen > 60 // Stuck on same screen for 1 hour
+    const currentDay = this.gameState.time.day
+    const currentPlots = this.gameState.progression.farmPlots
+    const currentLevel = this.gameState.progression.heroLevel
+    const currentGold = this.gameState.resources.gold
+    
+    // Initialize progress tracking if not exists
+    if (!this.lastProgressCheck) {
+      this.lastProgressCheck = {
+        day: currentDay,
+        plots: currentPlots,
+        level: currentLevel,
+        gold: currentGold,
+        lastProgressDay: currentDay
+      }
+      return false
+    }
+    
+    // Check if any progress has been made
+    const hasProgress = (
+      currentPlots > this.lastProgressCheck.plots ||
+      currentLevel > this.lastProgressCheck.level ||
+      currentGold > this.lastProgressCheck.gold + 100 // Significant gold increase
+    )
+    
+    if (hasProgress) {
+      // Update progress tracking
+      this.lastProgressCheck = {
+        day: currentDay,
+        plots: currentPlots,
+        level: currentLevel,
+        gold: currentGold,
+        lastProgressDay: currentDay
+      }
+      return false
+    }
+    
+    // Check if stuck for 3+ days without progress
+    const daysSinceProgress = currentDay - this.lastProgressCheck.lastProgressDay
+    if (daysSinceProgress >= 3) {
+      // Identify bottleneck cause
+      const bottleneckCause = this.identifyBottleneckCause()
+      console.warn(`Bottleneck detected after ${daysSinceProgress} days. Cause: ${bottleneckCause}`)
+      return true
+    }
+    
+    return false
+  }
+
+  /**
+   * Identifies the likely cause of a bottleneck
+   */
+  private identifyBottleneckCause(): string {
+    const energy = this.gameState.resources.energy.current
+    const gold = this.gameState.resources.gold
+    const plots = this.gameState.progression.farmPlots
+    const seeds = Array.from(this.gameState.resources.seeds.values()).reduce((sum, count) => sum + count, 0)
+    
+    if (energy <= 10) {
+      return "Low energy - hero cannot perform actions"
+    }
+    
+    if (gold <= 50 && plots < 20) {
+      return "Insufficient gold for progression purchases"
+    }
+    
+    if (seeds <= 5 && plots > 10) {
+      return "No seeds available for planting"
+    }
+    
+    if (plots >= 40 && this.gameState.helpers.gnomes.length === 0) {
+      return "Too many plots to manage without helpers"
+    }
+    
+    return "Unknown bottleneck - check decision logic"
   }
 
   /**

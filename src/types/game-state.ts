@@ -92,9 +92,15 @@ export interface CropState {
   cropId: string
   plantedAt: number        // Total minutes when planted
   growthTimeRequired: number
-  waterLevel: number
+  waterLevel: number       // 0-1 (percentage)
   isWithered: boolean
   readyToHarvest: boolean
+  
+  // Enhanced growth tracking
+  growthProgress: number   // 0-1 (percentage of growth completed)
+  growthStage: number      // Current visual stage (0 to maxStages)
+  maxStages: number        // Total growth stages for this crop
+  droughtTime: number      // Minutes with waterLevel = 0 (for tracking only)
 }
 
 /**
@@ -230,7 +236,7 @@ export interface GameState {
  */
 export interface GameAction {
   id: string
-  type: 'move' | 'plant' | 'water' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper' | 'cleanup'
+  type: 'move' | 'plant' | 'water' | 'pump' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper' | 'cleanup'
   screen: GameScreen
   target?: string          // Item ID, plot ID, etc.
   duration: number         // Expected duration in minutes

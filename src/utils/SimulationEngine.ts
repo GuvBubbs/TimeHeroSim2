@@ -4,6 +4,7 @@
 import { MapSerializer } from './MapSerializer'
 import { CSVDataParser } from './CSVDataParser'
 import { PrerequisiteSystem } from './systems/PrerequisiteSystem'
+import { CropSystem } from './systems/CropSystem'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -410,6 +411,9 @@ export class SimulationEngine {
     
     // Process ongoing activities
     const ongoingEvents = this.processOngoingActivities(deltaTime)
+    
+    // Process crop growth and water consumption
+    CropSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
     
     // Make AI decisions
     const decisions = this.makeDecisions()
@@ -1570,6 +1574,99 @@ export class SimulationEngine {
   }
 
   /**
+   * Executes a water action using the new CropSystem
+   */
+  private executeWaterAction(action: GameAction, events: GameEvent[]): boolean {
+    // Check water availability
+    if (this.gameState.resources.water.current <= 0) {
+      return false
+    }
+    
+    // Determine water amount based on tool equipped
+    let waterAmount = 1.0 // Base watering amount
+    
+    // Check for watering tools and their efficiency
+    const tools = this.gameState.inventory.tools
+    if (tools.has('rain_bringer') && tools.get('rain_bringer')?.isEquipped) {
+      waterAmount = 8.0 // Rain Bringer: very efficient
+    } else if (tools.has('sprinkler_can') && tools.get('sprinkler_can')?.isEquipped) {
+      waterAmount = 4.0 // Sprinkler Can: efficient
+    } else if (tools.has('watering_can_ii') && tools.get('watering_can_ii')?.isEquipped) {
+      waterAmount = 2.0 // Watering Can II: improved
+    }
+    
+    // Use CropSystem to distribute water efficiently
+    const waterUsed = CropSystem.distributeWater(this.gameState, waterAmount)
+    
+    if (waterUsed > 0) {
+      // Consume water from resources
+      this.gameState.resources.water.current = Math.max(0, 
+        this.gameState.resources.water.current - waterUsed
+      )
+      
+      // Consume energy (base cost from action)
+      this.gameState.resources.energy.current -= action.energyCost
+      
+      events.push({
+        timestamp: this.gameState.time.totalMinutes,
+        type: 'action_water',
+        description: `Watered crops using ${waterUsed.toFixed(1)} water`,
+        importance: 'low'
+      })
+      
+      return true
+    }
+    
+    return false
+  }
+
+  /**
+   * Executes a pump action to generate water
+   */
+  private executePumpAction(action: GameAction, events: GameEvent[]): boolean {
+    // Check if we're at water capacity
+    if (this.gameState.resources.water.current >= this.gameState.resources.water.max) {
+      return false
+    }
+    
+    // Determine pump rate based on upgrades
+    let pumpRate = 2 // Base pump rate
+    
+    // Check for pump upgrades
+    const upgrades = this.gameState.progression.unlockedUpgrades
+    if (upgrades.includes('crystal_pump')) {
+      pumpRate = 60 // Crystal Pump: very fast
+    } else if (upgrades.includes('steam_pump')) {
+      pumpRate = 30 // Steam Pump: fast
+    } else if (upgrades.includes('well_pump_iii')) {
+      pumpRate = 15 // Well Pump III: good
+    } else if (upgrades.includes('well_pump_ii')) {
+      pumpRate = 8 // Well Pump II: improved
+    } else if (upgrades.includes('well_pump_i')) {
+      pumpRate = 4 // Well Pump I: basic upgrade
+    }
+    
+    // Add water (limited by capacity)
+    const waterToAdd = Math.min(pumpRate, 
+      this.gameState.resources.water.max - this.gameState.resources.water.current
+    )
+    
+    this.gameState.resources.water.current += waterToAdd
+    
+    // Consume energy
+    this.gameState.resources.energy.current -= action.energyCost
+    
+    events.push({
+      timestamp: this.gameState.time.totalMinutes,
+      type: 'action_pump',
+      description: `Pumped ${waterToAdd} water`,
+      importance: 'low'
+    })
+    
+    return true
+  }
+
+  /**
    * Executes a game action
    */
   private executeAction(action: GameAction): { success: boolean; events: GameEvent[] } {
@@ -1589,21 +1686,32 @@ export class SimulationEngine {
         if (action.target) {
           const currentSeeds = this.gameState.resources.seeds.get(action.target) || 0
           if (currentSeeds > 0) {
+            // Get crop data from CSV for accurate growth time and stages
+            const cropData = this.gameDataStore.getItemById(action.target)
+            const growthTime = cropData ? parseInt(cropData.time) || 10 : 10
+            const stages = cropData ? this.parseGrowthStages(cropData.notes) : 3
+            
             this.gameState.resources.seeds.set(action.target, currentSeeds - 1)
             this.gameState.processes.crops.push({
               plotId: `plot_${this.gameState.processes.crops.length + 1}`,
               cropId: action.target,
               plantedAt: this.gameState.time.totalMinutes,
-              growthTimeRequired: 120, // 2 hours base
-              waterLevel: 100,
+              growthTimeRequired: growthTime,
+              waterLevel: 1.0, // Start fully watered (0-1 scale)
               isWithered: false,
-              readyToHarvest: false
+              readyToHarvest: false,
+              
+              // Enhanced growth tracking
+              growthProgress: 0,
+              growthStage: 0,
+              maxStages: stages,
+              droughtTime: 0
             })
             
             events.push({
               timestamp: this.gameState.time.totalMinutes,
               type: 'action_plant',
-              description: `Planted ${action.target}`,
+              description: `Planted ${action.target} (${growthTime}min growth, ${stages} stages)`,
               importance: 'low'
             })
           }
@@ -1611,17 +1719,10 @@ export class SimulationEngine {
         break
         
       case 'water':
-        const crop = this.gameState.processes.crops.find(c => c.plotId === action.target)
-        if (crop) {
-          crop.waterLevel = Math.min(100, crop.waterLevel + 50)
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_water',
-            description: `Watered crop at ${action.target}`,
-            importance: 'low'
-          })
-        }
-        break
+        return this.executeWaterAction(action, events)
+        
+      case 'pump':
+        return this.executePumpAction(action, events)
         
       case 'harvest':
         const harvestCrop = this.gameState.processes.crops.find(c => c.plotId === action.target)
@@ -1898,6 +1999,16 @@ export class SimulationEngine {
   }
 
   /**
+   * Parse growth stages from crop notes field
+   */
+  private parseGrowthStages(notes: string): number {
+    if (!notes) return 3 // Default to 3 stages
+    
+    const match = notes.match(/Growth Stages (\d+)/i)
+    return match ? parseInt(match[1]) : 3
+  }
+
+  /**
    * Adds a game event to the current tick's events
    */
   private addEvent(event: GameEvent): void {
@@ -2053,12 +2164,20 @@ export class SimulationEngine {
         this.gameState.progression.farmStage = 1
         // Set up some ready crops for testing
         this.gameState.processes.crops = Array(5).fill(null).map((_, i) => ({
-          plotId: i,
-          cropId: i < 3 ? 'carrot' : null,
-          isReady: i < 2,
+          plotId: `plot_${i + 1}`,
+          cropId: i < 3 ? 'carrot' : '',
+          plantedAt: this.gameState.time.totalMinutes - (i < 2 ? 100 : 50),
+          growthTimeRequired: 6, // Carrot growth time from CSV
           waterLevel: 0.8,
-          plantedAt: this.gameState.time.totalMinutes - (i < 2 ? 100 : 50)
-        }))
+          isWithered: false,
+          readyToHarvest: i < 2,
+          
+          // Enhanced growth tracking
+          growthProgress: i < 2 ? 1.0 : 0.7,
+          growthStage: i < 2 ? 3 : 2,
+          maxStages: 3, // Carrot has 3 stages
+          droughtTime: 0
+        })).filter(crop => crop.cropId) // Only include plots with crops
         break
         
       case 'mid_game':

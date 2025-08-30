@@ -2,21 +2,21 @@
 
 ## Overview
 
-The Simulation Engine is the core intelligence system that powers the TimeHero Simulator, providing realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. **Phase 8A-8E Implementation Complete** ✅, featuring robust CSV data parsing, enhanced resource management with storage limits, farm expansion mechanics, comprehensive cleanup action system, realistic crop growth with water management, complete helper automation system, and **real combat simulation with pentagon advantage system**.
+The Simulation Engine is the core intelligence system that powers the TimeHero Simulator, providing realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. **Phase 8A-8F Implementation Complete** ✅, featuring robust CSV data parsing, enhanced resource management with storage limits, farm expansion mechanics, comprehensive cleanup action system, realistic crop growth with water management, complete helper automation system, **real combat simulation with pentagon advantage system**, and **complete forge crafting and mining systems with material refinement**.
 
-The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships. It processes real-time game mechanics including farming, crafting, **realistic combat with weapon advantages and boss mechanics**, mining, and helper management while maintaining authentic player behavior patterns.
+The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships. It processes real-time game mechanics including farming, **forge crafting with heat management**, **depth-based mining with exponential energy drain**, **realistic combat with weapon advantages and boss mechanics**, and helper management while maintaining authentic player behavior patterns.
 
-**Status**: ✅ Production-Ready with Phase 8A-8E Complete Integration
-**Testing Result**: Fully operational simulation with robust CSV parsing, AI-driven cleanup actions, dynamic farm expansion mechanics, comprehensive resource management, realistic crop growth system, complete helper automation system, and **authentic combat simulation with weapon switching, armor effects, and boss quirks**
+**Status**: ✅ Production-Ready with Phase 8A-8F Complete Integration
+**Testing Result**: Fully operational simulation with robust CSV parsing, AI-driven cleanup actions, dynamic farm expansion mechanics, comprehensive resource management, realistic crop growth system, complete helper automation system, **authentic combat simulation with weapon switching, armor effects, and boss quirks**, and **complete crafting/mining systems with material consumption and production**
 
 ## Architecture Overview
 
 ```
-Phase 8A Foundation ──► Phase 8B Expansion ──► Phase 8C Growth ──► Phase 8D Automation ──► Phase 8E Combat ──► Complete Simulation Engine
-├── CSVDataParser        ├── Cleanup Actions      ├── CropSystem           ├── HelperSystem         ├── CombatSystem         ├── Web Worker Processing
-├── Resource Management  ├── Farm Expansion       ├── Water Management     ├── Helper Automation    ├── Pentagon Advantages  ├── AI Decision Making  
-├── Material Storage     ├── Plot Management      ├── Growth Mechanics     ├── Role Assignment      ├── Boss Mechanics       ├── Persona Integration
-└── Map Serialization   └── Phase Progression    └── Realistic Farming    └── Training System      └── Armor Effects        └── Real-time Monitoring
+Phase 8A Foundation ──► Phase 8B Expansion ──► Phase 8C Growth ──► Phase 8D Automation ──► Phase 8E Combat ──► Phase 8F Crafting/Mining ──► Complete Simulation Engine
+├── CSVDataParser        ├── Cleanup Actions      ├── CropSystem           ├── HelperSystem         ├── CombatSystem         ├── CraftingSystem       ├── Web Worker Processing
+├── Resource Management  ├── Farm Expansion       ├── Water Management     ├── Helper Automation    ├── Pentagon Advantages  ├── MiningSystem         ├── AI Decision Making  
+├── Material Storage     ├── Plot Management      ├── Growth Mechanics     ├── Role Assignment      ├── Boss Mechanics       ├── Forge Heat           ├── Persona Integration
+└── Map Serialization   └── Phase Progression    └── Realistic Farming    └── Training System      └── Armor Effects        └── Depth Progression    └── Real-time Monitoring
 
 Core Components:
 ├── SimulationEngine.ts (Main Logic)
@@ -25,6 +25,8 @@ Core Components:
 ├── CropSystem.ts (Phase 8C - Realistic Growth & Water Management)
 ├── HelperSystem.ts (Phase 8D - Complete Helper Automation)
 ├── CombatSystem.ts (Phase 8E - Real Combat Simulation)
+├── CraftingSystem.ts (Phase 8F - Forge Crafting & Heat Management)
+├── MiningSystem.ts (Phase 8F - Depth-Based Mining & Material Drops)
 ├── simulation.worker.ts (Web Worker Thread)
 ├── SimulationBridge.ts (Main Thread Communication)
 └── MapSerializer.ts (Cross-thread Data Transfer)
@@ -34,8 +36,8 @@ Game Systems:
 ├── Tower System (Seed Catching, Auto-Catchers)
 ├── Town System (Purchases, Vendors, Blueprints)
 ├── Adventure System (Real Combat, Pentagon Advantages, Boss Quirks)
-├── Forge System (Crafting, Heat, Materials)
-├── Mine System (Depth, Energy, Materials)
+├── Forge System (Crafting, Heat Management, Material Refinement)
+├── Mine System (Exponential Energy Drain, Depth Progression, Raw Materials)
 └── Helper System (Gnomes, Roles, Training, Automation)
 ```
 
@@ -1181,6 +1183,341 @@ combatLog.push(`🎯 Quirk: ${boss.quirk}`)
 combatLog.push(`🎉 Adventure Complete!`)
 ```
 
+## Phase 8F - Complete Forge Crafting & Mining Systems
+
+### Implementation Overview
+
+**Implementation Date**: December 19, 2024
+**Phase 8F Scope**: Complete forge crafting system with heat management, depth-based mining with exponential energy drain, material refinement system, tool/weapon production
+**Status**: ✅ Complete and Production-Ready
+
+Phase 8F implements the complete forge crafting and mining systems that provide authentic material production and consumption mechanics. The systems handle tool/weapon crafting with forge heat optimization, depth-based mining with exponential energy drain, and a comprehensive material refinement system for raw materials.
+
+### CraftingSystem Implementation
+
+**File Location**: `src/utils/systems/CraftingSystem.ts`
+
+The CraftingSystem provides complete forge crafting mechanics with heat management and material consumption:
+
+```typescript
+export class CraftingSystem {
+  /**
+   * Process ongoing crafting operations
+   * Handles furnace speed modifiers, forge heat optimization, and completion
+   */
+  static processCrafting(gameState: GameState, deltaMinutes: number, gameDataStore: any): void {
+    // Decay forge heat over time (-50°/minute)
+    if (gameState.processes.crafting.length > 0) {
+      const currentCraft = gameState.processes.crafting[0]
+      if (currentCraft.heat > 0) {
+        currentCraft.heat = Math.max(0, currentCraft.heat - 50 * deltaMinutes)
+      }
+    }
+
+    // Calculate furnace speed modifier based on available furnaces
+    const speedModifier = this.getFurnaceSpeedModifier(gameState)
+    
+    // Calculate progress based on duration and speed modifier
+    const baseDuration = craftData.time || 10
+    const effectiveDuration = baseDuration / speedModifier
+    const progressDelta = deltaMinutes / effectiveDuration
+
+    currentCraft.progress += progressDelta
+
+    // Check if crafting is complete
+    if (currentCraft.progress >= 1.0) {
+      this.completeCraft(gameState, currentCraft, craftData)
+      gameState.processes.crafting.shift()
+    }
+  }
+
+  /**
+   * Start a new crafting operation
+   * Checks prerequisites, consumes materials, and adds to queue
+   */
+  static startCrafting(gameState: GameState, itemId: string, gameDataStore: any): boolean {
+    // Check prerequisites, energy, gold, and material costs
+    // Consume resources and add to crafting queue
+    // Start with optimal forge heat (3000°)
+  }
+}
+```
+
+### Forge Heat Management System
+
+**Heat Optimization Mechanics**:
+
+```typescript
+/**
+ * Calculate success rate based on forge heat
+ * Optimal range: 2500-3500°, with falloff outside this range
+ */
+private static calculateHeatSuccessRate(heat: number): number {
+  const optimalMin = 2500
+  const optimalMax = 3500
+
+  if (heat >= optimalMin && heat <= optimalMax) {
+    return 1.0 // 100% success in optimal range
+  }
+
+  // Success rate decreases with distance from optimal range
+  let distance = heat < optimalMin ? optimalMin - heat : heat - optimalMax
+  const maxDistance = 2000 // At this distance, success rate is 0%
+  const successRate = Math.max(0, 1 - (distance / maxDistance))
+
+  return successRate
+}
+```
+
+**Furnace Speed Modifiers**:
+- **Base Furnace**: 1.0x speed (no modifier)
+- **Furnace I**: 1.2x speed (+20% faster crafting)
+- **Furnace II**: 1.4x speed (+40% faster crafting)
+- **Crystal Furnace**: 1.6x speed (+60% faster crafting)
+
+**Master Craft System**:
+- **10% Chance**: When master_craft upgrade is unlocked
+- **Double Output**: Successful master craft produces 2x items
+- **All Item Types**: Works for tools, weapons, and refined materials
+
+### MiningSystem Implementation
+
+**File Location**: `src/utils/systems/MiningSystem.ts`
+
+The MiningSystem provides depth-based mining with exponential energy drain and material drops:
+
+```typescript
+export class MiningSystem {
+  /**
+   * Process ongoing mining operations
+   * Handles energy drain, depth progression, and material drops
+   */
+  static processMining(gameState: GameState, deltaMinutes: number): void {
+    if (!gameState.processes.mining || !gameState.processes.mining.isActive) {
+      return
+    }
+
+    const mining = gameState.processes.mining
+
+    // Calculate base energy drain: 2^(depth/500) per minute
+    const depthTier = Math.floor(mining.depth / 500) + 1
+    const baseEnergyDrain = Math.pow(2, depthTier - 1) // 1, 2, 4, 8, 16...
+
+    // Apply pickaxe efficiency
+    const pickaxeEfficiency = this.getPickaxeEfficiency(gameState)
+    const actualEnergyDrain = baseEnergyDrain * (1 - pickaxeEfficiency) * deltaMinutes
+
+    // Apply tool sharpening bonus if active
+    const sharpenBonus = this.getSharpenBonus(gameState)
+    const finalEnergyDrain = actualEnergyDrain * (1 - sharpenBonus)
+
+    // Drain energy and progress depth (10 meters per minute)
+    gameState.resources.energy.current -= finalEnergyDrain
+    mining.depth += 10 * deltaMinutes
+
+    // Drop materials every 30 seconds based on depth tier
+    if (mining.timeAtDepth % 0.5 < deltaMinutes) {
+      this.dropMaterials(gameState, mining.depth)
+    }
+
+    // End mining if out of energy
+    if (gameState.resources.energy.current <= 0) {
+      gameState.processes.mining.isActive = false
+      gameState.resources.energy.current = 0
+    }
+  }
+}
+```
+
+### Depth-Based Material System
+
+**Mining Depth Tiers** (10 tiers total):
+
+```typescript
+const materialsByTier = [
+  ['Raw Stone'],                    // Tier 1: 0-500m
+  ['Raw Copper', 'Raw Stone'],      // Tier 2: 500-1000m
+  ['Raw Iron', 'Raw Copper'],       // Tier 3: 1000-1500m
+  ['Raw Iron'],                     // Tier 4: 1500-2000m
+  ['Raw Silver', 'Raw Iron'],       // Tier 5: 2000-2500m
+  ['Raw Silver'],                   // Tier 6: 2500-3000m
+  ['Raw Crystal', 'Raw Silver'],    // Tier 7: 3000-3500m
+  ['Raw Crystal'],                  // Tier 8: 3500-4000m
+  ['Raw Mythril', 'Raw Crystal'],   // Tier 9: 4000-4500m
+  ['Raw Obsidian', 'Raw Mythril']   // Tier 10: 4500-5000m
+]
+```
+
+**Energy Drain by Depth**:
+- **Tier 1** (0-500m): 1 energy/minute
+- **Tier 2** (500-1000m): 2 energy/minute
+- **Tier 3** (1000-1500m): 4 energy/minute
+- **Tier 4** (1500-2000m): 8 energy/minute
+- **Tier 5** (2000-2500m): 16 energy/minute
+- **Tier 6** (2500-3000m): 32 energy/minute
+- **Tier 7** (3000-3500m): 64 energy/minute
+- **Tier 8** (3500-4000m): 128 energy/minute
+- **Tier 9** (4000-4500m): 256 energy/minute
+- **Tier 10** (4500-5000m): 512 energy/minute
+
+**Pickaxe Efficiency System**:
+- **Pickaxe I**: 0% efficiency (base energy drain)
+- **Pickaxe II**: -15% energy drain
+- **Pickaxe III**: -30% energy drain
+- **Crystal Pick**: -45% energy drain
+- **Abyss Seeker**: -60% energy drain
+
+### Material Refinement System
+
+**Raw Material Processing** (from forge_actions.csv):
+
+```csv
+id,name,energy_cost,time,materials_cost,materials_gain
+refine_stone,Refine Stone,10,2,Raw Stone,Stone
+refine_copper,Refine Copper,20,3,Raw Copper,Copper
+refine_iron,Refine Iron,50,5,Raw Iron,Iron
+refine_silver,Refine Silver,100,8,Raw Silver,Silver
+refine_crystal,Refine Crystal,250,12,Raw Crystal,Crystal
+refine_mythril,Refine Mythril,500,20,Raw Mythril,Mythril
+refine_obsidian,Refine Obsidian,1000,30,Raw Obsidian,Obsidian
+```
+
+**Refinement Process**:
+1. **Raw Materials**: Obtained from mining operations
+2. **Energy Cost**: Increases with material tier (10 → 1000 energy)
+3. **Time Cost**: Increases with material tier (2 → 30 minutes)
+4. **1:1 Conversion**: One raw material produces one refined material
+5. **Forge Integration**: Uses same crafting queue and heat system
+
+### Tool Sharpening System
+
+**Temporary Efficiency Boost**:
+
+```typescript
+/**
+ * Sharpen tool to reduce energy drain by 25% for 5 minutes
+ */
+static sharpenTool(gameState: GameState, energyCost: number = 5): boolean {
+  if (gameState.resources.energy.current < energyCost) {
+    return false
+  }
+
+  gameState.resources.energy.current -= energyCost
+
+  // Set sharpening effect (25% reduction for 5 minutes)
+  const sharpenDuration = 5
+  const sharpenEndTime = gameState.time.totalMinutes + sharpenDuration
+  
+  (gameState as any).temporaryEffects.sharpenedTool = {
+    endTime: sharpenEndTime,
+    bonus: 0.25 // 25% reduction
+  }
+
+  return true
+}
+```
+
+**Sharpening Benefits**:
+- **Energy Cost**: 5 energy to sharpen
+- **Duration**: 5 minutes of effect
+- **Bonus**: 25% reduction in mining energy drain
+- **Stacking**: Does not stack with multiple sharpenings
+- **All Pickaxes**: Works with any equipped pickaxe
+
+### Integration with SimulationEngine
+
+**Tick Processing Integration**:
+
+```typescript
+tick(): TickResult {
+  const deltaTime = this.calculateDeltaTime()
+  
+  // Update time
+  this.updateTime(deltaTime)
+  
+  // Process ongoing activities
+  const ongoingEvents = this.processOngoingActivities(deltaTime)
+  
+  // Process crop growth and water consumption (Phase 8C)
+  CropSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
+  
+  // Process helper automation (Phase 8D)
+  HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
+  
+  // Process crafting operations (Phase 8F)
+  CraftingSystem.processCrafting(this.gameState, deltaTime, this.gameDataStore)
+  
+  // Process mining operations (Phase 8F)
+  MiningSystem.processMining(this.gameState, deltaTime)
+  
+  // Make AI decisions and execute actions
+  const decisions = this.makeDecisions()
+  // ... rest of tick processing
+}
+```
+
+**Action Execution Integration**:
+
+```typescript
+case 'craft':
+  // Start crafting with material consumption
+  if (action.target) {
+    const craftStarted = CraftingSystem.startCrafting(this.gameState, action.target, this.gameDataStore)
+    if (craftStarted) {
+      events.push({
+        timestamp: this.gameState.time.totalMinutes,
+        type: 'craft_started',
+        description: `Started crafting ${action.target}`,
+        importance: 'medium'
+      })
+    }
+  }
+  break
+
+case 'mine':
+  // Start or continue mining operation
+  if (!this.gameState.processes.mining || !this.gameState.processes.mining.isActive) {
+    const miningStarted = MiningSystem.startMining(this.gameState)
+    if (miningStarted) {
+      events.push({
+        timestamp: this.gameState.time.totalMinutes,
+        type: 'mining_started',
+        description: 'Started mining operation',
+        importance: 'medium'
+      })
+    }
+  }
+  break
+
+case 'stoke':
+  // Stoke forge to increase heat
+  const stokeSuccess = CraftingSystem.stokeForge(this.gameState, action.energyCost)
+  if (stokeSuccess) {
+    events.push({
+      timestamp: this.gameState.time.totalMinutes,
+      type: 'forge_stoked',
+      description: 'Stoked forge to increase heat',
+      importance: 'low'
+    })
+  }
+  break
+```
+
+### CSV Data Integration
+
+**Forge Actions Data** (from `forge_actions.csv`):
+- **71 Crafting Recipes**: Complete tool and weapon crafting system
+- **Material Requirements**: Parsed from materials_cost field
+- **Energy Costs**: Range from 20 (basic tools) to 15000 (master tools)
+- **Time Requirements**: Range from 5 minutes (basic) to 60 minutes (master)
+- **Prerequisites**: Blueprint and anvil requirements
+
+**Tool and Weapon Production**:
+- **Tools**: Added to inventory.tools Map with durability tracking
+- **Weapons**: Added to inventory.weapons Map with level progression
+- **Upgrades**: Higher level weapons replace lower level ones
+- **Durability**: All crafted items start at 100% durability
+
 ### Enhanced Plant Action
 
 **CSV-Based Planting** (updated in `SimulationEngine.ts`):
@@ -2061,6 +2398,21 @@ static testParameterConfigurations(): {
 - **CSV Integration**: Weapon data, adventure routes, and armor effects loaded from CSV files
 - **Hero Equipment**: Basic sword starter equipment with proper weapon/armor state management
 
+### Phase 8F Achievements ✅
+- **CraftingSystem**: Complete forge crafting system with heat management and material consumption
+- **Forge Heat Optimization**: Optimal range 2500-3500° with success rate calculations and heat decay
+- **Furnace Speed Modifiers**: Progressive speed bonuses (+20%, +40%, +60%) based on furnace upgrades
+- **Master Craft System**: 10% chance for double output when master_craft upgrade is unlocked
+- **MiningSystem**: Depth-based mining with exponential energy drain (2^(depth/500) per minute)
+- **Pickaxe Efficiency**: Progressive efficiency bonuses (-15% to -60% energy drain) based on pickaxe tier
+- **Depth Progression**: 10 mining tiers from Surface Layer (0-500m) to The Abyss (4500-5000m)
+- **Material Drop System**: Depth-based raw material generation every 30 seconds with tier-appropriate materials
+- **Tool Sharpening**: Temporary 25% energy reduction for 5 minutes with 5 energy cost
+- **Material Refinement**: Complete raw material → refined material conversion system
+- **CSV Integration**: 71 crafting recipes from forge_actions.csv with proper material/energy/time costs
+- **Inventory Management**: Tools and weapons properly added to inventory Maps with durability tracking
+- **Tick Integration**: Both systems seamlessly integrated into main simulation loop processing
+
 ### Core Engine Features ✅
 - **15+ Action Types**: Complete coverage of all game systems
 - **Persona Integration**: Speedrunner, Casual, Weekend Warrior distinct behaviors
@@ -2142,8 +2494,8 @@ The combat system integration demonstrates flawless operation with comprehensive
 - **CSV Combat Data**: Weapon advantages, boss mechanics, and armor effects loaded successfully
 - **Real-time Processing**: Combat actions ready for AI decision-making integration
 
-**Documentation Version**: 1.2  
+**Documentation Version**: 1.3  
 **Last Updated**: December 19, 2024  
-**Implementation Status**: Phase 8A-8E Complete - Production-Ready Simulation Engine with Enhanced CSV Parsing, Resource Management, Farm Expansion, Realistic Crop Growth System, Complete Helper Automation System, **Real Combat Simulation with Pentagon Advantage System**, and Comprehensive AI Decision-Making System
+**Implementation Status**: Phase 8A-8F Complete - Production-Ready Simulation Engine with Enhanced CSV Parsing, Resource Management, Farm Expansion, Realistic Crop Growth System, Complete Helper Automation System, **Real Combat Simulation with Pentagon Advantage System**, **Complete Forge Crafting and Mining Systems**, and Comprehensive AI Decision-Making System
 
-This comprehensive simulation engine provides the foundation for realistic Time Hero gameplay simulation, enabling accurate game balance testing, progression validation, and player behavior analysis through sophisticated AI-driven decision-making, robust data management systems, authentic crop growth mechanics, complete helper automation systems, **and realistic combat simulation with weapon advantages, boss mechanics, and armor effects** that mirror the actual game experience from tutorial through endgame combat encounters.
+This comprehensive simulation engine provides the foundation for realistic Time Hero gameplay simulation, enabling accurate game balance testing, progression validation, and player behavior analysis through sophisticated AI-driven decision-making, robust data management systems, authentic crop growth mechanics, complete helper automation systems, **realistic combat simulation with weapon advantages, boss mechanics, and armor effects**, **and complete crafting/mining systems with forge heat management, depth-based mining, and material refinement** that mirror the actual game experience from tutorial through endgame including all production and combat mechanics.

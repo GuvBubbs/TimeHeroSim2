@@ -6,6 +6,8 @@ import { CSVDataParser } from './CSVDataParser'
 import { PrerequisiteSystem } from './systems/PrerequisiteSystem'
 import { CropSystem } from './systems/CropSystem'
 import { HelperSystem } from './systems/HelperSystem'
+import { CraftingSystem } from './systems/CraftingSystem'
+import { MiningSystem } from './systems/MiningSystem'
 import { CombatSystem, type WeaponData, type ArmorData, type RouteConfig, type WeaponType, type ArmorEffect } from './systems/CombatSystem'
 import type { 
   SimulationConfig, 
@@ -428,6 +430,12 @@ export class SimulationEngine {
     
     // Process helper automation
     HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
+    
+    // Process crafting operations
+    CraftingSystem.processCrafting(this.gameState, deltaTime, this.gameDataStore)
+    
+    // Process mining operations
+    MiningSystem.processMining(this.gameState, deltaTime)
     
     // Make AI decisions
     const decisions = this.makeDecisions()

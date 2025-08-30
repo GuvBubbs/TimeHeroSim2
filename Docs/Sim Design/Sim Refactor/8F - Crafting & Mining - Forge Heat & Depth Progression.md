@@ -1,4 +1,4 @@
-# 7F - Crafting & Mining - Forge Heat & Depth Progression
+# 8F - Crafting & Mining - Forge Heat & Depth Progression
 
 ## Context
 - **What this phase is doing:** See Goals below.

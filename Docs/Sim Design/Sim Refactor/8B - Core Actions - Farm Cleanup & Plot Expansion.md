@@ -1,4 +1,4 @@
-# 7B - Core Actions - Farm Cleanup & Plot Expansion
+# 8B - Core Actions - Farm Cleanup & Plot Expansion
 
 ## Context
 - **What this phase is doing:** See Goals below.

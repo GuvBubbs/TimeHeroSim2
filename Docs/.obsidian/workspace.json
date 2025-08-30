@@ -78,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 479.5
   },
   "right": {
     "id": "f7c532a663fb86d4",
@@ -172,8 +171,18 @@
   },
   "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
-    "Sim Design/Sim Refactor/sim-refactor-phased-plan.md",
+    "Sim Design/Sim Refactor/8G - Integration & Testing - Full System Validation.md",
+    "Sim Design/Sim Refactor/8F - Crafting & Mining - Forge Heat & Depth Progression.md",
+    "Sim Design/Sim Refactor/8E - Combat System - Adventures & Boss Fights.md",
+    "Sim Design/Sim Refactor/8D - Helper System - Automation & Roles.md",
+    "Sim Design/Sim Refactor/8C - Crop System - Growth & Water Mechanics.md",
+    "Sim Design/Sim Refactor/8B - Core Actions - Farm Cleanup & Plot Expansion.md",
+    "Sim Design/Sim Refactor/8A - Foundation - CSV Parsing & Resource Management.md",
     "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
+    "Sim Design/Sim Refactor/7B - Core Actions - Farm Cleanup & Plot Expansion.md",
+    "Sim Design/Sim Refactor/2B - Core Actions - Farm Cleanup & Plot Expansion.m8",
+    "Sim Design/Sim Refactor/7A - Foundation - CSV Parsing & Resource Management.md",
+    "Sim Design/Sim Refactor/sim-refactor-phased-plan.md",
     "farm_actions.csv",
     " .md",
     "farm_actionsUPDATE.csv",
@@ -185,8 +194,6 @@
     "Sim Design/Sim Refactor/7E - Combat System - Adventures & Boss Fights.md",
     "Sim Design/Sim Refactor/7D - Helper System - Automation & Roles.md",
     "Sim Design/Sim Refactor/7C - Crop System - Growth & Water Mechanics.md",
-    "Sim Design/Sim Refactor/7B - Core Actions - Farm Cleanup & Plot Expansion.md",
-    "Sim Design/Sim Refactor/7A - Foundation - CSV Parsing & Resource Management.md",
     "Sim Design/End to end Build/phased-development-plan.md",
     "Sim Design/End to end Build/phase-6-updates-after-phase-5.md",
     "Sim Design/simulation-phased-development-plan.md",
@@ -194,19 +201,11 @@
     "Sim Design/End to end Build/simulation-logic-overview.md",
     "Sim Design/End to end Build/07-reports.md",
     "Sim Design/End to end Build/06-live-monitor.md",
-    "Sim Design/End to end Build/05-simulation-setup-updated.md",
-    "Sim Design/End to end Build/04-player-personas.md",
-    "Sim Design/End to end Build/03-upgrade-tree.md",
-    "Sim Design/End to end Build/03-upgrade-tree-redesigned.md",
-    "Sim Design/End to end Build/02-game-configuration.md",
-    "Sim Design/End to end Build/01-dashboard.md",
-    "Sim Design/End to end Build/00-tech-stack-architecture.md",
     "Sim Design/End to end Build",
     "Sim Design/untitled folder",
     "Sim Design/Sim Refactor",
     "Archive",
     "untitled folder",
-    "App Build/Upgrade Tree",
-    "App Build"
+    "App Build/Upgrade Tree"
   ]
 }

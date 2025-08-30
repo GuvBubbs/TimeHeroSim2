@@ -1,4 +1,4 @@
-# 7C - Crop System - Growth & Water Mechanics
+# 8C - Crop System - Growth & Water Mechanics
 
 ## Context
 - **What this phase is doing:** See Goals below.

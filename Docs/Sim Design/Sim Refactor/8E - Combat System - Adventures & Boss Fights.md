@@ -1,4 +1,4 @@
-# 7E - Combat System - Adventures & Boss Fights
+# 8E - Combat System - Adventures & Boss Fights
 
 ## Context
 - **What this phase is doing:** See Goals below.

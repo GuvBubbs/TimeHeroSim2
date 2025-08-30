@@ -1,4 +1,4 @@
-# 7G - Integration & Testing - Full System Validation
+# 8G - Integration & Testing - Full System Validation
 
 ## Context
 - **What this phase is doing:** See Goals below.

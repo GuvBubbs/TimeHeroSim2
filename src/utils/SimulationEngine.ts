@@ -6,6 +6,7 @@ import { CSVDataParser } from './CSVDataParser'
 import { PrerequisiteSystem } from './systems/PrerequisiteSystem'
 import { CropSystem } from './systems/CropSystem'
 import { HelperSystem } from './systems/HelperSystem'
+import { CombatSystem, type WeaponData, type ArmorData, type RouteConfig, type WeaponType, type ArmorEffect } from './systems/CombatSystem'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -333,7 +334,16 @@ export class SimulationEngine {
       },
       inventory: {
         tools: new Map(),
-        weapons: new Map(),
+        weapons: new Map([
+          ['sword', { 
+            id: 'sword_1',
+            level: 1, 
+            owned: true,
+            durability: 100,
+            maxDurability: 100,
+            isEquipped: true
+          }] // Start with basic sword for combat
+        ]),
         armor: new Map(),
         capacity: 100,
         currentWeight: 0
@@ -521,30 +531,7 @@ export class SimulationEngine {
       }
     }
     
-    // Process adventure
-    if (this.gameState.processes.adventure) {
-      const adventure = this.gameState.processes.adventure
-      adventure.progress = Math.min(1.0, 
-        (this.gameState.time.totalMinutes - adventure.startedAt) / adventure.duration
-      )
-      
-      if (adventure.progress >= 1.0 && !adventure.isComplete) {
-        adventure.isComplete = true
-        // Award rewards
-        this.gameState.progression.experience += adventure.rewards.experience
-        this.gameState.resources.gold += adventure.rewards.gold
-        
-        events.push({
-          timestamp: this.gameState.time.totalMinutes,
-          type: 'adventure_complete',
-          description: `Completed adventure: ${adventure.adventureId}`,
-          data: adventure.rewards,
-          importance: 'high'
-        })
-        
-        this.gameState.processes.adventure = null
-      }
-    }
+    // Adventures are now processed immediately in executeAction, no ongoing processing needed
     
     // Regenerate energy
     this.gameState.resources.energy.current = Math.min(
@@ -1578,6 +1565,152 @@ export class SimulationEngine {
   }
 
   /**
+   * Executes an adventure action using the real combat system
+   */
+  private executeAdventureAction(action: GameAction): { success: boolean; totalGold: number; totalXP: number; finalHP: number; loot: string[]; combatLog: string[] } {
+    if (!action.target) {
+      return { success: false, totalGold: 0, totalXP: 0, finalHP: 0, loot: [], combatLog: ['No adventure target specified'] }
+    }
+
+    // Parse route configuration from action target (e.g., "meadow_path_short")
+    const routeConfig = this.parseRouteConfig(action.target)
+    if (!routeConfig) {
+      return { success: false, totalGold: 0, totalXP: 0, finalHP: 0, loot: [], combatLog: ['Invalid route configuration'] }
+    }
+
+    // Convert game state weapons to combat system format
+    const weapons = this.convertWeaponsForCombat()
+    if (weapons.size === 0) {
+      return { success: false, totalGold: 0, totalXP: 0, finalHP: 0, loot: [], combatLog: ['No weapons equipped'] }
+    }
+
+    // Convert game state armor to combat system format
+    const armor = this.convertArmorForCombat()
+
+    // Get hero level
+    const heroLevel = this.gameState.progression.heroLevel
+
+    // Run combat simulation
+    const result = CombatSystem.simulateAdventure(
+      routeConfig,
+      weapons,
+      armor,
+      heroLevel,
+      [], // helpers - not implemented yet
+      this.parameters.adventure || {}
+    )
+
+    return {
+      success: result.success,
+      totalGold: result.totalGold,
+      totalXP: result.totalXP,
+      finalHP: result.finalHP,
+      loot: result.loot,
+      combatLog: result.combatLog
+    }
+  }
+
+  /**
+   * Parse route configuration from adventure target string
+   */
+  private parseRouteConfig(target: string): RouteConfig | null {
+    // Parse target like "meadow_path_short" into route config
+    const parts = target.split('_')
+    if (parts.length < 3) return null
+
+    const length = parts[parts.length - 1]
+    const routeId = parts.slice(0, -1).join('_')
+
+    // Get adventure data from CSV
+    const adventureData = this.gameDataStore.getItemById(target)
+    if (!adventureData) return null
+
+    // Map length to proper case
+    const lengthMap: Record<string, 'Short' | 'Medium' | 'Long'> = {
+      'short': 'Short',
+      'medium': 'Medium', 
+      'long': 'Long'
+    }
+
+    const routeLength = lengthMap[length.toLowerCase()]
+    if (!routeLength) return null
+
+    return {
+      id: routeId,
+      length: routeLength,
+      waveCount: this.getWaveCountForRoute(routeId, routeLength),
+      boss: adventureData.boss as any, // Boss type from CSV
+      enemyRolls: adventureData.enemy_rolls || 'fixed',
+      goldGain: CSVDataParser.parseNumericValue(adventureData.gold_gain, 0),
+      xpGain: 60 + (routeLength === 'Long' ? 20 : routeLength === 'Medium' ? 10 : 0) // Base XP + length bonus
+    }
+  }
+
+  /**
+   * Get wave count for a specific route and length
+   */
+  private getWaveCountForRoute(routeId: string, length: 'Short' | 'Medium' | 'Long'): number {
+    const waveCountMap: Record<string, Record<string, number>> = {
+      'meadow_path': { 'Short': 3, 'Medium': 5, 'Long': 8 },
+      'pine_vale': { 'Short': 4, 'Medium': 6, 'Long': 10 },
+      'dark_forest': { 'Short': 4, 'Medium': 7, 'Long': 12 },
+      'mountain_pass': { 'Short': 5, 'Medium': 8, 'Long': 14 },
+      'crystal_caves': { 'Short': 5, 'Medium': 9, 'Long': 16 },
+      'frozen_tundra': { 'Short': 6, 'Medium': 10, 'Long': 18 },
+      'volcano_core': { 'Short': 6, 'Medium': 11, 'Long': 20 }
+    }
+
+    return waveCountMap[routeId]?.[length] || 3
+  }
+
+  /**
+   * Convert game state weapons to combat system format
+   */
+  private convertWeaponsForCombat(): Map<WeaponType, WeaponData> {
+    const combatWeapons = new Map<WeaponType, WeaponData>()
+
+    // Get equipped weapons from game state
+    for (const [weaponType, weaponInfo] of this.gameState.inventory.weapons) {
+      if (!weaponInfo || weaponInfo.level <= 0) continue
+
+      // Get weapon data from CSV for this level
+      const weaponId = `${weaponType}_${weaponInfo.level}`
+      const weaponData = this.gameDataStore.getItemById(weaponId)
+      
+      if (weaponData) {
+        combatWeapons.set(weaponType as WeaponType, {
+          type: weaponType as WeaponType,
+          damage: CSVDataParser.parseNumericValue(weaponData.damage, 10),
+          attackSpeed: parseFloat(weaponData.attackSpeed) || 1.0,
+          level: weaponInfo.level
+        })
+      }
+    }
+
+    return combatWeapons
+  }
+
+  /**
+   * Convert game state armor to combat system format
+   */
+  private convertArmorForCombat(): ArmorData | null {
+    // For now, return a basic armor setup since armor system isn't fully implemented
+    // In a full implementation, this would check equipped armor from inventory
+    const equippedArmor = Array.from(this.gameState.inventory.armor.values())[0]
+    
+    if (!equippedArmor) {
+      return null // No armor equipped
+    }
+
+    // Parse armor data (simplified for now)
+    // Note: ArmorState interface may not have defense/effect properties yet
+    return {
+      defense: (equippedArmor as any).defense || 0,
+      effect: ((equippedArmor as any).effect as ArmorEffect) || 'none'
+    }
+  }
+
+  /**
    * Executes a water action using the new CropSystem
    */
   private executeWaterAction(action: GameAction, events: GameEvent[]): boolean {
@@ -1848,28 +1981,45 @@ export class SimulationEngine {
         break
         
       case 'adventure':
-        // Start adventure
+        // Execute real combat simulation
         if (action.target) {
-          const [routeId, duration] = action.target.split('_')
-          this.gameState.processes.adventure = {
-            adventureId: routeId,
-            startedAt: this.gameState.time.totalMinutes,
-            duration: action.duration,
-            progress: 0,
-            rewards: {
-              experience: action.expectedRewards.experience || 0,
-              gold: action.expectedRewards.gold || 0,
-              items: action.expectedRewards.items || []
-            },
-            isComplete: false
+          const combatResult = this.executeAdventureAction(action)
+          if (combatResult.success) {
+            // Apply rewards immediately
+            this.gameState.resources.gold += combatResult.totalGold
+            this.gameState.progression.experience += combatResult.totalXP
+            
+            // Apply HP loss to hero
+            const maxHP = 100 + (this.gameState.progression.heroLevel * 20)
+            const hpLoss = maxHP - combatResult.finalHP
+            
+            events.push({
+              timestamp: this.gameState.time.totalMinutes,
+              type: 'adventure_complete',
+              description: `Completed ${action.target} - Gold: +${combatResult.totalGold}, XP: +${combatResult.totalXP}, HP: ${combatResult.finalHP}/${maxHP}`,
+              data: { 
+                gold: combatResult.totalGold, 
+                xp: combatResult.totalXP, 
+                hp: combatResult.finalHP,
+                loot: combatResult.loot,
+                combatLog: combatResult.combatLog
+              },
+              importance: 'high'
+            })
+            
+            // Add completed adventure to progression
+            if (!this.gameState.progression.completedAdventures.includes(action.target)) {
+              this.gameState.progression.completedAdventures.push(action.target)
+            }
+          } else {
+            events.push({
+              timestamp: this.gameState.time.totalMinutes,
+              type: 'adventure_failed',
+              description: `Failed ${action.target} - Hero defeated!`,
+              data: { combatLog: combatResult.combatLog },
+              importance: 'high'
+            })
           }
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_adventure',
-            description: `Started adventure: ${routeId} (${duration})`,
-            importance: 'high'
-          })
         }
         break
         

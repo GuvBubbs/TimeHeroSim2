@@ -194,3 +194,4 @@ export class ReportsIntegration {
 
 // Export singleton instance for easy access
 export const reportsIntegration = ReportsIntegration.getInstance()
+

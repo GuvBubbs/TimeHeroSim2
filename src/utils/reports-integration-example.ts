@@ -70,3 +70,4 @@ export async function generateManualReport(simulationData: {
  * 
  * That's it! Reports will now be automatically generated when simulations complete.
  */
+

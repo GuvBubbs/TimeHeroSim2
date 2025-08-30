@@ -74,6 +74,6 @@ furnace_2,Furnace II,furnace_1,blueprint,forge_upgrade_furnace,1000,,,,,,,,,,,,,
 crystal_furnace,Crystal Furnace,furnace_2;manor_grounds_deed,blueprint,forge_upgrade_furnace,10000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Speed tier 3
 anvil_1,Anvil I,,blueprint,forge_upgrade_anvil,150,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Recipe tier 1
 anvil_2,Anvil II,anvil_1,blueprint,forge_upgrade_anvil,1500,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Recipe tier 2
-mythril_anvil,Mythril Anvil,anvil_2;great_estate_deed,blueprint,forge_upgrade_anvil,15000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Recipe tier 3
+mythril_anvil,Mythril Anvil,anvil_2,blueprint,forge_upgrade_anvil,15000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Recipe tier 3
 batch_craft,Batch Craft,anvil_1,blueprint,forge_recipe,500,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Craft 5 at once
 master_craft,Master Craft,batch_craft;furnace_2,blueprint,forge_recipe,5000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,10% chance double output

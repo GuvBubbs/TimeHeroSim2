@@ -274,3 +274,4 @@ function formatDate(date: Date): string {
   max-width: none;
 }
 </style>
+

@@ -604,6 +604,25 @@ export class SimulationEngine {
       
       this.tickCount++
       
+      // CRITICAL FIX: Debug logging every 10 ticks to track simulation progress
+      if (this.tickCount % 10 === 0) {
+        console.log(`🎮 Tick ${this.tickCount}:`, {
+          energy: Math.round(this.gameState.resources.energy.current),
+          water: Math.round(this.gameState.resources.water.current),
+          plots: this.gameState.progression.farmPlots,
+          shouldAct: this.shouldHeroActNow(),
+          possibleActions: decisions.length,
+          executedActions: executedActions.length,
+          minutesSinceCheckin: this.gameState.time.totalMinutes - this.lastCheckinTime,
+          currentHour: this.gameState.time.hour
+        })
+      }
+      
+      // Log action executions for debugging
+      if (executedActions.length > 0) {
+        console.log(`⚡ Tick ${this.tickCount}: Executed ${executedActions.length} actions:`, executedActions.map(a => `${a.type}(${a.target})`))
+      }
+      
       return {
         gameState: this.gameState,
         executedActions,
@@ -928,6 +947,21 @@ export class SimulationEngine {
       }
     }
     
+    // Pump water when low (CRITICAL FIX: Missing pump evaluation)
+    if (this.gameState.resources.water.current < this.gameState.resources.water.max * 0.5) {
+      actions.push({
+        id: `pump_water_${Date.now()}`,
+        type: 'pump',
+        screen: 'farm',
+        target: 'well',
+        duration: 1,
+        energyCost: 5,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: { water: 20 }
+      })
+    }
+    
     // Cleanup actions for farm expansion (Phase 8B Implementation)
     const cleanupActions = this.evaluateCleanupActions()
     actions.push(...cleanupActions)
@@ -954,11 +988,19 @@ export class SimulationEngine {
       item.repeatable === 'TRUE' && item.materials_gain
     )
     
-    // Evaluate plot expansion cleanups first (higher priority)
+    // Evaluate plot expansion cleanups first (higher priority) - IMPROVED for early game
     for (const cleanup of plotExpansionCleanups) {
       if (this.shouldConsiderCleanup(cleanup)) {
         const energyCost = parseInt(cleanup.energy_cost) || 0
         const plotsAdded = parseInt(cleanup.plots_added) || 0
+        
+        // CRITICAL FIX: Prioritize plot expansion aggressively in early game
+        let priority = 1.0
+        if (this.gameState.progression.farmPlots < 10) {
+          priority = 2.0 // Double priority when few plots
+        } else if (this.gameState.progression.farmPlots < 20) {
+          priority = 1.5 // Higher priority in early-mid game
+        }
         
         actions.push({
           id: `cleanup_${cleanup.id}_${Date.now()}`,
@@ -971,7 +1013,8 @@ export class SimulationEngine {
           prerequisites: cleanup.prerequisite ? cleanup.prerequisite.split(';') : [],
           expectedRewards: { 
             plots: plotsAdded,
-            materials: cleanup.materials_gain || ''
+            materials: cleanup.materials_gain || '',
+            priority: priority // Add priority for scoring
           }
         })
       }
@@ -1622,6 +1665,38 @@ export class SimulationEngine {
         }
         break
         
+      case 'cleanup':
+        // CRITICAL FIX: Score cleanup actions based on priority and plot value
+        score = 70 // High base score for cleanup
+        
+        const plotsAdded = action.expectedRewards?.plots || 0
+        const priority = (action.expectedRewards as any)?.priority || 1.0
+        
+        // Extra points for plot expansion (critical for progression)
+        if (plotsAdded > 0) {
+          score += plotsAdded * 20 // 20 points per plot
+        }
+        
+        // Apply priority multiplier from evaluateCleanupActions
+        score *= priority
+        
+        // Boost score in early game when plots are scarce
+        if (this.gameState.progression.farmPlots < 10) {
+          score *= 1.5
+        }
+        break
+        
+      case 'pump':
+        // High priority when water is low
+        score = 50
+        const waterPercent = this.gameState.resources.water.current / this.gameState.resources.water.max
+        if (waterPercent < 0.3) {
+          score = 90 // Very high priority when water critical
+        } else if (waterPercent < 0.5) {
+          score = 70 // High priority when water low
+        }
+        break
+        
       case 'move':
         // Navigation scoring based on screen priorities
         if (decisionParams?.screenPriorities?.weights) {
@@ -2098,7 +2173,7 @@ export class SimulationEngine {
         return this.executeWaterAction(action, events)
         
       case 'pump':
-        return this.executePumpAction(action, events)
+        return { success: this.executePumpAction(action, events), events }
         
       case 'harvest':
         const harvestCrop = this.gameState.processes.crops.find(c => c.plotId === action.target)
@@ -3521,43 +3596,49 @@ export class SimulationEngine {
   }
 
   /**
-   * Checks if hero should act based on persona schedule (Phase 6E Enhancement)
+   * Checks if hero should act - FIXED: Simple, frequent logic instead of complex persona scheduling
    */
   private shouldHeroActNow(): boolean {
-    const isWeekend = this.gameState.time.day % 7 >= 5
-    const checkinsToday = isWeekend ? 
-      this.persona.weekendCheckIns : 
-      this.persona.weekdayCheckIns
-    
-    if (checkinsToday <= 0) return false
-    
-    // Spread check-ins across waking hours (6 AM to 10 PM = 16 hours)
-    const wakingMinutes = 16 * 60
-    const minutesPerCheckin = wakingMinutes / checkinsToday
-    
-    // Calculate current position in the day (6 AM = 0)
     const currentHour = this.gameState.time.hour
     const currentMinute = this.gameState.time.minute
-    const minutesSinceWakeup = Math.max(0, (currentHour - 6) * 60 + currentMinute)
     
-    // Check if it's time for next check-in
+    // Don't act at night (10 PM to 6 AM)
+    if (currentHour < 6 || currentHour >= 22) return false
+    
+    // Always act in first few minutes of simulation
+    if (this.gameState.time.totalMinutes < 600) { // First 10 hours
+      if (this.lastCheckinTime === 0) {
+        console.log('🎬 SimulationEngine: Initial check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'))
+        this.lastCheckinTime = this.gameState.time.totalMinutes
+        return true
+      }
+    }
+    
+    // Calculate time since last check-in
     const timeSinceLastCheckin = this.gameState.time.totalMinutes - this.lastCheckinTime
     
-    // For the very first check-in (lastCheckinTime = 0), allow action immediately if within waking hours
-    if (this.lastCheckinTime === 0 && currentHour >= 6 && currentHour < 22) {
-      console.log('🎬 SimulationEngine: First check-in allowed at', currentHour + ':' + currentMinute.toString().padStart(2, '0'))
+    // CRITICAL FIX: Act every 60 minutes instead of 480+ minutes
+    const MIN_CHECKIN_INTERVAL = 60 // Was effectively 480+, way too long!
+    
+    if (timeSinceLastCheckin >= MIN_CHECKIN_INTERVAL) {
+      console.log('🎬 SimulationEngine: Regular check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(', timeSinceLastCheckin, 'min since last)')
       this.lastCheckinTime = this.gameState.time.totalMinutes
       return true
     }
     
-    if (timeSinceLastCheckin >= minutesPerCheckin) {
-      // Add some persona-based variance
-      const variance = this.persona.learningRate * 60 // More random = more variance
-      const randomOffset = (Math.random() - 0.5) * variance
-      
-      // Fixed logic: check if enough time has passed since last check-in
-      if (timeSinceLastCheckin >= minutesPerCheckin + randomOffset) {
-        console.log('🎬 SimulationEngine: Scheduled check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(', timeSinceLastCheckin, 'min since last)')
+    // ADDITIONAL TRIGGER: Act when energy is high (prevents energy waste)
+    if (this.gameState.resources.energy.current > this.gameState.resources.energy.max * 0.85) {
+      if (timeSinceLastCheckin >= 30) { // But not too frequently
+        console.log('🎬 SimulationEngine: High energy check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(energy:', Math.round(this.gameState.resources.energy.current), ')')
+        this.lastCheckinTime = this.gameState.time.totalMinutes
+        return true
+      }
+    }
+    
+    // ADDITIONAL TRIGGER: Act when water is critically low
+    if (this.gameState.resources.water.current < this.gameState.resources.water.max * 0.2) {
+      if (timeSinceLastCheckin >= 15) { // Emergency action
+        console.log('🎬 SimulationEngine: Low water emergency check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(water:', Math.round(this.gameState.resources.water.current), ')')
         this.lastCheckinTime = this.gameState.time.totalMinutes
         return true
       }

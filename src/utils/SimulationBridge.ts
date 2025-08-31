@@ -197,16 +197,15 @@ export class SimulationBridge {
   /**
    * Starts the simulation
    */
-  async start(speed: number = 1): Promise<void> {
+  async start(): Promise<void> {
     if (!this.isInitialized) {
       throw new Error('Bridge not initialized')
     }
     
-    console.log(`▶️ SimulationBridge: Starting simulation at ${speed}x speed`)
+    console.log(`▶️ SimulationBridge: Starting simulation`)
     
     this.sendMessage({
-      type: 'start',
-      data: { speed }
+      type: 'start'
     })
     
     this.isRunning = true

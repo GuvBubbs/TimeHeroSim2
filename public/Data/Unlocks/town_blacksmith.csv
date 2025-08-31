@@ -1,5 +1,5 @@
 id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-blueprint_hoe,Hoe Blueprint,,blueprint,farm_tool_hoe,50,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Base tool
+blueprint_hoe,Hoe Blueprint,,blueprint,farm_tool_hoe,100,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Base tool
 blueprint_hoe_plus,Hoe+ Blueprint,blueprint_hoe;anvil_1,blueprint,farm_tool_hoe,750,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Plus tier tool
 blueprint_terra_former,Terra Former Blueprint,blueprint_hoe_plus;mythril_anvil,blueprint,farm_tool_hoe,15000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Master tier tool
 blueprint_hammer,Hammer Blueprint,blueprint_hoe,blueprint,farm_tool_hammer,150,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Base tool
@@ -26,7 +26,7 @@ blueprint_spear_7,Spear VII Blueprint,blueprint_spear_6,blueprint,weapon_spear,1
 blueprint_spear_8,Spear VIII Blueprint,blueprint_spear_7;mythril_anvil,blueprint,weapon_spear,25000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 8 weapon
 blueprint_spear_9,Spear IX Blueprint,blueprint_spear_8,blueprint,weapon_spear,50000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 9 weapon
 blueprint_spear_10,Spear X Blueprint,blueprint_spear_9,blueprint,weapon_spear,100000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 10 weapon
-blueprint_sword_1,Sword I Blueprint,,blueprint,weapon_sword,100,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 1 weapon
+blueprint_sword_1,Sword I Blueprint,,blueprint,weapon_sword,50,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 1 weapon
 blueprint_sword_2,Sword II Blueprint,blueprint_sword_1,blueprint,weapon_sword,250,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 2 weapon
 blueprint_sword_3,Sword III Blueprint,blueprint_sword_2,blueprint,weapon_sword,500,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 3 weapon
 blueprint_sword_4,Sword IV Blueprint,blueprint_sword_3;anvil_1,blueprint,weapon_sword,1000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Level 4 weapon

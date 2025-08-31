@@ -424,7 +424,7 @@ export class SimulationEngine {
           max: farmParams.initialState.energy,
           regenerationRate: 0 // FIXED: No energy regen - energy only from crop harvests
         },
-        gold: 0, // FIXED: Starting gold should be 0, not 100
+        gold: 50, // FIXED: Starting gold should be 50 to break circular dependency (Phase 8L)
         water: {
           current: farmParams.initialState.water,
           max: farmParams.waterSystem.maxWaterStorage,
@@ -1172,6 +1172,14 @@ export class SimulationEngine {
     
     if (!townParams) return actions
     
+    // Phase 8L: Material trading for gold generation
+    const materialSales = this.evaluateMaterialSales()
+    actions.push(...materialSales)
+    
+    // Phase 8L: Emergency wood bundles from Agronomist
+    const emergencyWoodActions = this.evaluateEmergencyWood()
+    actions.push(...emergencyWoodActions)
+    
     // Purchase decisions based on vendor priorities
     if (this.gameState.resources.gold >= 50) {
       const affordableUpgrades = this.getAffordableUpgrades()
@@ -1552,7 +1560,7 @@ export class SimulationEngine {
       case 'town':
         // Navigate to town if we have gold to spend or need upgrades
         const gold = this.gameState.resources.gold
-        const goldScore = gold > 100 ? 7 : gold > 50 ? 5 : 2
+        const goldScore = gold >= 100 ? 7 : gold >= 50 ? 5 : 2  // FIXED: >= instead of >
         return { reason: 'Purchase upgrades', score: goldScore }
         
       case 'adventure':
@@ -1562,9 +1570,11 @@ export class SimulationEngine {
         const hasWeapons = this.gameState.inventory.weapons.size > 0
         let adventureScore = 2 // Base exploration score
         
-        if (energy > 80 && hasWeapons) adventureScore += 4
+        // Phase 8L: More accessible early game adventures
+        if (energy >= 80 && hasWeapons) adventureScore += 4  // FIXED: >= instead of >
         if (heroLevel >= 3) adventureScore += 2
-        if (energy > 60) adventureScore += 1
+        if (heroLevel >= 1 && energy >= 60) adventureScore += 2  // ADDED: Early level boost
+        if (energy >= 60) adventureScore += 1
         
         return { reason: 'Ready for adventure', score: adventureScore }
         
@@ -2308,8 +2318,23 @@ export class SimulationEngine {
         // Handle purchases
         this.gameState.resources.gold -= action.goldCost
         
-        // Add purchased item to inventory (simplified)
-        if (action.expectedRewards.items) {
+        // Phase 8L: Handle emergency wood bundles
+        if (action.target && action.target.startsWith('emergency_wood_')) {
+          const woodAmount = action.expectedRewards?.materials?.wood || 0
+          if (woodAmount > 0) {
+            const currentWood = this.gameState.resources.materials.get('wood') || 0
+            this.gameState.resources.materials.set('wood', currentWood + woodAmount)
+            
+            events.push({
+              timestamp: this.gameState.time.totalMinutes,
+              type: 'emergency_purchase',
+              description: `Purchased emergency wood bundle: +${woodAmount} wood for ${action.goldCost} gold`,
+              importance: 'medium'
+            })
+          }
+        }
+        // Add other purchased items to inventory (simplified)
+        else if (action.expectedRewards.items) {
           for (const item of action.expectedRewards.items) {
             // Would add to appropriate inventory section
             events.push({
@@ -2419,6 +2444,10 @@ export class SimulationEngine {
       case 'cleanup':
         // Delegate to cleanup action handler
         return this.executeCleanupAction(action)
+        
+      case 'sell_material':
+        // Phase 8L: Handle material selling for gold
+        return this.executeSellMaterialAction(action)
     }
     
     return { success: true, events }
@@ -3645,8 +3674,8 @@ export class SimulationEngine {
     // Calculate time since last check-in
     const timeSinceLastCheckin = this.gameState.time.totalMinutes - this.lastCheckinTime
     
-    // CRITICAL FIX: Act every 60 minutes instead of 480+ minutes
-    const MIN_CHECKIN_INTERVAL = 60 // Was effectively 480+, way too long!
+    // PHASE 8L FIX: More frequent check-ins for testing and better gameplay  
+    const MIN_CHECKIN_INTERVAL = 15 // Check in every 15 game minutes (30 ticks at 0.5x)
     
     if (timeSinceLastCheckin >= MIN_CHECKIN_INTERVAL) {
       console.log('🎬 SimulationEngine: Regular check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(', timeSinceLastCheckin, 'min since last)')
@@ -3670,6 +3699,14 @@ export class SimulationEngine {
         this.lastCheckinTime = this.gameState.time.totalMinutes
         return true
       }
+    }
+    
+    // PHASE 8L: Additional trigger for ready crops (testing purposes)
+    const readyToHarvest = this.gameState.processes.crops.filter(crop => crop.readyToHarvest).length
+    if (readyToHarvest > 0 && timeSinceLastCheckin >= 10) {
+      console.log('🎬 SimulationEngine: Ready crops check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(ready crops:', readyToHarvest, ')')
+      this.lastCheckinTime = this.gameState.time.totalMinutes
+      return true
     }
     
     return false
@@ -3796,6 +3833,145 @@ export class SimulationEngine {
     // Store events for the current tick - in a real implementation this would
     // be added to the current tick's event list
     console.log(`📅 Game Event: ${event.description}`)
+  }
+
+  /**
+   * Phase 8L: Executes material selling action
+   */
+  private executeSellMaterialAction(action: GameAction): { success: boolean; events: GameEvent[] } {
+    const events: GameEvent[] = []
+    
+    if (!action.target || !action.materialCosts) {
+      return { success: false, events: [] }
+    }
+    
+    const materialName = action.target
+    const sellAmount = action.materialCosts[materialName] || 0
+    const goldValue = action.expectedRewards?.gold || 0
+    
+    // Check if we have enough materials
+    const available = this.gameState.resources.materials.get(materialName) || 0
+    if (available < sellAmount) {
+      return { success: false, events: [] }
+    }
+    
+    // Execute the sale
+    this.gameState.resources.materials.set(materialName, available - sellAmount)
+    this.gameState.resources.gold += goldValue
+    
+    events.push({
+      timestamp: this.gameState.time.totalMinutes,
+      type: 'material_sale',
+      description: `Sold ${sellAmount} ${materialName} for ${goldValue} gold`,
+      importance: 'medium'
+    })
+    
+    return { success: true, events }
+  }
+
+  /**
+   * Phase 8L: Evaluates material selling opportunities at town material trader
+   */
+  private evaluateMaterialSales(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Material trade rates as per Phase 8L specification
+    const MATERIAL_TRADE_RATES = {
+      stone: { price: 2, minQty: 10 },
+      wood: { price: 3, minQty: 10 },
+      copper: { price: 5, minQty: 5 },
+      iron: { price: 10, minQty: 5 },
+      silver: { price: 25, minQty: 3 },
+      crystal: { price: 100, minQty: 1 },
+      mythril: { price: 500, minQty: 1 },
+      obsidian: { price: 1000, minQty: 1 }
+    }
+    
+    // Only sell materials if we're low on gold (< 200) to avoid hoarding
+    if (this.gameState.resources.gold >= 200) {
+      return actions
+    }
+    
+    // Check each material for selling opportunity
+    for (const [materialName, tradeRate] of Object.entries(MATERIAL_TRADE_RATES)) {
+      const availableAmount = this.gameState.resources.materials.get(materialName) || 0
+      
+      // Only sell if we have significantly more than minimum (keep some for crafting)
+      const excessAmount = availableAmount - (tradeRate.minQty * 2) // Keep 2x minimum as buffer
+      
+      if (excessAmount >= tradeRate.minQty) {
+        const sellAmount = Math.min(excessAmount, tradeRate.minQty * 3) // Sell up to 3x minimum at once
+        const goldValue = sellAmount * tradeRate.price
+        
+        actions.push({
+          id: `sell_${materialName}_${Date.now()}`,
+          type: 'sell_material',
+          screen: 'town',
+          target: materialName,
+          duration: 1,
+          energyCost: 0,
+          goldCost: 0,
+          prerequisites: [],
+          materialCosts: { [materialName]: sellAmount },
+          expectedRewards: { gold: goldValue }
+        })
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * Phase 8L: Evaluates emergency wood purchase from Agronomist
+   */
+  private evaluateEmergencyWood(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    const currentWood = this.gameState.resources.materials.get('wood') || 0
+    
+    // Only buy emergency wood if very low (< 10) and have gold
+    if (currentWood >= 10) {
+      return actions
+    }
+    
+    // Emergency wood bundles as per specification
+    const EMERGENCY_WOOD = {
+      small: { cost: 50, amount: 10, prereq: null },
+      medium: { cost: 200, amount: 50, prereq: 'farm_stage_2' },
+      large: { cost: 800, amount: 250, prereq: 'farm_stage_3' }
+    }
+    
+    // Choose best bundle we can afford and have prerequisites for
+    let selectedBundle: { id: string; cost: number; amount: number } | null = null
+    
+    for (const [bundleId, bundle] of Object.entries(EMERGENCY_WOOD)) {
+      if (this.gameState.resources.gold >= bundle.cost) {
+        // Check prerequisites
+        if (bundle.prereq === null || 
+            (bundle.prereq === 'farm_stage_2' && this.gameState.progression.farmStage >= 2) ||
+            (bundle.prereq === 'farm_stage_3' && this.gameState.progression.farmStage >= 3)) {
+          selectedBundle = { id: bundleId, cost: bundle.cost, amount: bundle.amount }
+        }
+      }
+    }
+    
+    if (selectedBundle) {
+      actions.push({
+        id: `buy_emergency_wood_${selectedBundle.id}_${Date.now()}`,
+        type: 'purchase',
+        screen: 'town',
+        target: `emergency_wood_${selectedBundle.id}`,
+        duration: 1,
+        energyCost: 0,
+        goldCost: selectedBundle.cost,
+        prerequisites: [],
+        expectedRewards: { 
+          materials: { wood: selectedBundle.amount }
+        }
+      })
+    }
+    
+    return actions
   }
 
   /**

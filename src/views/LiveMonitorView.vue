@@ -87,13 +87,44 @@
             :disabled="!bridgeStatus.isInitialized"
             class="bg-sim-surface border border-sim-border rounded px-2 py-1 text-sm"
           >
-            <option value="0.5">0.5x</option>
-            <option value="1">1x</option>
-            <option value="5">5x</option>
-            <option value="10">10x</option>
-            <option value="50">50x</option>
-            <option value="100">100x</option>
+            <option value="0.5">0.5x (9.6min/day)</option>
+            <option value="1">1x (4.8min/day)</option>
+            <option value="2">2x (2.4min/day)</option>
+            <option value="5">5x (~1min/day)</option>
+            <option value="max">Max (12sec/day)</option>
           </select>
+          
+          <!-- Phase 8L: Logging Controls -->
+          <div class="flex items-center gap-2 ml-4">
+            <label class="text-sm text-gray-400">Log Level:</label>
+            <select 
+              v-model="logLevel" 
+              @change="updateLogLevel"
+              class="bg-gray-700 text-white px-2 py-1 rounded text-sm"
+            >
+              <option value="verbose">Verbose (Debug)</option>
+              <option value="normal">Normal</option>
+              <option value="reduced">Reduced</option>
+              <option value="minimal">Minimal</option>
+              <option value="errors">Errors Only</option>
+            </select>
+            
+            <label class="text-sm text-gray-400 ml-4">Categories:</label>
+            <div class="flex gap-2">
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.farming" @change="updateLogLevel"> Farm
+              </label>
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.combat" @change="updateLogLevel"> Combat
+              </label>
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.crafting" @change="updateLogLevel"> Craft
+              </label>
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.economy" @change="updateLogLevel"> Economy
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -283,6 +314,15 @@ const currentStats = ref<SimulationStats | null>(null)
 const recentEvents = ref<GameEvent[]>([])
 const selectedSpeed = ref('1')
 const errorMessage = ref('')
+
+// Phase 8L: Logging Controls
+const logLevel = ref('normal')
+const logCategories = reactive({
+  farming: true,
+  combat: true,
+  crafting: true,
+  economy: true
+})
 
 const bridgeStatus = reactive({
   isInitialized: false,
@@ -480,12 +520,56 @@ const changeSpeed = async () => {
   if (!bridge.value) return
   
   try {
-    const speed = parseFloat(selectedSpeed.value)
+    // Handle 'max' speed specially
+    let speed: number
+    if (selectedSpeed.value === 'max') {
+      speed = 1000 // Map 'max' to high number that worker will recognize
+    } else {
+      speed = parseFloat(selectedSpeed.value)
+    }
+    
     await bridge.value.setSpeed(speed)
-    console.log(`🏃 LiveMonitor: Speed changed to ${speed}x`)
+    console.log(`🏃 LiveMonitor: Speed changed to ${selectedSpeed.value}x`)
+    
+    // Phase 8L: Auto-adjust log level based on speed
+    autoAdjustLogLevel(selectedSpeed.value)
   } catch (error) {
     console.error('❌ LiveMonitor: Speed change failed:', error)
     errorMessage.value = `Speed change failed: ${error}`
+  }
+}
+
+// Phase 8L: Auto-adjust log level based on speed
+const autoAdjustLogLevel = (speed: string) => {
+  const speedToLogLevel: { [key: string]: string } = {
+    '0.5': 'normal',     // Can handle more logs at slow speed
+    '1': 'reduced',      
+    '2': 'minimal',
+    '5': 'minimal',
+    'max': 'errors'      // Only errors at max speed
+  }
+  
+  const suggestedLevel = speedToLogLevel[speed]
+  if (suggestedLevel && suggestedLevel !== logLevel.value) {
+    console.log(`📝 Auto-adjusting log level from ${logLevel.value} to ${suggestedLevel} for ${speed}x speed`)
+    logLevel.value = suggestedLevel
+    updateLogLevel()
+  }
+}
+
+// Phase 8L: Update log level and categories
+const updateLogLevel = () => {
+  const config = {
+    level: logLevel.value,
+    categories: { ...logCategories }
+  }
+  
+  console.log('📝 Updated logging configuration:', config)
+  
+  // Send to simulation bridge if available
+  if (bridge.value) {
+    // For now just log - in full implementation would send to worker
+    console.log('🔧 Would send logging config to worker:', config)
   }
 }
 

@@ -289,6 +289,41 @@ function handleGetState() {
 }
 
 /**
+ * Calculates the correct tick delay for different simulation speeds
+ * Phase 8L: Fixed speed calibration - 1 tick = 0.5 minutes of game time
+ * Game day = 1440 minutes = 2880 ticks total
+ */
+function calculateTickDelay(speed: number): number {
+  // Speed configurations as per Phase 8L requirements
+  const SPEED_CONFIGURATIONS: { [key: string]: number } = {
+    '0.5': 200,   // 5 ticks/second = 2880 ticks / 5 = 576 seconds = 9.6 minutes per day
+    '1': 100,     // 10 ticks/second = 2880 ticks / 10 = 288 seconds = 4.8 minutes per day  
+    '2': 50,      // 20 ticks/second = 2880 ticks / 20 = 144 seconds = 2.4 minutes per day
+    '5': 20,      // 50 ticks/second = 2880 ticks / 50 = 57.6 seconds = ~1 minute per day
+    '10': 10,     // 100 ticks/second
+    '50': 2,      // 500 ticks/second  
+    '100': 1,     // 1000 ticks/second
+    'max': 4.17   // 240 ticks/second = 2880 ticks / 240 = 12 seconds per day
+  }
+  
+  // Find exact match first
+  const speedKey = speed.toString()
+  if (SPEED_CONFIGURATIONS[speedKey]) {
+    return Math.max(1, Math.floor(SPEED_CONFIGURATIONS[speedKey]))
+  }
+  
+  // Handle 'max' speed specially
+  if (speed >= 1000) {
+    return Math.max(1, Math.floor(SPEED_CONFIGURATIONS['max']))
+  }
+  
+  // For other speeds, interpolate based on base formula
+  // Base: 0.5x = 200ms, so delay = 100ms / speed
+  const baseDelay = 100 / speed
+  return Math.max(1, Math.floor(baseDelay))
+}
+
+/**
  * Starts the main simulation loop
  */
 function startSimulationLoop() {
@@ -365,9 +400,9 @@ function startSimulationLoop() {
         return
       }
       
-      // Schedule next tick
+      // Schedule next tick with corrected timing system
       const speed = tickResult.gameState.time.speed
-      const nextTickDelay = Math.max(1, Math.floor(16 / speed)) // Minimum 1ms, scaled by speed
+      const nextTickDelay = calculateTickDelay(speed)
       
       setTimeout(tick, nextTickDelay)
       

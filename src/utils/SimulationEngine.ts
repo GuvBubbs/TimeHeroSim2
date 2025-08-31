@@ -359,10 +359,12 @@ export class SimulationEngine {
   private initializeSeeds(): Map<string, number> {
     const seeds = new Map<string, number>()
     
-    // PHASE 8N: Start with ZERO seeds - must use tower to collect ALL seeds
-    // This forces immediate tower usage and realistic seed scarcity gameplay
+    // Phase 9A: Start with 2 seeds (1 carrot, 1 radish)
+    // With 3 plots, this leaves 1 empty, encouraging seed collection
+    seeds.set('carrot', 1)
+    seeds.set('radish', 1)
     
-    console.log('🌰 Phase 8N: Starting with ZERO seeds - must use tower to collect ALL seeds')
+    console.log('🌰 Phase 9A: Starting with 2 seeds (1 carrot, 1 radish) for 3 plots')
     return seeds
   }
 
@@ -420,14 +422,14 @@ export class SimulationEngine {
       },
       resources: {
         energy: {
-          current: 0, // PHASE 8N: Start with 0 energy - gain through harvesting
-          max: 50, // PHASE 8N: Energy max capacity is 50
-          regenerationRate: 0 // FIXED: No energy regen - energy only from crop harvests
+          current: 0, // Start with 0 energy - gain through harvesting
+          max: 50, // Energy max capacity is 50
+          regenerationRate: 0 // No energy regen - energy only from crop harvests
         },
-        gold: 50, // FIXED: Starting gold should be 50 to break circular dependency (Phase 8L)
+        gold: 75, // Start with 75 gold to buy sword 1 & Tower Reach 1 blueprints
         water: {
-          current: 0, // PHASE 8N: Start with 0 water - pump to fill tank
-          max: 20, // PHASE 8N: Start with 20 water capacity per user requirements  
+          current: 0, // Start with 0 water - pump to fill tank
+          max: 20, // Start with 20 water capacity
           autoGenRate: 10 * (farmParams.waterSystem?.pumpEfficiency || 0)
         },
         seeds: this.initializeSeeds(),

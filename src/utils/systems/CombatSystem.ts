@@ -1,7 +1,9 @@
-// CombatSystem - Phase 8E Real Combat Simulation
-// Implements the complete combat mechanics from Time Hero Combat Mechanics & Balance document
+// CombatSystem - Phase 8M Simplified Combat Simulation
+// Implements simplified boss challenges and armor effects for strategic gameplay
 
 import type { GameState } from '@/types'
+import { BossQuirkHandler, type BossPenalties } from '../combat/BossQuirks'
+import { ArmorEffectHandler, type ArmorEffectResult } from '../combat/ArmorEffects'
 
 /**
  * Enemy types in the pentagon advantage system
@@ -242,6 +244,8 @@ export class CombatSystem {
         const wave = waves[waveIndex]
         combatLog.push(`\n🌊 Wave ${wave.waveNumber}/${waves.length}: ${wave.enemies.length} enemies`)
         
+        let waveKillCount = 0
+        
         // Process each enemy in the wave
         for (const enemy of wave.enemies) {
           const waveResult = this.simulateWave([enemy], weapons, armor, currentHP, combatLog)
@@ -262,19 +266,26 @@ export class CombatSystem {
           currentHP = waveResult.finalHP
           totalGold += waveResult.gold
           totalXP += waveResult.xp
+          waveKillCount++
           
-          // Apply vampiric healing if armor has it
+          // Apply vampiric healing using new system
           if (armor?.effect === 'Vampiric') {
-            currentHP = Math.min(maxHP, currentHP + 1)
-            combatLog.push(`🩸 Vampiric healing: +1 HP (${currentHP}/${maxHP})`)
+            const vampiricResult = ArmorEffectHandler.applyOnKill('Vampiric', waveKillCount - 1)
+            if (vampiricResult.healAmount > 0) {
+              currentHP = Math.min(maxHP, currentHP + vampiricResult.healAmount)
+              combatLog.push(`${vampiricResult.effectTriggered} (${currentHP}/${maxHP})`)
+            }
           }
         }
         
         // Between waves: Apply regeneration and other effects
         if (waveIndex < waves.length - 1) { // Not after last wave
           if (armor?.effect === 'Regeneration') {
-            currentHP = Math.min(maxHP, currentHP + 3)
-            combatLog.push(`💚 Regeneration: +3 HP between waves (${currentHP}/${maxHP})`)
+            const regenResult = ArmorEffectHandler.applyBetweenWaves('Regeneration')
+            if (regenResult.healAmount > 0) {
+              currentHP = Math.min(maxHP, currentHP + regenResult.healAmount)
+              combatLog.push(`${regenResult.effectTriggered} (${currentHP}/${maxHP})`)
+            }
           }
           
           combatLog.push(`✅ Wave ${wave.waveNumber} complete - HP: ${currentHP}/${maxHP}`)
@@ -306,11 +317,13 @@ export class CombatSystem {
       totalGold += route.goldGain
       totalXP += route.xpGain
       
-      // Apply Gold Magnet armor effect
+      // Apply Gold Magnet armor effect using new system
       if (armor?.effect === 'Gold Magnet') {
-        const bonusGold = Math.floor(totalGold * 0.25)
-        totalGold += bonusGold
-        combatLog.push(`💰 Gold Magnet: +${bonusGold} bonus gold`)
+        const goldMagnetResult = ArmorEffectHandler.applyOnCompletion('Gold Magnet', totalGold)
+        if (goldMagnetResult.goldBonus > 0) {
+          totalGold += goldMagnetResult.goldBonus
+          combatLog.push(goldMagnetResult.effectTriggered)
+        }
       }
       
       combatLog.push(`\n🎉 Adventure Complete!`)
@@ -458,9 +471,16 @@ export class CombatSystem {
         combatLog.push(`🛡️ Armor reduces damage: ${originalDamage.toFixed(1)} → ${damageTaken.toFixed(1)} (${(damageReduction * 100).toFixed(0)}% reduction)`)
       }
       
-      // Apply armor special effects
-      if (armor) {
-        damageTaken = this.applyArmorEffects(armor, damageTaken, enemy, combatLog)
+      // Apply armor special effects using new system
+      if (armor && armor.effect !== 'none') {
+        const armorResult = ArmorEffectHandler.applyDuringCombat(armor.effect, damageTaken, enemy)
+        if (armorResult.effectTriggered) {
+          damageTaken *= (1 - armorResult.damageReduction)
+          combatLog.push(armorResult.effectTriggered)
+          if (armorResult.reflectedDamage && armorResult.reflectedDamage > 0) {
+            combatLog.push(`🔄 Enemy takes ${armorResult.reflectedDamage.toFixed(1)} reflected damage`)
+          }
+        }
       }
       
       currentHP -= Math.ceil(damageTaken)
@@ -522,59 +542,7 @@ export class CombatSystem {
     return baseDamage
   }
 
-  /**
-   * Apply armor special effects during combat
-   */
-  private static applyArmorEffects(
-    armor: ArmorData,
-    incomingDamage: number,
-    enemy: Enemy,
-    combatLog: string[]
-  ): number {
-    let finalDamage = incomingDamage
-    
-    switch (armor.effect) {
-      case 'Reflection':
-        if (Math.random() < 0.15) { // 15% chance
-          const reflectedDamage = incomingDamage * 0.3
-          finalDamage = incomingDamage * 0.7 // Take 70% of original damage
-          combatLog.push(`✨ Reflection: Reflected ${reflectedDamage.toFixed(1)} damage back to enemy`)
-        }
-        break
-        
-      case 'Evasion':
-        if (Math.random() < 0.10) { // 10% chance
-          finalDamage = 0
-          combatLog.push(`💨 Evasion: Completely dodged the attack!`)
-        }
-        break
-        
-      case 'Critical Shield':
-        // First hit each wave deals 0 damage (simplified - would need wave tracking)
-        if (Math.random() < 0.2) { // Simplified to 20% chance
-          finalDamage = 0
-          combatLog.push(`🛡️ Critical Shield: Absorbed the attack!`)
-        }
-        break
-        
-      case 'Speed Boost':
-        // +20% attack speed after taking damage (effect applied in next attack)
-        if (incomingDamage > 0) {
-          combatLog.push(`⚡ Speed Boost: Attack speed increased for next enemy`)
-        }
-        break
-        
-      case 'Type Resist':
-        // -40% damage from specific enemy type (simplified to random chance)
-        if (Math.random() < 0.25) { // 25% of enemies
-          finalDamage = incomingDamage * 0.6
-          combatLog.push(`🛡️ Type Resist: Reduced damage from ${enemy.type}`)
-        }
-        break
-    }
-    
-    return finalDamage
-  }
+
 
   /**
    * Simulate boss fight with unique mechanics
@@ -632,7 +600,7 @@ export class CombatSystem {
   }
 
   /**
-   * Handle boss-specific quirks and mechanics
+   * Handle boss-specific quirks with simplified challenge system
    */
   private static simulateBossQuirks(
     boss: BossData,
@@ -643,160 +611,60 @@ export class CombatSystem {
     combatLog: string[]
   ): { success: boolean; finalHP: number } {
     let currentHP = startingHP
-    let bossHP = boss.hp
     
-    // Calculate base damage
+    // Calculate base combat damage and duration
     let weaponDamage = weapon.damage * weapon.attackSpeed
     if (boss.weakness === weapon.type) {
       weaponDamage *= 1.5 // Advantage multiplier
+      combatLog.push(`🎯 Weapon advantage: +50% damage against ${boss.type}`)
     }
     
-    // Simulate fight based on boss type
-    switch (boss.type) {
-      case 'Giant Slime':
-        // Splits at 50% HP
-        const timeToHalfHP = (bossHP * 0.5) / weaponDamage
-        let damageTaken = boss.damage * boss.attackSpeed * timeToHalfHP
-        
-        if (armor) {
-          damageTaken *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(damageTaken)
-        combatLog.push(`💔 Phase 1 damage: ${Math.ceil(damageTaken)} - HP: ${currentHP}`)
-        
-        if (currentHP <= 0) return { success: false, finalHP: 0 }
-        
-        // Split phase - 2 mini slimes with 4 damage each
-        combatLog.push(`🔄 Giant Slime splits into 2 mini-slimes!`)
-        const miniSlimeDamage = 4 * 2 * boss.attackSpeed * (bossHP * 0.5 / weaponDamage)
-        let splitDamage = miniSlimeDamage
-        
-        if (armor) {
-          splitDamage *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(splitDamage)
-        combatLog.push(`💔 Split phase damage: ${Math.ceil(splitDamage)} - HP: ${currentHP}`)
-        break
-        
-      case 'Beetle Lord':
-        // Hardened Shell: 50% less damage without spear
-        if (weapon.type !== 'spear') {
-          weaponDamage *= 0.5
-          combatLog.push(`🛡️ Hardened Shell: Weapon damage reduced by 50%`)
-        }
-        
-        const beetleFightTime = bossHP / weaponDamage
-        let beetleDamage = boss.damage * boss.attackSpeed * beetleFightTime
-        
-        if (armor) {
-          beetleDamage *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(beetleDamage)
-        combatLog.push(`💔 Beetle Lord damage: ${Math.ceil(beetleDamage)} - HP: ${currentHP}`)
-        break
-        
-      case 'Alpha Wolf':
-        // Summons cubs at 75% and 25% HP
-        const wolfFightTime = bossHP / weaponDamage
-        let wolfDamage = boss.damage * boss.attackSpeed * wolfFightTime
-        
-        // Add cub damage (2 cubs × 3 damage each, summoned twice)
-        const cubDamage = 2 * 3 * boss.attackSpeed * (wolfFightTime * 0.5) // Cubs active for half the fight
-        wolfDamage += cubDamage
-        
-        if (armor) {
-          wolfDamage *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(wolfDamage)
-        combatLog.push(`🐺 Alpha Wolf + cubs damage: ${Math.ceil(wolfDamage)} - HP: ${currentHP}`)
-        break
-        
-      case 'Sky Serpent':
-        // Aerial phase: needs bow or take guaranteed damage
-        if (weapon.type !== 'bow') {
-          combatLog.push(`⚠️ No bow equipped - taking aerial phase damage!`)
-          const aerialDamage = boss.damage * 5 // 5 seconds of guaranteed damage per aerial phase
-          currentHP -= aerialDamage
-          combatLog.push(`💔 Aerial phase damage: ${aerialDamage} - HP: ${currentHP}`)
-        }
-        
-        const serpentFightTime = bossHP / weaponDamage
-        let serpentDamage = boss.damage * boss.attackSpeed * serpentFightTime
-        
-        if (armor) {
-          serpentDamage *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(serpentDamage)
-        combatLog.push(`💔 Sky Serpent damage: ${Math.ceil(serpentDamage)} - HP: ${currentHP}`)
-        break
-        
-      case 'Crystal Spider':
-        // Web trap disables weapons for 3 seconds every 30 seconds
-        const spiderFightTime = bossHP / weaponDamage
-        const webTraps = Math.floor(spiderFightTime / 30)
-        const disabledTime = webTraps * 3
-        const extraDamage = boss.damage * boss.attackSpeed * disabledTime
-        
-        let spiderDamage = boss.damage * boss.attackSpeed * spiderFightTime + extraDamage
-        
-        if (armor) {
-          spiderDamage *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(spiderDamage)
-        combatLog.push(`🕸️ Crystal Spider + web traps damage: ${Math.ceil(spiderDamage)} - HP: ${currentHP}`)
-        break
-        
-      case 'Frost Wyrm':
-        // Gains 30 defense at 50% HP
-        const wyrmPhase1Time = (bossHP * 0.5) / weaponDamage
-        const wyrmPhase2Damage = weaponDamage * 0.7 // Reduced damage due to frost armor
-        const wyrmPhase2Time = (bossHP * 0.5) / wyrmPhase2Damage
-        
-        let wyrmDamage = boss.damage * boss.attackSpeed * (wyrmPhase1Time + wyrmPhase2Time)
-        
-        if (armor) {
-          wyrmDamage *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(wyrmDamage)
-        combatLog.push(`❄️ Frost Wyrm + frost armor damage: ${Math.ceil(wyrmDamage)} - HP: ${currentHP}`)
-        break
-        
-      case 'Lava Titan':
-        // 2 burn damage per second throughout fight
-        const titanFightTime = bossHP / weaponDamage
-        const burnDamage = 2 * titanFightTime
-        
-        let titanDamage = boss.damage * boss.attackSpeed * titanFightTime + burnDamage
-        
-        if (armor) {
-          // Burn damage not reduced by armor, only regular damage
-          const regularDamage = boss.damage * boss.attackSpeed * titanFightTime
-          const reducedRegularDamage = regularDamage * (1 - Math.min(0.8, armor.defense / 100))
-          titanDamage = reducedRegularDamage + burnDamage
-        }
-        
-        currentHP -= Math.ceil(titanDamage)
-        combatLog.push(`🔥 Lava Titan + burn damage: ${Math.ceil(titanDamage)} - HP: ${currentHP}`)
-        break
-        
-      default:
-        // Generic boss fight
-        const genericFightTime = bossHP / weaponDamage
-        let genericDamage = boss.damage * boss.attackSpeed * genericFightTime
-        
-        if (armor) {
-          genericDamage *= (1 - Math.min(0.8, armor.defense / 100))
-        }
-        
-        currentHP -= Math.ceil(genericDamage)
-        combatLog.push(`💔 Boss damage: ${Math.ceil(genericDamage)} - HP: ${currentHP}`)
+    // Basic combat calculation
+    const fightDuration = boss.hp / weaponDamage // Time to kill boss
+    let baseDamage = boss.damage * boss.attackSpeed * fightDuration
+    
+    // Apply armor defense
+    if (armor && armor.defense > 0) {
+      const damageReduction = Math.min(0.8, armor.defense / 100)
+      const originalDamage = baseDamage
+      baseDamage = baseDamage * (1 - damageReduction)
+      combatLog.push(`🛡️ Armor reduces boss damage: ${originalDamage.toFixed(1)} → ${baseDamage.toFixed(1)}`)
+    }
+    
+    // Get weapon map for boss challenge system
+    const weaponMap = new Map<string, any>()
+    weaponMap.set(weapon.type, weapon)
+    
+    // Apply simplified boss challenges
+    const penalties = BossQuirkHandler.calculatePenalties(boss.type, weaponMap, armor, maxHP)
+    
+    if (penalties.bonusDamage > 0) {
+      baseDamage += penalties.bonusDamage
+      combatLog.push(`⚠️ ${boss.type} challenge: +${penalties.bonusDamage.toFixed(1)} bonus damage`)
+    }
+    
+    if (penalties.durationMultiplier > 1) {
+      baseDamage *= penalties.durationMultiplier
+      combatLog.push(`⏱️ ${boss.type} challenge: ${penalties.durationMultiplier}x duration penalty`)
+    }
+    
+    if (penalties.unavoidableDamage > 0) {
+      currentHP -= penalties.unavoidableDamage
+      combatLog.push(`💥 ${boss.type} challenge: ${penalties.unavoidableDamage.toFixed(1)} unavoidable damage - HP: ${currentHP}`)
+      
+      if (currentHP <= 0) {
+        return { success: false, finalHP: 0 }
+      }
+    }
+    
+    // Apply final damage
+    currentHP -= Math.ceil(baseDamage)
+    combatLog.push(`💔 Boss combat damage: ${Math.ceil(baseDamage)} - Final HP: ${currentHP}`)
+    
+    // Show boss challenge recommendation if counter not available
+    if (!BossQuirkHandler.hasCounter(boss.type, weaponMap, armor)) {
+      const recommendation = BossQuirkHandler.getRecommendation(boss.type)
+      combatLog.push(`💡 Tip: ${recommendation}`)
     }
     
     return {

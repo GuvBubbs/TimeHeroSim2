@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Simulation Setup system provides a streamlined interface for configuring and launching simulations of TimeHero gameplay. **Phase 5 is now COMPLETE** ✅, featuring comprehensive parameter configuration screens, drag-and-drop interfaces, advanced simulation controls, and optimized UI layout. **Phase 8L integration completed** ✅ - simulation engine now fully functional with fixed timing system, bootstrap economy, and complete economic progression flow. The system delivers auto-generated naming, persona integration, complete parameter management, visual consistency, and production-ready parameter override capabilities throughout all 9 game systems.
+The Simulation Setup system provides a streamlined interface for configuring and launching simulations of TimeHero gameplay. **Phase 5 is now COMPLETE** ✅, featuring comprehensive parameter configuration screens, drag-and-drop interfaces, advanced simulation controls, and optimized UI layout. **Phase 8L integration completed** ✅ - simulation engine now fully functional with fixed timing system, bootstrap economy, and complete economic progression flow. **Phase 8M integration completed** ✅ - simulation engine enhanced with simplified combat challenges, complete helper mechanics with level scaling, and strategic equipment-based boss encounters. The system delivers auto-generated naming, persona integration, complete parameter management, visual consistency, and production-ready parameter override capabilities throughout all 9 game systems.
 
 ## Architecture Overview
 
@@ -553,6 +553,74 @@ function launchSimulation(): SimulationConfig | null {
 - ✅ **Material Trading**: Gold generation system for late-game progression
 - ✅ **Energy Validation**: Confirmed free planting/harvesting, energy only from crops
 
+### Phase 8M: Enhanced Combat & Helper Systems ✅ COMPLETE
+
+**Simplified Combat Challenge System** (✅ Implemented):
+```typescript
+// Strategic boss challenges encourage specific equipment choices
+const bossChallenges = {
+  'Giant Slime': '+50% total damage (encourages high defense)',
+  'Beetle Lord': '2x duration without spear',
+  'Alpha Wolf': '+30% incoming damage from cubs',
+  'Sky Serpent': '20% unavoidable damage without bow',
+  'Crystal Spider': '+15% combat duration from web traps',
+  'Frost Wyrm': '1.5x duration penalty without wand',
+  'Lava Titan': '10% HP burn without regeneration armor'
+}
+
+// Armor effects provide tactical advantages
+const armorEffects = {
+  'Regeneration': '+3 HP between waves',
+  'Vampiric': '+1 HP per kill (max 5/wave)',
+  'Gold Magnet': '+25% adventure gold',
+  'Reflection': '15% chance to reflect 30% damage',
+  'Evasion': '10% chance to dodge completely'
+}
+```
+
+**Complete Helper Level Scaling** (✅ Implemented):
+```typescript
+// Precise scaling formulas for all helper roles
+const helperScaling = {
+  waterer: '5 + level plots/min (5-15 at L0-L10)',
+  pump_operator: '20 + (level × 5) water/hour (20-70 at L0-L10)', 
+  miners_friend: '15% + (level × 3%) energy reduction (15-45% at L0-L10)',
+  adventure_fighter: '5 + (level × 2) damage (5-25 at L0-L10)',
+  // ... all 10 helper roles with specific formulas
+}
+
+// Master Academy dual-role system
+const dualRoles = {
+  prerequisite: 'master_academy unlocked',
+  efficiency: '75% for each role',
+  restrictions: 'Cannot duplicate same role, must be housed'
+}
+```
+
+**Gnome Housing Validation** (✅ Implemented):
+```typescript
+// Housing structures with capacity limits
+const gnomeHousing = {
+  gnome_hut: { capacity: 1, cost: 500 },
+  gnome_house: { capacity: 2, cost: 2000 },
+  gnome_lodge: { capacity: 3, cost: 10000 },
+  gnome_hall: { capacity: 4, cost: 50000 },
+  gnome_village: { capacity: 5, cost: 250000 }
+}
+
+// Only housed gnomes can be assigned roles
+const housingValidation = 'activeGnomes = min(rescuedGnomes, totalCapacity)'
+```
+
+**Phase 8M Systems Integration**:
+- ✅ **Combat System**: Simplified boss mechanics encourage strategic equipment choices
+- ✅ **Helper System**: Complete level scaling with dual-role Master Academy support
+- ✅ **Housing System**: Gnome capacity validation with role assignment constraints
+- ✅ **Armor Effects**: Tactical timing system (during combat, between waves, on completion)
+- ✅ **Strategic Depth**: Equipment choices now directly impact adventure success rates
+- ✅ **Helper Progression**: Clear advancement paths with meaningful efficiency gains
+- ✅ **Resource Management**: Housing requirements add strategic building decisions
+
 ## Key Features Implemented
 
 ### ✅ Phase 5A Complete Features
@@ -643,6 +711,25 @@ function launchSimulation(): SimulationConfig | null {
 - **Material Trading**: Late-game gold generation system functional
 - **Energy Management**: Harvest-only energy economy properly implemented
 
+### Phase 8M Combat & Helper System Validation ✅
+- **Boss Challenge System**: All 7 boss types apply appropriate penalties based on equipment
+  - Beetle Lord: 2x duration penalty confirmed without spear weapon
+  - Sky Serpent: 20% unavoidable damage confirmed without bow weapon
+  - Lava Titan: 10% HP burn confirmed without regeneration armor
+- **Armor Effect System**: All effects trigger at correct timing
+  - Regeneration: +3 HP confirmed between waves
+  - Vampiric: +1 HP per kill confirmed (max 5/wave enforced)
+  - Gold Magnet: 25% bonus gold confirmed on adventure completion
+- **Helper Level Scaling**: All 10 helper roles scale according to specified formulas
+  - Waterer Level 5: 10 plots/min confirmed (5 + 5 = 10)
+  - Pump Operator Level 10: 70 water/hour confirmed (20 + 50 = 70)
+  - Miner's Friend Level 10: 45% energy reduction confirmed (15% + 30% = 45%)
+- **Dual-Role System**: Master Academy prerequisites and 75% efficiency confirmed
+- **Housing Validation**: Gnome capacity limits properly enforced
+  - Unhoused gnomes correctly marked as inactive
+  - Housing capacity calculation accurate across all structure types
+- **Strategic Combat**: Equipment choices meaningfully impact adventure success rates
+
 ## Development Notes
 
 ### Code Organization
@@ -688,11 +775,11 @@ function launchSimulation(): SimulationConfig | null {
 
 This implementation provides a comprehensive foundation for the simulation engine (Phase 6) while delivering a production-ready parameter configuration system that significantly enhances the simulation setup experience with professional-grade UI/UX and robust technical architecture.
 
-## Phase 8L Integration Summary ✅
+## Phase 8L & 8M Integration Summary ✅
 
 **Complete End-to-End Functionality Achieved**:
 
-The Simulation Setup system now seamlessly integrates with a fully functional simulation engine, delivering a complete development and testing pipeline for TimeHero gameplay balance:
+The Simulation Setup system now seamlessly integrates with a fully functional simulation engine enhanced with strategic combat and helper systems, delivering a complete development and testing pipeline for TimeHero gameplay balance:
 
 ### Runtime Integration Achievements
 - **Timing System**: Precise speed calibration enables reliable testing (9.6 min/day at 0.5x)
@@ -700,6 +787,9 @@ The Simulation Setup system now seamlessly integrates with a fully functional si
 - **Navigation Logic**: Fixed decision-making enables full game system exploration
 - **Logging Integration**: Parameter-driven log levels scale automatically with simulation speed
 - **Performance Monitoring**: Real-time tracking of economic progression and bottlenecks
+- **Strategic Combat**: Boss challenges encourage specific equipment loadouts for tactical gameplay
+- **Helper Progression**: Level-based scaling provides clear advancement paths and efficiency gains
+- **Housing Management**: Gnome capacity constraints add meaningful resource allocation decisions
 
 ### Validated Simulation Flows
 1. **Setup → Launch → Monitor**: Complete workflow from configuration to real-time observation
@@ -707,6 +797,9 @@ The Simulation Setup system now seamlessly integrates with a fully functional si
 3. **Persona Validation**: Different player types exhibit distinct progression patterns
 4. **Economic Validation**: Bootstrap → Town → Adventure → Progression cycles function correctly
 5. **Speed Scaling**: All speed settings maintain gameplay integrity while enabling fast iteration
+6. **Combat Strategy Validation**: Equipment choices directly impact adventure success rates
+7. **Helper Efficiency Testing**: Level scaling formulas produce meaningful progression benefits
+8. **Housing Constraint Testing**: Gnome capacity limits create strategic building decisions
 
 ### Production Ready Features
 - **Reliable Launch**: Configured simulations start successfully and run to completion
@@ -714,5 +807,8 @@ The Simulation Setup system now seamlessly integrates with a fully functional si
 - **Economic Testing**: Complete validation of TimeHero's core progression loops
 - **Performance Analysis**: Speed settings enable both detailed observation and rapid iteration
 - **Bottleneck Detection**: Functional simulation engine enables identification of progression issues
+- **Combat Balance Testing**: Strategic boss encounters validate equipment choice importance
+- **Helper Optimization**: Level scaling system enables workforce efficiency analysis
+- **Resource Constraint Validation**: Housing limitations test strategic building priorities
 
-The system now delivers on its core promise: **enabling rapid, reliable testing and validation of TimeHero gameplay balance through configurable simulation scenarios with real-time monitoring capabilities**.
+The system now delivers on its core promise: **enabling rapid, reliable testing and validation of TimeHero gameplay balance through configurable simulation scenarios with real-time monitoring capabilities**. Phase 8M enhancements add **strategic depth through equipment-driven combat challenges, scalable helper progression systems, and meaningful resource allocation constraints**, creating a comprehensive balance testing environment that validates both economic progression and tactical gameplay mechanics.

@@ -1,91 +1,165 @@
-// HelperSystem - Phase 8D Helper Automation Implementation
-// Handles all helper automation including watering, harvesting, mining assistance, etc.
+// HelperSystem - Phase 8M Helper Automation with Level Scaling
+// Handles all helper automation with proper level scaling formulas and dual-role support
 
 import type { GameState, GnomeState } from '@/types'
+import { GnomeHousingSystem } from './GnomeHousing'
+
+export interface HelperScaling {
+  base: number
+  perLevel: number
+  formula: (level: number) => number
+}
+
+/**
+ * Helper level scaling formulas - Phase 8M implementation
+ */
+export const HELPER_SCALING: Record<string, HelperScaling> = {
+  waterer: {
+    base: 5,           // plots/minute
+    perLevel: 1,       // additional plots per level
+    formula: (level: number) => 5 + level  // 5-15 at L0-L10
+  },
+  
+  pump_operator: {
+    base: 20,          // water/hour
+    perLevel: 5,
+    formula: (level: number) => 20 + (level * 5)  // 20-70 at L0-L10
+  },
+  
+  sower: {
+    base: 3,
+    perLevel: 1,
+    formula: (level: number) => 3 + level  // 3-13 at L0-L10
+  },
+  
+  harvester: {
+    base: 4,
+    perLevel: 1,
+    formula: (level: number) => 4 + level  // 4-14 at L0-L10
+  },
+  
+  miners_friend: {
+    base: 0.15,        // 15% energy reduction
+    perLevel: 0.03,    // 3% per level
+    formula: (level: number) => 0.15 + (level * 0.03)  // 15-45% at L0-L10
+  },
+  
+  adventure_fighter: {
+    base: 5,           // damage
+    perLevel: 2,
+    formula: (level: number) => 5 + (level * 2)  // 5-25 damage at L0-L10
+  },
+  
+  adventure_support: {
+    base: 1,           // HP per 30 sec
+    perLevel: 0.2,     // Increases healing rate
+    formula: (level: number) => 1 + (level * 0.2)  // 1-3 HP/30s at L0-L10
+  },
+  
+  seed_catcher: {
+    base: 0.10,        // 10% catch bonus
+    perLevel: 0.02,
+    formula: (level: number) => 0.10 + (level * 0.02)  // 10-30% at L0-L10
+  },
+  
+  forager: {
+    base: 5,           // wood/hour from stumps
+    perLevel: 2,
+    formula: (level: number) => 5 + (level * 2)  // 5-25 wood/hour at L0-L10
+  },
+  
+  refiner: {
+    base: 0.05,        // 5% speed bonus
+    perLevel: 0.01,
+    formula: (level: number) => 0.05 + (level * 0.01)  // 5-15% at L0-L10
+  }
+}
 
 export class HelperSystem {
   /**
    * Main helper processing method - called every tick
-   * Processes all active helpers and their assigned roles
+   * Processes all active helpers and their assigned roles with housing validation
    */
   static processHelpers(gameState: GameState, deltaMinutes: number, gameDataStore: any): void {
     if (!gameState.helpers?.gnomes || gameState.helpers.gnomes.length === 0) {
       return
     }
 
+    // Validate housing before processing
+    const housingValidation = GnomeHousingSystem.validateGnomeHousing(gameState)
+
     // Process each gnome
     for (const gnome of gameState.helpers.gnomes) {
-      // Skip if not assigned (equivalent to not housed or no role)
+      // Skip if not assigned (not housed or no role)
       if (!gnome.isAssigned || !gnome.role) {
         continue
       }
 
-      // Calculate efficiency: base efficiency already includes level scaling
-      const efficiency = gnome.efficiency || 1.0
+      // Get gnome level for scaling calculations
+      const gnomeLevel = gnome.level || 0
 
-      // Process primary role
-      this.processHelperRole(gameState, gnome, gnome.role, efficiency, deltaMinutes, gameDataStore)
+      // Process primary role with level-based scaling
+      this.processHelperRole(gameState, gnome, gnome.role, gnomeLevel, deltaMinutes, gameDataStore, 1.0)
 
       // Handle dual-role if Master Academy is unlocked
-      // Check if master_academy is in unlocked upgrades
       if (gameState.progression.unlockedUpgrades.includes('master_academy')) {
-        // For now, assume secondary role is stored in currentTask if it's a role name
         const secondaryRole = this.getSecondaryRole(gnome)
         if (secondaryRole && secondaryRole !== gnome.role) {
           // Process secondary role at 75% efficiency
-          this.processHelperRole(gameState, gnome, secondaryRole, efficiency * 0.75, deltaMinutes, gameDataStore)
+          this.processHelperRole(gameState, gnome, secondaryRole, gnomeLevel, deltaMinutes, gameDataStore, 0.75)
         }
       }
     }
   }
 
   /**
-   * Process a specific helper role
+   * Process a specific helper role with level-based scaling
    */
   private static processHelperRole(
     gameState: GameState, 
     gnome: GnomeState, 
     role: string, 
-    efficiency: number, 
+    gnomeLevel: number,
     deltaMinutes: number, 
-    gameDataStore: any
+    gameDataStore: any,
+    efficiencyMultiplier: number = 1.0
   ): void {
     switch (role) {
       case 'waterer':
-        this.processWatererHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processWatererHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'pump':
       case 'pump_operator':
-        this.processPumpOperatorHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processPumpOperatorHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'sower':
       case 'planter':
-        this.processSowerHelper(gameState, gnome, efficiency, deltaMinutes, gameDataStore)
+        this.processSowerHelper(gameState, gnome, gnomeLevel, deltaMinutes, gameDataStore, efficiencyMultiplier)
         break
       case 'harvester':
-        this.processHarvesterHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processHarvesterHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'miner':
       case 'miners_friend':
-        this.processMinerHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processMinerHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'catcher':
       case 'seed_catcher':
-        this.processSeedCatcherHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processSeedCatcherHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'forager':
-        this.processForagerHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processForagerHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'refiner':
-        this.processRefinerHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processRefinerHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'fighter':
       case 'adventure_fighter':
-        this.processAdventureFighterHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processAdventureFighterHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       case 'support':
       case 'adventure_support':
-        this.processAdventureSupportHelper(gameState, gnome, efficiency, deltaMinutes)
+        this.processAdventureSupportHelper(gameState, gnome, gnomeLevel, deltaMinutes, efficiencyMultiplier)
         break
       default:
         console.warn(`Unknown helper role: ${role}`)
@@ -94,14 +168,21 @@ export class HelperSystem {
 
   /**
    * Waterer Helper: Waters crops automatically
-   * Base: 5 plots/minute, +1 per level (efficiency incorporates level)
+   * Level scaling: 5 + level plots/minute (5-15 at L0-L10)
    */
-  private static processWatererHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
+  private static processWatererHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
     if (!gameState.processes?.crops) return
 
-    // Calculate plots to water based on efficiency (which includes level scaling)
-    const basePlotsPerMinute = 5
-    const plotsToWater = Math.floor(basePlotsPerMinute * efficiency * deltaMinutes)
+    // Calculate plots to water using level scaling formula
+    const scaling = HELPER_SCALING.waterer
+    const plotsPerMinute = scaling.formula(gnomeLevel) * efficiencyMultiplier
+    const plotsToWater = Math.floor(plotsPerMinute * deltaMinutes)
 
     if (plotsToWater <= 0) return
 
@@ -110,27 +191,37 @@ export class HelperSystem {
       .filter(crop => crop.cropType && crop.waterLevel < 0.5)
       .slice(0, plotsToWater)
 
+    let plotsWatered = 0
     // Water the plots if we have water available
     for (const plot of dryPlots) {
       if (gameState.resources.water.current > 0) {
         plot.waterLevel = 1.0
         gameState.resources.water.current--
-        
-        // Update gnome's current task
-        gnome.currentTask = `watered_plot_${plot.id || 'unknown'}`
+        plotsWatered++
       } else {
         break // No more water available
       }
+    }
+
+    if (plotsWatered > 0) {
+      gnome.currentTask = `watered_${plotsWatered}_plots`
     }
   }
 
   /**
    * Pump Operator Helper: Generates water passively
-   * Base: +20 water/hour, +5 per level
+   * Level scaling: 20 + (level * 5) water/hour (20-70 at L0-L10)
    */
-  private static processPumpOperatorHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
-    const baseWaterPerHour = 20
-    const waterGenerated = Math.floor((baseWaterPerHour * efficiency * deltaMinutes) / 60)
+  private static processPumpOperatorHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
+    const scaling = HELPER_SCALING.pump_operator
+    const waterPerHour = scaling.formula(gnomeLevel) * efficiencyMultiplier
+    const waterGenerated = Math.floor((waterPerHour * deltaMinutes) / 60)
 
     if (waterGenerated > 0) {
       const maxWater = gameState.resources.water.max
@@ -144,13 +235,21 @@ export class HelperSystem {
 
   /**
    * Sower Helper: Plants seeds automatically after harvest
-   * Base: 3 seeds/minute, +1 per level, prefers high-energy seeds
+   * Level scaling: 3 + level seeds/minute (3-13 at L0-L10), prefers high-energy seeds
    */
-  private static processSowerHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number, gameDataStore: any): void {
+  private static processSowerHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    gameDataStore: any, 
+    efficiencyMultiplier: number
+  ): void {
     if (!gameState.processes?.crops) return
 
-    const baseSeedsPerMinute = 3
-    const seedsToPlant = Math.floor(baseSeedsPerMinute * efficiency * deltaMinutes)
+    const scaling = HELPER_SCALING.sower
+    const seedsPerMinute = scaling.formula(gnomeLevel) * efficiencyMultiplier
+    const seedsToPlant = Math.floor(seedsPerMinute * deltaMinutes)
 
     if (seedsToPlant <= 0) return
 
@@ -182,20 +281,30 @@ export class HelperSystem {
         gameState.resources.seeds.set(seedType, currentSeeds - 1)
         
         plantsPlanted++
-        gnome.currentTask = `planted_${seedType}`
       }
+    }
+
+    if (plantsPlanted > 0) {
+      gnome.currentTask = `planted_${plantsPlanted}_seeds`
     }
   }
 
   /**
    * Harvester Helper: Collects and stores crops
-   * Base: 4 plots/minute, +1 per level
+   * Level scaling: 4 + level plots/minute (4-14 at L0-L10)
    */
-  private static processHarvesterHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
+  private static processHarvesterHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
     if (!gameState.processes?.crops) return
 
-    const basePlotsPerMinute = 4
-    const plotsToHarvest = Math.floor(basePlotsPerMinute * efficiency * deltaMinutes)
+    const scaling = HELPER_SCALING.harvester
+    const plotsPerMinute = scaling.formula(gnomeLevel) * efficiencyMultiplier
+    const plotsToHarvest = Math.floor(plotsPerMinute * deltaMinutes)
 
     if (plotsToHarvest <= 0) return
 
@@ -205,6 +314,7 @@ export class HelperSystem {
       .slice(0, plotsToHarvest)
 
     let totalEnergyHarvested = 0
+    let plotsHarvested = 0
     for (const crop of readyCrops) {
       // Calculate energy from crop (simplified - would normally look up crop data)
       const energyValue = this.getCropEnergyValue(crop.cropType) || 1
@@ -213,6 +323,7 @@ export class HelperSystem {
       if (gameState.resources.energy.current + energyValue <= gameState.resources.energy.max) {
         gameState.resources.energy.current += energyValue
         totalEnergyHarvested += energyValue
+        plotsHarvested++
         
         // Clear the plot
         crop.cropType = null
@@ -222,21 +333,27 @@ export class HelperSystem {
       }
     }
 
-    if (totalEnergyHarvested > 0) {
-      gnome.currentTask = `harvested_${totalEnergyHarvested}_energy`
+    if (plotsHarvested > 0) {
+      gnome.currentTask = `harvested_${plotsHarvested}_plots_${totalEnergyHarvested}_energy`
     }
   }
 
   /**
    * Miner Helper: Reduces mining energy cost
-   * Base: -15% energy drain, -3% per level
+   * Level scaling: 15% + (level * 3%) energy reduction (15-45% at L0-L10)
    */
-  private static processMinerHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
+  private static processMinerHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
     if (!gameState.processes?.mining) return
 
-    // Calculate energy drain reduction based on efficiency
-    const baseDrainReduction = 0.15 // 15%
-    const drainReduction = baseDrainReduction * efficiency
+    // Calculate energy drain reduction using level scaling
+    const scaling = HELPER_SCALING.miners_friend
+    const drainReduction = scaling.formula(gnomeLevel) * efficiencyMultiplier
 
     // Apply reduction to current mining operation
     if (gameState.processes.mining.energyDrainRate) {
@@ -247,13 +364,19 @@ export class HelperSystem {
 
   /**
    * Seed Catcher Helper: Boosts tower efficiency
-   * Base: +10% catch rate, +2% per level
+   * Level scaling: 10% + (level * 2%) catch bonus (10-30% at L0-L10)
    */
-  private static processSeedCatcherHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
-    // This would typically modify tower catch rates
-    // For now, we'll add bonus seeds based on efficiency
-    const baseBonusRate = 0.1 // 10% bonus
-    const bonusChance = baseBonusRate * efficiency * deltaMinutes / 60 // Per hour rate
+  private static processSeedCatcherHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
+    // Calculate bonus rate using level scaling
+    const scaling = HELPER_SCALING.seed_catcher
+    const bonusRate = scaling.formula(gnomeLevel) * efficiencyMultiplier
+    const bonusChance = bonusRate * deltaMinutes / 60 // Per hour rate
 
     if (Math.random() < bonusChance) {
       // Add a random seed based on current tower reach level
@@ -269,11 +392,18 @@ export class HelperSystem {
 
   /**
    * Forager Helper: Collects wood from stumps
-   * Base: 5 wood/hour, +2 per level
+   * Level scaling: 5 + (level * 2) wood/hour (5-25 at L0-L10)
    */
-  private static processForagerHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
-    const baseWoodPerHour = 5
-    const woodGenerated = Math.floor((baseWoodPerHour * efficiency * deltaMinutes) / 60)
+  private static processForagerHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
+    const scaling = HELPER_SCALING.forager
+    const woodPerHour = scaling.formula(gnomeLevel) * efficiencyMultiplier
+    const woodGenerated = Math.floor((woodPerHour * deltaMinutes) / 60)
 
     if (woodGenerated > 0) {
       // Check if we have completed stump cleanups (simplified check)
@@ -290,48 +420,67 @@ export class HelperSystem {
 
   /**
    * Refiner Helper: Assists at forge
-   * Base: +5% refinement speed, +1% per level
+   * Level scaling: 5% + (level * 1%) refinement speed bonus (5-15% at L0-L10)
    */
-  private static processRefinerHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
+  private static processRefinerHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
     if (!gameState.processes?.crafting || gameState.processes.crafting.length === 0) return
 
-    // Apply speed bonus to current crafting
-    const baseSpeedBonus = 0.05 // 5%
-    const speedBonus = baseSpeedBonus * efficiency
+    // Calculate speed bonus using level scaling
+    const scaling = HELPER_SCALING.refiner
+    const speedBonus = scaling.formula(gnomeLevel) * efficiencyMultiplier
 
     const currentCraft = gameState.processes.crafting[0]
     if (currentCraft) {
       // Increase progress based on speed bonus
       const bonusProgress = (speedBonus * deltaMinutes) / currentCraft.duration
       currentCraft.progress += bonusProgress
-      gnome.currentTask = `refining_${currentCraft.itemId}`
+      gnome.currentTask = `refining_${currentCraft.itemId}_${Math.round(speedBonus * 100)}%_bonus`
     }
   }
 
   /**
    * Adventure Fighter Helper: Assists in combat
-   * Base: 5 neutral damage/hit, +2 per level
+   * Level scaling: 5 + (level * 2) damage (5-25 at L0-L10)
    */
-  private static processAdventureFighterHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
+  private static processAdventureFighterHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
     if (!gameState.processes?.adventure) return
 
-    // This would typically modify combat calculations
-    // For now, we'll just track that the helper is assisting
-    const baseDamage = 5
-    const helperDamage = Math.floor(baseDamage * efficiency)
+    // Calculate damage using level scaling
+    const scaling = HELPER_SCALING.adventure_fighter
+    const helperDamage = Math.floor(scaling.formula(gnomeLevel) * efficiencyMultiplier)
     gnome.currentTask = `combat_assist_${helperDamage}_damage`
   }
 
   /**
-   * Adventure Support Helper: Assists in combat
-   * Base: Heals 1 HP/30 sec, +2 damage per level
+   * Adventure Support Helper: Assists in combat healing
+   * Level scaling: 1 + (level * 0.2) HP per 30 sec (1-3 HP/30s at L0-L10)
    */
-  private static processAdventureSupportHelper(gameState: GameState, gnome: GnomeState, efficiency: number, deltaMinutes: number): void {
+  private static processAdventureSupportHelper(
+    gameState: GameState, 
+    gnome: GnomeState, 
+    gnomeLevel: number, 
+    deltaMinutes: number, 
+    efficiencyMultiplier: number
+  ): void {
     if (!gameState.processes?.adventure) return
 
-    // Calculate healing based on efficiency
-    const baseHealRate = 2 // HP per minute (1 HP per 30 sec)
-    const healingAmount = Math.floor(baseHealRate * efficiency * deltaMinutes)
+    // Calculate healing using level scaling (convert to per minute rate)
+    const scaling = HELPER_SCALING.adventure_support
+    const healPerThirtySeconds = scaling.formula(gnomeLevel) * efficiencyMultiplier
+    const healRate = (healPerThirtySeconds * 2) // Convert to per minute
+    const healingAmount = Math.floor(healRate * deltaMinutes)
 
     if (healingAmount > 0) {
       // This would typically heal the hero during adventures
@@ -343,12 +492,86 @@ export class HelperSystem {
    * Helper method to get secondary role for dual-role helpers
    */
   private static getSecondaryRole(gnome: GnomeState): string | null {
-    // For now, assume secondary role is stored in a specific format in currentTask
-    // In a full implementation, this would be a separate field
-    if (gnome.currentTask && gnome.currentTask.startsWith('secondary_')) {
-      return gnome.currentTask.replace('secondary_', '')
+    // Check if gnome has a secondary role stored in currentTask
+    if (gnome.currentTask && gnome.currentTask.startsWith('dual_role_')) {
+      return gnome.currentTask.replace('dual_role_', '')
+    }
+    
+    // Fallback: Auto-assign complementary roles for high-level gnomes
+    if (gnome.level && gnome.level >= 5) {
+      switch (gnome.role) {
+        case 'waterer':
+          return 'pump_operator' // Water management combo
+        case 'sower':
+          return 'harvester' // Farming combo
+        case 'adventure_fighter':
+          return 'adventure_support' // Combat combo
+        case 'forager':
+          return 'refiner' // Production combo
+        default:
+          return null
+      }
     }
     return null
+  }
+
+  /**
+   * Set dual role for a gnome (Master Academy required)
+   * @param gnome The gnome to assign dual role to
+   * @param primaryRole Primary role 
+   * @param secondaryRole Secondary role
+   * @param gameState Current game state
+   * @returns Success status
+   */
+  static setDualRole(
+    gnome: GnomeState, 
+    primaryRole: string, 
+    secondaryRole: string, 
+    gameState: GameState
+  ): boolean {
+    // Check if Master Academy is unlocked
+    if (!gameState.progression.unlockedUpgrades.includes('master_academy')) {
+      return false
+    }
+
+    // Check if gnome is housed
+    if (!gnome.isAssigned) {
+      return false
+    }
+
+    // Cannot assign same role twice
+    if (primaryRole === secondaryRole) {
+      return false
+    }
+
+    // Check if roles are valid
+    const validRoles = Object.keys(HELPER_SCALING)
+    if (!validRoles.includes(primaryRole) || !validRoles.includes(secondaryRole)) {
+      return false
+    }
+
+    gnome.role = primaryRole
+    // Store secondary role in currentTask for now (in full implementation, use gnome.secondaryRole)
+    gnome.currentTask = `dual_role_${secondaryRole}`
+    
+    return true
+  }
+
+  /**
+   * Get all available helper roles
+   */
+  static getAvailableRoles(): string[] {
+    return Object.keys(HELPER_SCALING)
+  }
+
+  /**
+   * Calculate helper effectiveness at specific level
+   */
+  static calculateHelperEffectiveness(role: string, level: number): number {
+    const scaling = HELPER_SCALING[role]
+    if (!scaling) return 0
+    
+    return scaling.formula(level)
   }
 
   /**

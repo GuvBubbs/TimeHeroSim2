@@ -238,31 +238,13 @@
         </div>
       </div>
 
-      <!-- Performance Monitor (Full Width Strip) -->
+      <!-- Performance Monitor (Full Width Enhanced) -->
       <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-12 h-32">
-          <BaseWidget title="Performance Monitor" icon="fas fa-tachometer-alt">
-            <div class="flex justify-between items-center h-full">
-              <div class="flex gap-8 text-sm w-full">
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">Sim Speed</span>
-                  <span class="font-mono text-lg">{{ currentStats?.averageTickTime?.toFixed(0) || 0 }} ms/tick</span>
-                </div>
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">UI FPS</span>
-                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 10) + 55 }}</span>
-                </div>
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">Memory</span>
-                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 50) + 100 }} MB</span>
-                </div>
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">CPU</span>
-                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 15) + 5 }}%</span>
-                </div>
-              </div>
-            </div>
-          </BaseWidget>
+        <div class="col-span-12">
+          <PerformanceMonitorWidget 
+            :gameState="currentState"
+            :currentStats="currentStats"
+          />
         </div>
       </div>
     </div>
@@ -306,6 +288,7 @@ import MiniUpgradeTreeWidget from '@/components/monitor/MiniUpgradeTreeWidget.vu
 import TimelineWidget from '@/components/monitor/TimelineWidget.vue'
 import ScreenTimeWidget from '@/components/monitor/ScreenTimeWidget.vue'
 import NextDecisionWidget from '@/components/monitor/NextDecisionWidget.vue'
+import PerformanceMonitorWidget from '@/components/monitor/PerformanceMonitorWidget.vue'
 
 // State
 const bridge = ref<SimulationBridge | null>(null)

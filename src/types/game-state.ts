@@ -203,6 +203,16 @@ export interface AutomationState {
   targetCrops: Map<string, number> // From parameters
   wateringThreshold: number
   energyReserve: number
+  
+  // Decision engine state
+  nextDecision?: {
+    action: string
+    reason: string
+    nextCheck: number
+    priority?: number
+    target?: string
+    alternatives?: Array<{ action: string; score: number }>
+  } | null
 }
 
 /**

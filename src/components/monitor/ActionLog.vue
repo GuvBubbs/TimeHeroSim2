@@ -34,14 +34,14 @@
           class="flex gap-2 p-2 rounded hover:bg-sim-background transition-colors"
           :class="getEntryClass(entry.type)"
         >
-          <!-- Timestamp -->
+          <!-- Tick Number -->
           <div class="text-xs text-sim-text-secondary font-mono shrink-0 w-12">
-            {{ formatTime(entry.timestamp) }}
+            T{{ formatTick(entry.timestamp) }}
           </div>
           
           <!-- Icon -->
           <div class="shrink-0 w-5 flex justify-center">
-            <i :class="getActionIcon(entry.type)" class="text-sm"></i>
+            <span class="text-sm">{{ getActionIcon(entry.type) }}</span>
           </div>
           
           <!-- Content -->
@@ -153,7 +153,7 @@ const visibleEntries = computed(() => {
 const toggleAutoScroll = () => {
   autoScroll.value = !autoScroll.value
   if (autoScroll.value) {
-    scrollToBottom()
+    scrollToTop()
   }
 }
 
@@ -174,47 +174,88 @@ const toggleFilter = (filterType: string) => {
 const onScroll = () => {
   if (!logContainer.value) return
   
-  const { scrollTop, scrollHeight, clientHeight } = logContainer.value
-  const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5
+  const { scrollTop } = logContainer.value
+  const isAtTop = scrollTop <= 5
   
-  // Auto-disable auto-scroll if user scrolls up
-  if (!isAtBottom && autoScroll.value) {
+  // Auto-disable auto-scroll if user scrolls down from top
+  if (!isAtTop && autoScroll.value) {
     autoScroll.value = false
   }
 }
 
-const scrollToBottom = async () => {
+const scrollToTop = async () => {
   await nextTick()
   if (logContainer.value) {
-    logContainer.value.scrollTop = logContainer.value.scrollHeight
+    logContainer.value.scrollTop = 0
   }
 }
 
 // Watch for new entries and auto-scroll
 watch(() => logEntries.value.length, () => {
   if (autoScroll.value) {
-    scrollToBottom()
+    scrollToTop()
   }
 })
 
 // Helper functions
-const formatTime = (timestamp: number): string => {
-  const date = new Date(timestamp)
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+const formatTick = (timestamp: number): string => {
+  // Convert timestamp (total minutes) to tick number
+  // Assuming 30-second ticks (0.5 minutes per tick)
+  const ticksPerMinute = 2
+  return Math.floor(timestamp * ticksPerMinute).toString()
 }
 
 const getActionIcon = (type: string): string => {
   const icons: Record<string, string> = {
-    plant: 'fas fa-seedling text-green-400',
-    harvest: 'fas fa-cut text-yellow-400',
-    water: 'fas fa-tint text-blue-400',
-    craft: 'fas fa-hammer text-orange-400',
-    purchase: 'fas fa-shopping-cart text-purple-400',
-    move: 'fas fa-route text-gray-400',
-    combat: 'fas fa-sword text-red-400',
-    mine: 'fas fa-mountain text-gray-500'
+    // Farm actions
+    plant: '🌱',
+    water: '💧', 
+    harvest: '🌾',
+    cleanup: '🧹',
+    pump: '🚰',
+    
+    // Combat actions
+    combat: '⚔️',
+    victory: '🏆',
+    defeat: '💀',
+    
+    // Craft actions
+    craft: '🔨',
+    refine: '🔥',
+    forge: '⚒️',
+    stoke: '🔥',
+    
+    // Town actions
+    purchase: '💰',
+    upgrade: '📈',
+    train: '📚',
+    
+    // Mine actions
+    mine: '⛏️',
+    
+    // Tower actions
+    catch_seeds: '🪝',
+    
+    // Helper actions
+    helper: '👥',
+    rescue: '🆘',
+    assign_role: '👷',
+    train_helper: '🎓',
+    
+    // Navigation
+    move: '🚶',
+    
+    // Economy
+    gold: '🪙',
+    energy: '⚡',
+    
+    // Adventure
+    adventure: '🗡️',
+    
+    // Default
+    default: '•'
   }
-  return icons[type] || 'fas fa-question text-gray-400'
+  return icons[type] || icons.default
 }
 
 const getEntryClass = (type: string): string => {

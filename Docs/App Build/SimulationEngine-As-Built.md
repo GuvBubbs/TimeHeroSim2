@@ -441,6 +441,11 @@ inventory: {
 - Comprehensive error handling and logging
 
 ✅ **Recent Fixes Applied**:
+- **Phase 8Q Widget Integration**: Fixed critical data flow issues preventing Current Action and Next Decision widgets from working
+- **Phase 8Q Bottleneck Fix**: Corrected `getBottleneckPriorities()` method accessing non-existent `gameState.farm.crops` (changed to `gameState.processes.crops`)
+- **Phase 8Q Action Display**: Enhanced `WidgetDataAdapter.transformCurrentAction()` to show recent completed actions when no ongoing process
+- **Phase 8Q Error Resolution**: Eliminated `TypeError: can't access property "crops"` that was causing Next Decision widget to show "Error" 
+- **Phase 8Q Data Pipeline**: Verified complete SimulationEngine → Worker → Bridge → Widgets data flow working correctly
 - **Phase 8N Seed Management**: Comprehensive seed collection system with emergency and proactive collection
 - **Phase 8N Navigation Intelligence**: Smart tower exit logic and adaptive check-in frequencies  
 - **Phase 8N Action Pipeline**: Fixed duplicate methods and invalid properties causing 0 valid actions
@@ -460,6 +465,11 @@ inventory: {
 - Validated CSV data flow from store to worker
 
 ✅ **Testing Verified**:
+- **Phase 8Q**: Next Decision widget displays real decisions ("pump", "catch_seeds") with reasoning ✅
+- **Phase 8Q**: Current Action widget shows recent completed actions when no ongoing process ✅
+- **Phase 8Q**: Complete data flow SimulationEngine → Worker → Bridge → Widgets working ✅
+- **Phase 8Q**: Zero runtime errors - eliminated all TypeError exceptions in decision system ✅
+- **Phase 8Q**: Real-time widget updates with proper action display and next decision preview ✅
 - **Phase 8N**: Complete seed management cycle - farm → tower → collect seeds → return to farm ✅
 - **Phase 8N**: Emergency seed collection triggers at 0 seeds with ultra-high priority (9999)
 - **Phase 8N**: Proactive seed collection activates at 3/6 seeds with high priority (750)

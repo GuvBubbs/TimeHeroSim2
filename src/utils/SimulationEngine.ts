@@ -512,6 +512,8 @@ export class SimulationEngine {
    * Main simulation tick - advances game by one time unit
    */
   tick(): TickResult {
+    console.log('⏰ SimulationEngine: tick() called, tickCount:', this.tickCount, 'isRunning:', this.isRunning)
+    
     const startTime = this.gameState.time.totalMinutes
     const deltaTime = this.calculateDeltaTime()
     
@@ -2875,7 +2877,9 @@ export class SimulationEngine {
     
     // Update next decision information for widgets
     try {
-      this.gameState.automation.nextDecision = this.getNextDecision()
+      const nextDecision = this.getNextDecision()
+      this.gameState.automation.nextDecision = nextDecision
+      console.log('🤖 SimulationEngine: Updated next decision:', nextDecision)
     } catch (error) {
       console.warn('Error updating next decision:', error)
       this.gameState.automation.nextDecision = null
@@ -4425,7 +4429,7 @@ export class SimulationEngine {
     }
     
     // Check for plot shortage (>90% used)
-    const plantedPlots = this.gameState.farm.crops.filter(c => c.planted).length
+    const plantedPlots = this.gameState.processes.crops.filter(c => c.plantedAt > 0).length
     const plotUsage = plantedPlots / farmPlots
     
     if (plotUsage > 0.9) {

@@ -1,70 +1,88 @@
-<!-- Equipment Widget - Tools, Weapons, Armor display -->
+<!-- Equipment Widget - Complete tools/weapons/armor system -->
 <template>
   <BaseWidget title="Equipment" icon="fas fa-hammer">
     <div class="space-y-2">
       <!-- Tools and Weapons Split -->
-      <div class="grid grid-cols-2 gap-2">
-        <!-- Tools -->
-        <div class="bg-sim-background rounded p-2">
-          <div class="text-xs font-semibold mb-1 text-orange-400">Tools</div>
-          <div class="space-y-1" v-if="props.widgetEquipment?.tools && Object.keys(props.widgetEquipment.tools).length > 0">
-            <div 
-              v-for="(tool, name) in props.widgetEquipment.tools" 
-              :key="name"
-              class="flex justify-between items-center text-xs"
-            >
-              <span>{{ tool.name || name }}</span>
-              <span class="bg-sim-background-darker rounded px-1" :class="tool.isEquipped ? 'text-green-400' : 'text-gray-400'">
-                {{ tool.isEquipped ? '✓' : '-' }}
-              </span>
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Tools Section -->
+        <div>
+          <div class="text-xs font-semibold mb-2 text-orange-400">Tools</div>
+          <div class="space-y-1 text-xs">
+            <div class="flex justify-between">
+              <span>Hoe</span>
+              <span>{{ getToolIcon('hoe') }}</span>
             </div>
-          </div>
-          <div class="text-xs text-sim-text-secondary" v-else>
-            No tools available
+            <div class="flex justify-between">
+              <span>Hammer</span>
+              <span>{{ getToolIcon('hammer') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Axe</span>
+              <span>{{ getToolIcon('axe') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Shovel</span>
+              <span>{{ getToolIcon('shovel') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Pickaxe</span>
+              <span>{{ getToolIcon('pickaxe') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Water Can</span>
+              <span>{{ getToolIcon('watercan') }}</span>
+            </div>
           </div>
         </div>
 
-        <!-- Weapons -->
-        <div class="bg-sim-background rounded p-2">
-          <div class="text-xs font-semibold mb-1 text-red-400">Weapons</div>
-          <div class="space-y-1" v-if="props.widgetEquipment?.weapons && Object.keys(props.widgetEquipment.weapons).length > 0">
-            <div 
-              v-for="(weapon, name) in props.widgetEquipment.weapons" 
-              :key="name"
-              class="flex justify-between items-center text-xs"
-            >
-              <span>{{ weapon.name || name }}</span>
-              <span class="bg-sim-background-darker rounded px-1" :class="weapon.isEquipped ? 'text-green-400' : 'text-gray-400'">
-                {{ weapon.isEquipped ? '✓' : '-' }}
-              </span>
+        <!-- Weapons Section -->
+        <div>
+          <div class="text-xs font-semibold mb-2 text-red-400">Weapons</div>
+          <div class="space-y-1 text-xs">
+            <div class="flex justify-between">
+              <span>Spear</span>
+              <span>{{ getWeaponIcon('spear') }}</span>
             </div>
-          </div>
-          <div class="text-xs text-sim-text-secondary" v-else>
-            No weapons available
+            <div class="flex justify-between">
+              <span>Sword</span>
+              <span>{{ getWeaponIcon('sword') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Bow</span>
+              <span>{{ getWeaponIcon('bow') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Crossbow</span>
+              <span>{{ getWeaponIcon('crossbow') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Wand</span>
+              <span>{{ getWeaponIcon('wand') }}</span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Armor Section (Full Width) -->
       <div class="bg-sim-background rounded p-2">
-        <div class="text-xs font-semibold mb-2 text-blue-400">Armor</div>
-        <div class="grid grid-cols-3 gap-2" v-if="props.widgetEquipment?.armor && Object.keys(props.widgetEquipment.armor).length > 0">
+        <div class="text-xs font-semibold mb-1 text-blue-400">Armor</div>
+        <div class="flex gap-2">
           <div 
-            v-for="(armor, name) in props.widgetEquipment.armor" 
-            :key="name"
-            class="bg-sim-background-darker rounded p-2 h-12 flex items-center justify-center border border-dashed border-sim-border text-xs"
-            :class="armor.isEquipped ? 'border-green-400' : 'border-sim-border'"
+            v-for="i in 3" 
+            :key="i"
+            class="flex-1 border border-dashed border-sim-border rounded text-center p-2 text-xs"
+            :class="getArmorSlot(i-1) ? 'border-green-400' : 'border-sim-border'"
           >
-            <div class="text-center">
-              <div class="text-xs">{{ armor.defense }}def</div>
-              <div class="text-xs" :class="armor.isEquipped ? 'text-green-400' : 'text-gray-400'">
-                {{ armor.isEquipped ? '✓' : armor.name || name }}
-              </div>
+            <div v-if="getArmorSlot(i-1)" class="space-y-1">
+              <div>🛡️</div>
+              <div>{{ getArmorSlot(i-1).defense }}def</div>
+              <div v-if="getArmorSlot(i-1).effect">{{ getEffectIcon(getArmorSlot(i-1).effect) }}</div>
+            </div>
+            <div v-else class="space-y-1 opacity-30">
+              <div>⬚</div>
+              <div class="text-xs">Empty</div>
             </div>
           </div>
-        </div>
-        <div class="text-xs text-sim-text-secondary text-center py-4" v-else>
-          No armor available
         </div>
       </div>
     </div>
@@ -81,4 +99,52 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// Tool icon helper - shows: - / 🔨 / 🛠️ / 🏆
+const getToolIcon = (toolName: string): string => {
+  if (!props.widgetEquipment?.tools) return '-'
+  
+  const tool = props.widgetEquipment.tools[toolName]
+  if (!tool || tool.level === 0) return '-'
+  
+  // Convert level to tool progression: 1=base, 2=plus, 3=master
+  if (tool.level >= 3) return '🏆'
+  if (tool.level >= 2) return '🛠️'
+  if (tool.level >= 1) return '🔨'
+  return '-'
+}
+
+// Weapon icon helper - shows: - / 1️⃣-🔟
+const getWeaponIcon = (weaponName: string): string => {
+  if (!props.widgetEquipment?.weapons) return '-'
+  
+  const weapon = props.widgetEquipment.weapons[weaponName]
+  const level = weapon?.level || 0
+  
+  if (level === 0) return '-'
+  
+  const emojis = ['', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+  return emojis[Math.min(level, 10)] || '🔟'
+}
+
+// Armor slot extraction
+const getArmorSlot = (slotIndex: number) => {
+  if (!props.widgetEquipment?.armor) return null
+  
+  const armorArray = Object.values(props.widgetEquipment.armor)
+  return armorArray[slotIndex] || null
+}
+
+// Helper function for armor effect icons
+function getEffectIcon(effect: string | undefined): string {
+  if (!effect) return ''
+  const effectIcons: Record<string, string> = {
+    'speed': '⚡',
+    'defense': '🛡️',
+    'health': '❤️',
+    'magic': '✨',
+    'stealth': '👻'
+  }
+  return effectIcons[effect.toLowerCase()] || '?'
+}
 </script>

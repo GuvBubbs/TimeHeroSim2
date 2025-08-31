@@ -396,32 +396,52 @@ defineProps<{
 ```
 
 #### ResourcesWidget
-**Purpose**: Real-time display of energy, gold, water, seeds, and materials
+**Purpose**: Comprehensive inventory management with two-column scrollable layout
 **Key Features**:
-- Progress bars for current/max values
-- Color-coded resource levels
-- Resource breakdown display
-- Real-time updates
+- **Compact Primary Resources**: Energy/Gold and Water/Seeds with progress bars
+- **Split-Column Design**: Seeds (left) and Materials (right) in dedicated scrollable areas
+- **Full-Height Utilization**: Scrollable sections use entire widget height for maximum inventory visibility
+- **Always-Visible Inventory**: No collapsible sections - complete seed and material lists always accessible
+- **Color-Coded Display**: Green accents for seeds, purple for materials
+- **Custom Scrollbars**: Thin, styled scrollbars for minimal visual impact
 
 ```vue
-<!-- ResourcesWidget.vue -->
+<!-- ResourcesWidget.vue - Two-Column Layout -->
 <template>
   <BaseWidget title="Resources" icon="fas fa-coins">
-    <div class="space-y-3">
-      <!-- Energy -->
-      <div class="space-y-1">
-        <div class="flex justify-between text-sm">
-          <span>Energy</span>
-          <span class="font-mono">{{ energy.current }}/{{ energy.max }}</span>
+    <div class="flex flex-col h-full">
+      <!-- Primary Resources (top compact section) -->
+      <div class="primary-resources mb-3">
+        <div class="resource-pair mb-2">
+          <!-- Energy/Gold Row -->
+          <div class="flex-1">⚡ Energy: {{ energy.current }}/{{ energy.max }}</div>
+          <div class="flex-1">💰 Gold: {{ formatNumber(resources.gold) }}</div>
         </div>
-        <div class="bg-sim-background rounded-full h-2">
-          <div class="h-full bg-yellow-500 rounded-full transition-all"
-               :style="{ width: `${(energy.current / energy.max) * 100}%` }">
-          </div>
+        <div class="resource-pair">
+          <!-- Water/Seeds Row -->
+          <div class="flex-1">💧 Water: {{ water.current }}/{{ water.max }}</div>
+          <div class="flex-1">🌱 Seeds: {{ totalSeeds }}</div>
         </div>
       </div>
       
-      <!-- Additional resources... -->
+      <!-- Bottom Split: Seeds and Materials (scrollable sections) -->
+      <div class="flex-1 flex gap-2 min-h-0">
+        <!-- Seeds Section (Left) -->
+        <div class="flex-1 flex flex-col">
+          <div class="section-header">Seeds ({{ seedTypes.length }} types)</div>
+          <div class="flex-1 overflow-y-auto bg-sim-background-darker rounded p-2">
+            <!-- Scrollable seed list -->
+          </div>
+        </div>
+        
+        <!-- Materials Section (Right) -->
+        <div class="flex-1 flex flex-col">
+          <div class="section-header">Materials ({{ materialCount }})</div>
+          <div class="flex-1 overflow-y-auto bg-sim-background-darker rounded p-2">
+            <!-- Scrollable materials list -->
+          </div>
+        </div>
+      </div>
     </div>
   </BaseWidget>
 </template>
@@ -572,7 +592,7 @@ Phase 6D represents the final integration phase that transforms the widget infra
 - Enhanced Equipment widget with complete tools/weapons/armor system  
 - Optimized Current Location widget with cross-shaped layout
 - Compact Phase Progress widget with space-efficient design
-- Smaller Farm Visualizer cells for better space utilization
+- Farm Visualizer with stage-based grid layout and perfect plot alignment
 
 **Layout Architecture Improvements**:
 - Action Log repositioned to right side under Current Action
@@ -590,11 +610,12 @@ Phase 6D represents the final integration phase that transforms the widget infra
    - Mine at bottom for complete 5-location cross
    - Visit statistics and time tracking
 
-2. **Resources Widget** - Optimized real-time display
-   - Energy/Gold/Water with progress bars
-   - Seeds breakdown with live inventory counts
-   - Materials display with top 3 most abundant
-   - Compact spacing for maximum information density
+2. **Resources Widget** - Two-column scrollable inventory display
+   - **Top Section**: Energy/Gold and Water/Seeds with progress bars (compact)
+   - **Bottom Split**: Two full-height scrollable columns side-by-side
+   - **Seeds Column (Left)**: Complete seed inventory with counts, always visible
+   - **Materials Column (Right)**: Full materials list with quantities, sorted by abundance
+   - **Full-Height Scrolling**: Utilizes entire widget height for comprehensive inventory view
 
 3. **Equipment Widget** - Complete tools/weapons/armor system
    - **Tools (Left)**: Hoe🛠️, Hammer🔨, Axe-, Pickaxe🏆
@@ -609,11 +630,12 @@ Phase 6D represents the final integration phase that transforms the widget infra
    - Real-time progress updates from simulation
 
 #### Tier 2: Main Content Area
-5. **Farm Visualizer Widget** - Compact farm grid display
-   - 10x2 plot grid with smaller 32x32px cells
-   - Ready crops (🥕), growing plants, empty plots
-   - Efficient space utilization with gap-0.5 spacing
-   - Color-coded crop status indicators
+5. **Farm Visualizer Widget** - Stage-based farm grid with perfect alignment
+   - Two-column layout: dedicated stage titles (128px) + aligned plot grid
+   - 5 farm stages: Starter Plot (8), Small Hold (12), Homestead (20), Manor Grounds (25), Great Estate (25)
+   - Perfect grid alignment - all leftmost plots vertically aligned
+   - 24x24px plots with 3px spacing for optimal density
+   - Color-coded crop status indicators: Ready (🟩), Growing (🌱), Locked (⬜), Watered (🌊), Dry (🏜️)
 
 6. **Mini Upgrade Tree Widget** - Progression display
    - Timeline phases: Tutorial → Early → Mid → Late → End
@@ -738,17 +760,23 @@ interface GameState {
 - **Compact Design**: Efficient space utilization
 - **Hero Tracking**: Visual indicator (👤) on current location
 
-#### Resources Widget Efficiency
-- **Tight Spacing**: Reduced padding (p-3 → p-2)
-- **Smaller Elements**: Compact text and progress bars
-- **Information Density**: Maximum data in minimal space
-- **Live Updates**: Real inventory tracking from simulation
+#### Resources Widget Complete Redesign
+- **Two-Column Architecture**: Split bottom section into dedicated Seeds (left) and Materials (right) columns
+- **Full-Height Scrolling**: Scrollable areas utilize entire widget height instead of tiny 64px sections
+- **Always-Visible Inventory**: Removed collapsible behavior - all seeds and materials always accessible
+- **Enhanced Scrollbars**: Custom-styled thin scrollbars (4px) with hover states and cross-browser compatibility
+- **Color-Coded Sections**: Green accents for seeds, purple for materials for quick visual identification
+- **Comprehensive View**: No more "top 3" limitations - complete inventory visible with smooth scrolling
+- **Professional Layout**: Clean separation between primary resources (top) and detailed inventory (bottom)
 
 #### Farm Visualizer Optimization
-- **Cell Size Reduction**: aspect-square → w-8 h-8 (32x32px)
-- **Spacing Efficiency**: gap-1 → gap-0.5
-- **Visual Clarity**: Clear crop status indicators
-- **Grid Optimization**: 10x2 layout for space efficiency
+- **Perfect Grid Alignment**: Two-column layout separating stage titles from plot grid
+- **Stage Label Column**: Fixed 128px width (w-32) with visual separator border
+- **Plot Grid Column**: All rows start from identical left position for perfect alignment
+- **Cell Optimization**: 24x24px plots with 3px spacing for optimal density
+- **Visual Clarity**: Color-coded crop status with comprehensive legend
+- **Stage-based Layout**: 5 distinct farm progression stages (8→12→20→25→25 plots)
+- **Professional Appearance**: Grid structure maintains alignment even with wrapped plots
 
 ### Advanced Layout Features
 
@@ -777,6 +805,78 @@ interface GameState {
 - **Memory Management**: Proper cleanup and state management
 - **Smooth Animations**: Fluid transitions and progress indicators
 - **Error Handling**: Graceful degradation for missing data
+
+### Phase 6D Post-Launch Refinements
+
+**Farm Visualizer Layout Evolution** (Latest Improvements):
+
+**Grid Alignment Challenge Solved**: 
+- **Problem**: Plot rows started at different positions due to variable stage title lengths
+- **Solution**: Implemented two-column layout with dedicated 128px stage title column
+- **Result**: Perfect vertical alignment of all leftmost plots forming professional grid
+
+**Technical Implementation**:
+```vue
+<!-- Two-Column Structure -->
+<div class="flex-1 flex gap-3">
+  <!-- Stage Labels Column (128px fixed) -->
+  <div class="stage-labels w-32 flex-shrink-0">
+    <div class="stage-label">Starter Plot</div>
+    <div class="stage-label">Small Hold</div>
+    <div class="stage-label">Homestead</div>
+    <div class="stage-label">Manor Grounds</div>
+    <div class="stage-label">Great Estate</div>
+  </div>
+  
+  <!-- Plots Grid Column (aligned) -->
+  <div class="plots-grid flex-1">
+    <!-- All plot rows start from identical left position -->
+  </div>
+</div>
+```
+
+**Layout Benefits Achieved**:
+- **Perfect Grid Alignment**: All plots form cohesive visual grid
+- **Scalable Design**: Layout adapts as farm expands through stages
+- **Professional Appearance**: Clean separation between labels and data
+- **Word Wrap Prevention**: Manor Grounds title fits comfortably in 128px width
+- **Improved Readability**: Easy to scan both stage progression and plot states
+
+**Resources Widget Evolution** (Latest Improvements):
+
+**Inventory Management Challenge Solved**:
+- **Problem**: Limited inventory visibility with tiny scrollable areas and collapsible sections
+- **Solution**: Implemented two-column layout with full-height scrollable sections for seeds and materials
+- **Result**: Complete inventory always visible with dedicated space for comprehensive resource management
+
+**Technical Implementation**:
+```vue
+<!-- Two-Column Scrollable Layout -->
+<div class="flex-1 flex gap-2 min-h-0">
+  <!-- Seeds Column (Left) -->
+  <div class="flex-1 flex flex-col">
+    <div class="section-header">Seeds ({{ seedTypes.length }} types)</div>
+    <div class="flex-1 overflow-y-auto bg-sim-background-darker rounded p-2">
+      <!-- Full seed inventory with smooth scrolling -->
+    </div>
+  </div>
+  
+  <!-- Materials Column (Right) -->
+  <div class="flex-1 flex flex-col">
+    <div class="section-header">Materials ({{ materialCount }})</div>
+    <div class="flex-1 overflow-y-auto bg-sim-background-darker rounded p-2">
+      <!-- Complete materials list with quantities -->
+    </div>
+  </div>
+</div>
+```
+
+**Inventory Benefits Achieved**:
+- **Full Inventory Visibility**: Complete seeds and materials always accessible without collapsing
+- **Optimal Space Usage**: Scrollable sections utilize entire widget height for maximum information density
+- **Professional Scrollbars**: Custom 4px scrollbars with hover states and cross-browser compatibility
+- **Color-Coded Organization**: Green for seeds, purple for materials for instant visual identification
+- **Scalable Design**: Handles large inventories gracefully with smooth scrolling performance
 
 ## Phase 6E - Decision Engine & Advanced AI
 
@@ -992,7 +1092,7 @@ static testParameterConfigurations(): {
 #### 🟢 Fully Working Widgets (11/13)
 1. **PhaseProgress**: Real progression tracking with AI-driven phase advancement
 2. **CurrentLocation**: Persona-driven navigation with realistic movement patterns  
-3. **ResourcesWidget**: Live resource management from AI decisions
+3. **ResourcesWidget**: Two-column scrollable inventory with comprehensive seeds and materials display
 4. **CurrentAction**: Real actions from 15+ types with persona-specific scoring rationale
 5. **ActionLog**: Comprehensive event streaming with decision reasoning
 6. **ScreenTimeWidget**: Persona behavior tracking with weekend/weekday patterns
@@ -1167,11 +1267,11 @@ simulationBridge.addEventListener('completed', (event: any) => {
 **Complete 13-Widget Implementation Status**:
 - ✅ **Game Phase Progress**: Compact timeline with space-efficient design
 - ✅ **Current Location**: Cross-shaped navigation with hero tracking
-- ✅ **Resources Widget**: Real-time inventory with seeds/materials integration
+- ✅ **Resources Widget**: Two-column scrollable inventory with full-height seeds and materials sections
 - ✅ **Equipment Widget**: Complete tools/weapons/armor system with crossbow
 - ✅ **Current Action**: Live simulation actions with horizontal layout
 - ✅ **Action Log**: Real-time event streaming positioned optimally
-- ✅ **Farm Visualizer**: Compact 32x32px cells with efficient spacing
+- ✅ **Farm Visualizer**: Stage-based grid layout with perfect plot alignment and professional two-column structure
 - ✅ **Helper Management**: Gnome workforce management interface
 - ✅ **Mini Upgrade Tree**: Progression tracking with milestone display
 - ✅ **Timeline**: Event chronology with time markers

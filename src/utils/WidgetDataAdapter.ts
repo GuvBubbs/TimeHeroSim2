@@ -2,6 +2,7 @@
 // Handles Map->Object conversion and provides safe defaults
 
 import type { GameState, GameAction, GameEvent } from '@/types'
+import { useGameDataStore } from '@/stores/gameData'
 
 export interface WidgetCurrentAction {
   action: GameAction | null
@@ -411,7 +412,7 @@ export class WidgetDataAdapter {
   }
 
   /**
-   * Transforms current action data from processes
+   * Transforms current action data from processes with enhanced action detection
    */
   static transformCurrentAction(gameState: GameState | null): WidgetCurrentAction {
     if (!gameState?.processes) {
@@ -479,12 +480,59 @@ export class WidgetDataAdapter {
       progress = 0 // Continuous activity
       timeRemaining = 0
     }
+    // Check for farm actions in progress
+    else if (processes.crops && processes.crops.length > 0) {
+      // Check if any crops are actively being worked on
+      const activeCrop = processes.crops.find(crop => 
+        crop.isBeingWorked || 
+        (crop.plantedAt && !crop.readyToHarvest && !crop.isWithered)
+      )
+      
+      if (activeCrop) {
+        currentAction = {
+          id: `farming_${activeCrop.cropId}`,
+          type: 'plant',
+          screen: 'farm',
+          target: activeCrop.cropId || 'Unknown Crop',
+          duration: activeCrop.growthTimeRequired || 30,
+          energyCost: 5,
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: { crops: [activeCrop.cropId] }
+        }
+        
+        // Calculate progress for growing crops
+        if (gameState.time && activeCrop.plantedAt) {
+          const elapsed = gameState.time.totalMinutes - activeCrop.plantedAt
+          progress = Math.min((elapsed / activeCrop.growthTimeRequired) * 100, 100)
+          timeRemaining = Math.max(0, activeCrop.growthTimeRequired - elapsed)
+        }
+      }
+    }
+
+    // Get next action from automation or decision system
+    let nextAction: GameAction | null = null
+    if (gameState.automation?.nextDecision) {
+      const next = gameState.automation.nextDecision
+      nextAction = {
+        id: next.action || 'evaluate',
+        type: next.action || 'evaluate',
+        screen: 'farm', // Default screen
+        target: next.target || '',
+        duration: next.estimatedDuration || 0,
+        energyCost: next.energyCost || 0,
+        goldCost: next.goldCost || 0,
+        prerequisites: [],
+        score: next.priority,
+        reason: next.reason
+      } as GameAction & { score?: number; reason?: string }
+    }
 
     return {
       action: currentAction,
       progress,
       timeRemaining,
-      nextAction: null // TODO: Implement next action prediction
+      nextAction
     }
   }
 
@@ -608,60 +656,92 @@ export class WidgetDataAdapter {
   }
 
   /**
-   * Transforms equipment data (enhanced version of transformInventory)
+   * Transforms equipment data - Complete tools/weapons/armor system
    */
   static transformEquipment(gameState: GameState | null): WidgetEquipment {
-    if (!gameState?.inventory) {
-      return {
-        tools: {},
-        weapons: {},
-        armor: {}
+    const inventory = gameState?.inventory
+
+    // Define all possible equipment slots
+    const allTools = ['hoe', 'hammer', 'axe', 'shovel', 'pickaxe', 'watercan']
+    const allWeapons = ['spear', 'sword', 'bow', 'crossbow', 'wand']
+    
+    // Transform tools - show all possible tools
+    const tools: Record<string, any> = {}
+    for (const toolName of allTools) {
+      let toolData = null
+      
+      // Check if tool exists in inventory
+      if (inventory?.tools instanceof Map) {
+        toolData = inventory.tools.get(toolName)
+      } else if (inventory?.tools && typeof inventory.tools === 'object') {
+        toolData = (inventory.tools as any)[toolName]
+      }
+      
+      tools[toolName] = {
+        name: this.formatItemName(toolName),
+        level: toolData?.level || 0,
+        isEquipped: toolData?.isEquipped || false,
+        durability: toolData?.durability,
+        maxDurability: toolData?.maxDurability
       }
     }
 
-    const inventory = gameState.inventory
-
-    // Transform tools
-    const tools: Record<string, any> = {}
-    if (inventory.tools instanceof Map) {
-      inventory.tools.forEach((data, type) => {
-        tools[type] = {
-          name: this.formatItemName(type),
-          level: data.level || 1,
-          isEquipped: data.isEquipped || false,
-          durability: data.durability,
-          maxDurability: data.maxDurability
-        }
-      })
-    }
-
-    // Transform weapons
+    // Transform weapons - show all possible weapons
     const weapons: Record<string, any> = {}
-    if (inventory.weapons instanceof Map) {
-      inventory.weapons.forEach((data, type) => {
-        weapons[type] = {
-          name: this.formatItemName(type),
-          level: data.level || 1,
-          damage: data.damage || 10,
-          isEquipped: data.isEquipped || false,
-          durability: data.durability,
-          maxDurability: data.maxDurability
-        }
-      })
+    for (const weaponName of allWeapons) {
+      let weaponData = null
+      
+      // Check if weapon exists in inventory
+      if (inventory?.weapons instanceof Map) {
+        weaponData = inventory.weapons.get(weaponName)
+      } else if (inventory?.weapons && typeof inventory.weapons === 'object') {
+        weaponData = (inventory.weapons as any)[weaponName]
+      }
+      
+      weapons[weaponName] = {
+        name: this.formatItemName(weaponName),
+        level: weaponData?.level || 0,
+        damage: weaponData?.damage || 0,
+        isEquipped: weaponData?.isEquipped || false,
+        durability: weaponData?.durability,
+        maxDurability: weaponData?.maxDurability
+      }
     }
 
-    // Transform armor
+    // Transform armor - show 3 armor slots
     const armor: Record<string, any> = {}
-    if (inventory.armor instanceof Map) {
-      inventory.armor.forEach((data, type) => {
-        armor[type] = {
-          name: this.formatItemName(type),
-          defense: data.defense || 5,
-          isEquipped: data.isEquipped || false,
-          durability: data.durability,
-          maxDurability: data.maxDurability
+    const armorSlots = ['slot1', 'slot2', 'slot3']
+    
+    if (inventory?.armor instanceof Map) {
+      const armorArray = Array.from(inventory.armor.values())
+      for (let i = 0; i < 3; i++) {
+        const armorPiece = armorArray[i]
+        if (armorPiece) {
+          armor[armorSlots[i]] = {
+            name: armorPiece.name || this.formatItemName(armorPiece.type || `armor_${i+1}`),
+            defense: armorPiece.defense || 0,
+            effect: armorPiece.effect,
+            isEquipped: armorPiece.isEquipped || false,
+            durability: armorPiece.durability,
+            maxDurability: armorPiece.maxDurability
+          }
         }
-      })
+      }
+    } else if (inventory?.armor && typeof inventory.armor === 'object') {
+      const armorEntries = Object.entries(inventory.armor)
+      for (let i = 0; i < 3; i++) {
+        if (armorEntries[i]) {
+          const [key, armorPiece] = armorEntries[i]
+          armor[armorSlots[i]] = {
+            name: (armorPiece as any).name || this.formatItemName(key),
+            defense: (armorPiece as any).defense || 0,
+            effect: (armorPiece as any).effect,
+            isEquipped: (armorPiece as any).isEquipped || false,
+            durability: (armorPiece as any).durability,
+            maxDurability: (armorPiece as any).maxDurability
+          }
+        }
+      }
     }
 
     return {
@@ -782,60 +862,118 @@ export class WidgetDataAdapter {
   }
 
   /**
-   * Transforms phase progress data
+   * Transforms phase progress data based on CSV phase transitions
    */
   static transformPhaseProgress(gameState: GameState | null): WidgetPhaseProgress {
     if (!gameState?.progression) {
       return {
-        currentPhase: 'Early',
+        currentPhase: 'Tutorial',
         phaseProgress: 0,
-        nextMilestone: 'Expand Farm',
+        nextMilestone: 'Complete tutorial area',
         milestonesCompleted: [],
-        milestonesRemaining: ['Expand Farm', 'Build Tools', 'Explore World'],
+        milestonesRemaining: ['Complete tutorial area', 'Expand Farm', 'Build Tools'],
         estimatedTimeToNext: 0
       }
     }
 
     const progression = gameState.progression
-    const currentPhase = progression.currentPhase || 'Early'
+    const unlockedUpgrades = progression.unlockedUpgrades || []
     
-    // Calculate phase progress based on farm plots and hero level
-    let phaseProgress = 0
-    let nextMilestone = 'Unknown'
-    let milestonesCompleted: string[] = []
-    let milestonesRemaining: string[] = []
-
-    switch (currentPhase) {
-      case 'Tutorial':
-      case 'Early':
-        phaseProgress = Math.min((progression.farmPlots / 20) * 100, 100)
-        nextMilestone = progression.farmPlots >= 10 ? 'Mid Game' : 'Expand Farm to 10 plots'
-        milestonesCompleted = progression.farmPlots >= 5 ? ['Basic Farm Setup'] : []
-        milestonesRemaining = progression.farmPlots < 20 ? ['Expand Farm', 'Build Tools'] : ['Enter Mid Game']
+    // Phase transition rules from phase_transitions.csv
+    const phaseTransitions = [
+      {
+        id: 'tutorial_to_early',
+        from: 'Tutorial',
+        to: 'Early Game',
+        prerequisites: ['clear_weeds_2', 'craft_hoe'],
+        description: 'Complete tutorial area'
+      },
+      {
+        id: 'early_to_mid', 
+        from: 'Early Game',
+        to: 'Mid Game',
+        prerequisites: ['homestead_deed'],
+        description: 'Reach Small Hold completion'
+      },
+      {
+        id: 'mid_to_late',
+        from: 'Mid Game', 
+        to: 'Late Game',
+        prerequisites: ['manor_grounds_deed'],
+        description: 'Reach Homestead completion'
+      },
+      {
+        id: 'late_to_endgame',
+        from: 'Late Game',
+        to: 'Endgame', 
+        prerequisites: ['great_estate_deed'],
+        description: 'Reach Manor Grounds completion'
+      },
+      {
+        id: 'endgame_to_postgame',
+        from: 'Endgame',
+        to: 'Post-game',
+        prerequisites: ['sacred_clearing'],
+        description: 'Complete Great Estate'
+      }
+    ]
+    
+    // Determine current phase by checking which transitions are completed
+    let currentPhase = 'Tutorial'
+    let currentTransitionIndex = 0
+    
+    for (let i = 0; i < phaseTransitions.length; i++) {
+      const transition = phaseTransitions[i]
+      const hasAllPrereqs = transition.prerequisites.every(prereq => 
+        unlockedUpgrades.includes(prereq)
+      )
+      
+      if (hasAllPrereqs) {
+        currentPhase = transition.to
+        currentTransitionIndex = i + 1
+      } else {
         break
-      case 'Mid':
-        phaseProgress = Math.min(((progression.farmPlots - 20) / 40) * 100, 100)
-        nextMilestone = progression.farmPlots >= 40 ? 'Late Game' : 'Expand Farm to 40 plots'
-        milestonesCompleted = ['Basic Farm Setup', 'Tool Crafting']
-        milestonesRemaining = progression.farmPlots < 60 ? ['Large Farm', 'Advanced Tools'] : ['Enter Late Game']
-        break
-      case 'Late':
-        phaseProgress = Math.min(((progression.farmPlots - 60) / 30) * 100, 100)
-        nextMilestone = progression.farmPlots >= 90 ? 'Victory' : 'Great Estate (90 plots)'
-        milestonesCompleted = ['Basic Farm Setup', 'Tool Crafting', 'Large Farm']
-        milestonesRemaining = progression.farmPlots < 90 ? ['Great Estate', 'Master Level'] : ['Victory']
-        break
-      default:
-        phaseProgress = 100
-        nextMilestone = 'Victory Achieved'
-        milestonesCompleted = ['Basic Farm Setup', 'Tool Crafting', 'Large Farm', 'Great Estate']
-        milestonesRemaining = []
+      }
     }
 
-    // Estimate time to next milestone (rough calculation)
-    const plotsPerDay = 2 // Rough estimate
-    const plotsNeeded = Math.max(0, this.getNextMilestonePlots(currentPhase) - progression.farmPlots)
-    const estimatedTimeToNext = plotsNeeded / plotsPerDay
+    // Calculate progress toward next transition
+    let phaseProgress = 0
+    let nextMilestone = 'Victory Achieved'
+    let estimatedTimeToNext = 0
+    
+    if (currentTransitionIndex < phaseTransitions.length) {
+      const nextTransition = phaseTransitions[currentTransitionIndex]
+      const completedPrereqs = nextTransition.prerequisites.filter(prereq =>
+        unlockedUpgrades.includes(prereq)
+      )
+      
+      phaseProgress = (completedPrereqs.length / nextTransition.prerequisites.length) * 100
+      nextMilestone = nextTransition.description
+      
+      // Rough estimate based on missing prerequisites
+      const missingPrereqs = nextTransition.prerequisites.length - completedPrereqs.length
+      estimatedTimeToNext = missingPrereqs * 2 // Rough estimate: 2 days per prerequisite
+    } else {
+      phaseProgress = 100
+      nextMilestone = 'Victory Achieved'
+    }
+    
+    // Build milestones completed and remaining
+    const milestonesCompleted: string[] = []
+    const milestonesRemaining: string[] = []
+    
+    for (let i = 0; i < phaseTransitions.length; i++) {
+      const transition = phaseTransitions[i]
+      const hasAllPrereqs = transition.prerequisites.every(prereq => 
+        unlockedUpgrades.includes(prereq)
+      )
+      
+      if (hasAllPrereqs) {
+        milestonesCompleted.push(transition.description)
+      } else {
+        milestonesRemaining.push(transition.description)
+      }
+    }
 
     return {
       currentPhase,
@@ -865,13 +1003,5 @@ export class WidgetDataAdapter {
     return Math.floor((efficiency - 1.0) / 0.1) + 1
   }
 
-  private static getNextMilestonePlots(phase: string): number {
-    switch (phase) {
-      case 'Tutorial':
-      case 'Early': return 20
-      case 'Mid': return 60
-      case 'Late': return 90
-      default: return 90
-    }
-  }
+
 }

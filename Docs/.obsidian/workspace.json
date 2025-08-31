@@ -169,8 +169,10 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "9edb0f1900f705be",
+  "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
+    "Sim Design/Sim Refactor/phase-8q-widget-polish.md",
+    "Sim Design/Sim Refactor/phase-8p-critical-widgets.md",
     "Sim Design/Sim Refactor/phase-8j-simulation-stall-fix.md",
     "Archive/8I IMPLEMENTATION_SUMMARY.md",
     "Archive/IMPLEMENTATION_SUMMARY.md",
@@ -199,8 +201,6 @@
     "Sim Design/Sim Refactor/7D - Helper System - Automation & Roles.md",
     "Sim Design/Sim Refactor/7C - Crop System - Growth & Water Mechanics.md",
     "Sim Design/End to end Build/phased-development-plan.md",
-    "Sim Design/End to end Build/phase-6-updates-after-phase-5.md",
-    "Sim Design/simulation-phased-development-plan.md",
     "Sim Design/End to end Build",
     "Sim Design/untitled folder",
     "Sim Design/Sim Refactor",

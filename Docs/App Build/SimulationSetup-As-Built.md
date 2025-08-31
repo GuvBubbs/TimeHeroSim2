@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Simulation Setup system provides a streamlined interface for configuring and launching simulations of TimeHero gameplay. **Phase 5 is now COMPLETE** ✅, featuring comprehensive parameter configuration screens, drag-and-drop interfaces, advanced simulation controls, and optimized UI layout. **Phase 8L integration completed** ✅ - simulation engine now fully functional with fixed timing system, bootstrap economy, and complete economic progression flow. **Phase 8M integration completed** ✅ - simulation engine enhanced with simplified combat challenges, complete helper mechanics with level scaling, and strategic equipment-based boss encounters. The system delivers auto-generated naming, persona integration, complete parameter management, visual consistency, and production-ready parameter override capabilities throughout all 9 game systems.
+The Simulation Setup system provides a streamlined interface for configuring and launching simulations of TimeHero gameplay. **Phase 5 is now COMPLETE** ✅, featuring comprehensive parameter configuration screens, drag-and-drop interfaces, advanced simulation controls, and optimized UI layout. **Phase 8L integration completed** ✅ - simulation engine now fully functional with fixed timing system, bootstrap economy, and complete economic progression flow. **Phase 8M integration completed** ✅ - simulation engine enhanced with simplified combat challenges, complete helper mechanics with level scaling, and strategic equipment-based boss encounters. **Phase 8O polish and validation completed** ✅ - comprehensive validation systems, offline progression calculations, mining tool effects, and enhanced AI decision-making with bottleneck detection and persona-driven strategies. The system delivers auto-generated naming, persona integration, complete parameter management, visual consistency, and production-ready parameter override capabilities throughout all 9 game systems.
 
 ## Architecture Overview
 
@@ -551,7 +551,35 @@ function launchSimulation(): SimulationConfig | null {
 - ✅ **Navigation Logic**: Fixed critical off-by-one bug preventing town visits
 - ✅ **Logging System**: Speed-based log level auto-adjustment (verbose → errors)
 - ✅ **Material Trading**: Gold generation system for late-game progression
-- ✅ **Energy Validation**: Confirmed free planting/harvesting, energy only from crops
+
+**Energy System Corrections** ✅ **FIXED**:
+The energy system has been corrected to match game design specifications:
+
+**✅ NO Energy Cost (Always Free)**:
+- Seed catching at tower (manual catching)
+- Water pumping at farm
+- Planting crops
+- Harvesting crops
+- Navigation between screens
+
+**⚡ Energy Cost Required (From CSV Data)**:
+- Adventures (varies by route and duration)
+- Mining operations (increases by depth)
+- All actions defined in `/Actions/` CSV files:
+  - Farm cleanup actions (15-50,000 energy based on difficulty)
+  - Building construction (10-60,000 energy)
+  - Crafting operations (varies by recipe)
+  - Helper training and rescue operations
+
+**🔋 Energy Sources**:
+- Crop harvesting (1-35 energy per crop based on type from `crops.csv`)
+- No energy regeneration over time
+
+**Key Fixes**:
+- ✅ **Seed Catching**: Removed all energy costs (always free, no "emergency" exceptions)
+- ✅ **Water Pumping**: Confirmed no energy cost
+- ✅ **Emergency Mechanics**: Completely removed "FREE during critical shortages" concept
+- ✅ **CSV Integration**: Only actions defined in CSV files cost energy
 
 ### Phase 8M: Enhanced Combat & Helper Systems ✅ COMPLETE
 

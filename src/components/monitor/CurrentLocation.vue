@@ -50,16 +50,16 @@
       </div>
       
       <!-- Location Stats -->
-      <div class="bg-sim-background rounded p-3 space-y-2">
-        <div class="flex justify-between text-sm">
+      <div class="bg-sim-background rounded p-2 space-y-1">
+        <div class="flex justify-between text-xs">
           <span>Time here:</span>
           <span class="font-mono">{{ formatDuration(timeOnScreen) }}</span>
         </div>
-        <div class="flex justify-between text-sm">
+        <div class="flex justify-between text-xs">
           <span>Visits today:</span>
           <span class="font-mono">{{ visitsToday }}</span>
         </div>
-        <div class="flex justify-between text-sm">
+        <div class="flex justify-between text-xs">
           <span>Total visits:</span>
           <span class="font-mono">{{ totalVisits }}</span>
         </div>
@@ -75,39 +75,63 @@ import BaseWidget from './BaseWidget.vue'
 
 interface Props {
   gameState?: GameState | null
+  widgetLocation?: any
 }
 
 const props = defineProps<Props>()
 
-// Mock location data
-const currentLocation = computed(() => props.gameState?.location.currentScreen || 'farm')
+// Real location data from widget adapter or game state
+const currentLocation = computed(() => {
+  return props.widgetLocation?.currentScreen || 
+         props.gameState?.location?.currentScreen || 'farm'
+})
+
 const hasHelper = computed(() => {
   return props.gameState?.helpers?.gnomes?.some(gnome => 
     gnome.isAssigned && gnome.currentTask !== null
   ) || false
 })
 
-// Mock visit statistics for main screens
-const visitStats = computed(() => {
-  const screens = ['tower', 'town', 'farm', 'adventure', 'forge', 'mine']
-  const stats: Record<string, number> = {}
-  screens.forEach(screen => {
-    stats[screen] = Math.floor(Math.random() * 50) + 1
-  })
-  return stats
-})
-
-// Computed values for display
+// Real time and visit statistics
 const timeOnScreen = computed(() => {
-  return props.gameState?.location.timeOnScreen || Math.floor(Math.random() * 300) + 60
+  return props.widgetLocation?.timeOnScreen || 
+         props.gameState?.location?.timeOnScreen || 0
 })
 
 const visitsToday = computed(() => {
-  return visitStats.value[currentLocation.value] || 0
+  // Get from widget location data if available
+  if (props.widgetLocation?.visitsToday) {
+    return props.widgetLocation.visitsToday
+  }
+  
+  // Calculate from game state location history if available
+  if (props.gameState?.location?.screenHistory) {
+    const today = Math.floor((props.gameState.time?.day || 1))
+    return props.gameState.location.screenHistory.filter(entry => 
+      entry.screen === currentLocation.value && 
+      Math.floor(entry.day) === today
+    ).length
+  }
+  
+  // Fallback to a reasonable default
+  return 1
 })
 
 const totalVisits = computed(() => {
-  return Object.values(visitStats.value).reduce((sum, visits) => sum + visits, 0)
+  // Get from widget location data if available
+  if (props.widgetLocation?.totalVisits) {
+    return props.widgetLocation.totalVisits
+  }
+  
+  // Calculate from game state location history if available
+  if (props.gameState?.location?.screenHistory) {
+    return props.gameState.location.screenHistory.filter(entry => 
+      entry.screen === currentLocation.value
+    ).length
+  }
+  
+  // Fallback to a reasonable default based on visits today
+  return Math.max(visitsToday.value, 1)
 })
 
 const formatDuration = (seconds: number): string => {

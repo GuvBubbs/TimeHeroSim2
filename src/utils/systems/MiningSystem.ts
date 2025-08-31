@@ -1,8 +1,10 @@
 /**
- * MiningSystem - Phase 8F Implementation
+ * MiningSystem - Phase 8F + 8O Implementation
  * 
  * Handles mining mechanics including:
- * - Exponential energy drain by depth with pickaxe efficiency
+ * - Exponential energy drain by depth with pickaxe efficiency (0/15/30/45/60%)
+ * - Material bonuses by pickaxe tier (0/10/20/30/50%)
+ * - Abyss Seeker special effect (2x obsidian drops)
  * - Depth progression and material drops by tier
  * - Tool sharpening and temporary efficiency boosts
  */
@@ -68,6 +70,7 @@ export class MiningSystem {
   /**
    * Drop materials based on current depth tier
    * Materials are added as raw_[material] requiring refinement
+   * Applies pickaxe material bonuses and special effects
    */
   static dropMaterials(gameState: GameState, depth: number): void {
     const depthTier = Math.floor(depth / 500) + 1
@@ -96,10 +99,17 @@ export class MiningSystem {
     // Select random material from tier
     const material = availableMaterials[Math.floor(Math.random() * availableMaterials.length)]
     
-    // Calculate quantity based on depth tier (deeper = more materials)
+    // Calculate base quantity based on depth tier (deeper = more materials)
     const baseQuantity = Math.floor(Math.random() * 3) + 1 // 1-3 base
     const tierBonus = Math.floor(depthTier / 2) // +0, +1, +2, +3, +4...
-    const quantity = baseQuantity + tierBonus
+    let quantity = baseQuantity + tierBonus
+
+    // Apply pickaxe material bonus
+    const materialBonus = this.getMaterialBonus(gameState)
+    quantity = Math.floor(quantity * (1 + materialBonus))
+
+    // Apply special pickaxe effects
+    quantity = this.applySpecialEffect(gameState, material, quantity)
 
     // Add as raw material requiring refinement
     const rawMaterialName = `raw_${material}`
@@ -108,7 +118,8 @@ export class MiningSystem {
     const current = gameState.resources.materials.get(normalizedName) || 0
     gameState.resources.materials.set(normalizedName, current + quantity)
     
-    console.log(`Mined: +${quantity} ${rawMaterialName} at depth ${depth}m`)
+    const bonusText = materialBonus > 0 ? ` (+${Math.floor(materialBonus * 100)}% pickaxe bonus)` : ''
+    console.log(`Mined: +${quantity} ${rawMaterialName} at depth ${depth}m${bonusText}`)
   }
 
   /**
@@ -171,6 +182,49 @@ export class MiningSystem {
     }
 
     return bestEfficiency
+  }
+
+  /**
+   * Get material bonus based on equipped pickaxe
+   * Returns multiplier for additional materials (0.0 to 0.5)
+   */
+  private static getMaterialBonus(gameState: GameState): number {
+    // Material bonus by pickaxe tier
+    const pickaxes = [
+      { id: 'pickaxe_1', materialBonus: 0.0 },    // +0% materials
+      { id: 'pickaxe_2', materialBonus: 0.10 },   // +10% materials
+      { id: 'pickaxe_3', materialBonus: 0.20 },   // +20% materials
+      { id: 'crystal_pick', materialBonus: 0.30 }, // +30% materials
+      { id: 'abyss_seeker', materialBonus: 0.50 }  // +50% materials
+    ]
+
+    let bestBonus = 0
+
+    for (const pickaxe of pickaxes) {
+      const tool = gameState.inventory.tools.get(pickaxe.id)
+      if (tool && tool.durability > 0) {
+        bestBonus = Math.max(bestBonus, pickaxe.materialBonus)
+      }
+    }
+
+    return bestBonus
+  }
+
+  /**
+   * Apply special pickaxe effects (e.g., Abyss Seeker double obsidian)
+   */
+  private static applySpecialEffect(gameState: GameState, material: string, quantity: number): number {
+    // Check if Abyss Seeker is equipped
+    const abyssSeeker = gameState.inventory.tools.get('abyss_seeker')
+    if (abyssSeeker && abyssSeeker.durability > 0) {
+      // Abyss Seeker special effect: double obsidian drops
+      if (material === 'obsidian') {
+        console.log(`🌟 Abyss Seeker special effect: Double obsidian! ${quantity} → ${quantity * 2}`)
+        return quantity * 2
+      }
+    }
+
+    return quantity
   }
 
   /**

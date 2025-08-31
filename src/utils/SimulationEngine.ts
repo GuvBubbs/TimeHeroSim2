@@ -1,5 +1,5 @@
-// SimulationEngine - Phase 6A Core Implementation
-// Main simulation engine that runs the game logic
+// SimulationEngine - Phase 6A Core + 8O Polish Implementation
+// Main simulation engine with enhanced AI decision-making and bottleneck detection
 
 import { MapSerializer } from './MapSerializer'
 import { CSVDataParser } from './CSVDataParser'
@@ -448,41 +448,13 @@ export class SimulationEngine {
       },
       inventory: {
         tools: new Map(),
-        weapons: new Map([
-          ['sword', { 
-            id: 'sword_1',
-            level: 1, 
-            owned: true,
-            durability: 100,
-            maxDurability: 100,
-            isEquipped: true
-          }] // Start with basic sword for combat
-        ]),
+        weapons: new Map(), // Start empty - must purchase blueprints and craft weapons
         armor: new Map(),
         capacity: 100,
         currentWeight: 0
       },
       processes: {
-        crops: [
-          {
-            plotId: 'plot_1',
-            cropId: 'turnip',
-            plantedAt: 0,
-            growthTimeRequired: 60, // 1 hour
-            waterLevel: 80,
-            isWithered: false,
-            readyToHarvest: false
-          },
-          {
-            plotId: 'plot_2', 
-            cropId: 'beetroot',  // Fixed: Match CSV ID
-            plantedAt: -30,
-            growthTimeRequired: 90, // 1.5 hours  
-            waterLevel: 60,
-            isWithered: false,
-            readyToHarvest: false
-          }
-        ],
+        crops: [], // FIXED: Start with completely empty plots - no pre-planted crops
         adventure: null,
         crafting: [],
         mining: null
@@ -507,7 +479,7 @@ export class SimulationEngine {
         autoCleanupEnabled: farmParams.landExpansion?.autoCleanupEnabled || false,
         targetCrops: new Map(), // farmParams.automation.targetSeedRatios || new Map(),
         wateringThreshold: 25, // farmParams.automation.autoWater.threshold,
-        energyReserve: 20 // farmParams.automation.autoPlant.energyThreshold
+        energyReserve: 5 // Lower threshold for early game - farmParams.automation.autoPlant.energyThreshold
       },
       location: {
         currentScreen: 'farm', // Start on farm screen
@@ -1159,7 +1131,7 @@ export class SimulationEngine {
         screen: 'tower',
         target: 'manual_catch',
         duration: catchDuration,
-        energyCost: catchDuration * 5, // 5 energy per minute
+        energyCost: 0, // FIXED: Seed catching costs no energy
         goldCost: 0,
         prerequisites: [],
         expectedRewards: {
@@ -1718,7 +1690,7 @@ export class SimulationEngine {
           screen: 'tower',
           target: 'manual_catch',
           duration: catchDuration,
-          energyCost: 0, // PHASE 8N: Emergency seed collection is FREE when critically low  
+          energyCost: 0, // FIXED: Seed catching costs no energy (same as normal catch)
           goldCost: 0,
           prerequisites: [],
           expectedRewards: {
@@ -1749,58 +1721,9 @@ export class SimulationEngine {
     return actions
   }
 
-  /**
-   * Evaluate actions based on current screen location (PHASE 8N)
-   */
-  private evaluateScreenActions(): GameAction[] {
-    const actions: GameAction[] = []
-    const currentScreen = this.gameState.location.currentScreen
 
-    switch (currentScreen) {
-      case 'farm':
-        const farmActions = this.evaluateFarmActions()
-        actions.push(...farmActions)
-        break
-      case 'tower':
-        const towerActions = this.evaluateTowerActions()
-        actions.push(...towerActions)
-        break
-      case 'town':
-        const townActions = this.evaluateTownActions()
-        actions.push(...townActions)
-        break
-      case 'adventure':
-        const adventureActions = this.evaluateAdventureActions()
-        actions.push(...adventureActions)
-        break
-      case 'forge':
-        const forgeActions = this.evaluateForgeActions()
-        actions.push(...forgeActions)
-        break
-      case 'mine':
-        const mineActions = this.evaluateMineActions()
-        actions.push(...mineActions)
-        break
-      default:
-        // Default to farm actions if screen is unknown
-        const defaultActions = this.evaluateFarmActions()
-        actions.push(...defaultActions)
-    }
 
-    return actions
-  }
 
-  /**
-   * Evaluate helper management actions (PHASE 8N)
-   */
-  private evaluateHelperActions(): GameAction[] {
-    const actions: GameAction[] = []
-    
-    // For now, return empty array - helper actions would be rescue, train, assign, etc.
-    // This will be implemented in a future phase
-    
-    return actions
-  }
 
 
 
@@ -2021,7 +1944,7 @@ export class SimulationEngine {
           score = 200  // Standard priority for maintaining buffer
         }
         
-        // PHASE 8N: No energy bonus needed - emergency catching is free
+        // PHASE 8N: Seed catching costs no energy (always free)
         console.log(`🎯 SEED CATCH SCORE: ${score} (${seedMetrics.totalSeeds} seeds, ${seedsPerPlot.toFixed(1)} per plot, at ${this.gameState.location.currentScreen})`)
         break
         
@@ -2669,21 +2592,11 @@ export class SimulationEngine {
         break
 
       case 'catch_seeds':
-        // Handle seed catching at tower (Phase 8N)
+        // Handle seed catching at tower - FIXED: No energy cost
         if (this.gameState.location.currentScreen === 'tower') {
           const towerReach = this.getTowerReachLevel()
           const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
           const netType = this.getBestNet()
-          
-          // PHASE 8N: Handle emergency free catching
-          const isEmergencyCatch = action.energyCost === 0
-          const originalEnergy = this.gameState.resources.energy.current
-          
-          // Temporarily give enough energy for emergency catching
-          if (isEmergencyCatch) {
-            console.log(`🚨 EMERGENCY SEED CATCH: Free energy for critical seed collection`)
-            this.gameState.resources.energy.current = Math.max(originalEnergy, 100)
-          }
           
           const catchingResult = SeedSystem.processManualCatching(
             this.gameState,
@@ -2693,21 +2606,15 @@ export class SimulationEngine {
             true
           )
           
-          // Restore original energy for emergency catches
-          if (isEmergencyCatch) {
-            this.gameState.resources.energy.current = originalEnergy
-            console.log(`🚨 EMERGENCY CATCH COMPLETE: Energy restored to ${originalEnergy}`)
-          }
-          
           events.push({
             timestamp: this.gameState.time.totalMinutes,
             type: 'catch_seeds',
-            description: `${isEmergencyCatch ? '[EMERGENCY]' : ''} Caught ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) at ${windLevel.name} level`,
-            data: { seeds: catchingResult.seedsGained, types: catchingResult.seedTypes, energy: isEmergencyCatch ? 0 : catchingResult.energyUsed },
+            description: `Caught ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) at ${windLevel.name} level`,
+            data: { seeds: catchingResult.seedsGained, types: catchingResult.seedTypes, energy: 0 },
             importance: 'medium'
           })
           
-          console.log(`🌰 SEED CATCH: ${isEmergencyCatch ? '[EMERGENCY FREE]' : ''} Gained ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) - Energy: ${isEmergencyCatch ? 'FREE' : catchingResult.energyUsed}`)
+          console.log(`🌰 SEED CATCH: Gained ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) - Energy: FREE (always)`)
         } else {
           console.log(`❌ SEED CATCH FAILED: Not at tower (currently at ${this.gameState.location.currentScreen})`)
         }
@@ -2962,8 +2869,17 @@ export class SimulationEngine {
    * Updates automation systems
    */
   private updateAutomation() {
-    // Automation logic would go here
-    // For now, just basic checks
+    // Update automation states based on current conditions
+    this.gameState.automation.researchActive = this.gameState.progression.unlockedUpgrades.includes('auto_research')
+    this.gameState.automation.combatActive = this.gameState.progression.unlockedUpgrades.includes('auto_combat')
+    
+    // Update next decision information for widgets
+    try {
+      this.gameState.automation.nextDecision = this.getNextDecision()
+    } catch (error) {
+      console.warn('Error updating next decision:', error)
+      this.gameState.automation.nextDecision = null
+    }
   }
 
   /**
@@ -3062,6 +2978,164 @@ export class SimulationEngine {
    */
   getGameState(): GameState {
     return this.gameState
+  }
+
+  /**
+   * Get next decision information for widget display
+   */
+  getNextDecision(): {
+    action: string
+    reason: string
+    nextCheck: number
+    priority?: number
+    target?: string
+    alternatives?: Array<{ action: string; score: number }>
+  } | null {
+    try {
+      // Get current check-in schedule
+      const nextCheckIn = this.getNextCheckInTime()
+      
+      // Evaluate available actions to see what would be chosen
+      const availableActions = this.evaluateAvailableActions()
+      
+      if (availableActions.length === 0) {
+        return {
+          action: 'Waiting',
+          reason: 'No actions available at current time',
+          nextCheck: nextCheckIn,
+          priority: 0
+        }
+      }
+      
+      // Get the top action that would be selected
+      const topAction = availableActions[0]
+      const alternatives = availableActions.slice(1, 4).map(action => ({
+        action: action.type,
+        score: this.scoreAction(action)
+      }))
+      
+      return {
+        action: topAction.type,
+        reason: this.getActionReasoning(topAction),
+        nextCheck: nextCheckIn,
+        priority: this.scoreAction(topAction),
+        target: topAction.target,
+        alternatives
+      }
+    } catch (error) {
+      console.error('Error getting next decision:', error)
+      return {
+        action: 'Error',
+        reason: 'Decision system encountered an error',
+        nextCheck: this.getNextCheckInTime(),
+        priority: 0
+      }
+    }
+  }
+
+  /**
+   * Get next check-in time based on persona
+   */
+  private getNextCheckInTime(): number {
+    const currentTime = this.gameState.time.totalMinutes
+    const persona = this.persona
+    
+    // Default check-in intervals by persona (in minutes)
+    let intervalMinutes = 240 // 4 hours default
+    
+    if (persona?.type === 'speedrunner') {
+      intervalMinutes = 144 // ~10 times per day (every 2.4 hours)
+    } else if (persona?.type === 'casual') {
+      intervalMinutes = 720 // 2 times per day (every 12 hours)  
+    } else if (persona?.type === 'weekend-warrior') {
+      const dayOfWeek = Math.floor(this.gameState.time.day) % 7
+      intervalMinutes = dayOfWeek >= 5 ? 180 : 480 // More frequent on weekends
+    }
+    
+    return currentTime + intervalMinutes
+  }
+
+  /**
+   * Evaluate what actions would be available for decision making
+   */
+  private evaluateAvailableActions(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Get actions from all evaluation methods
+    actions.push(...this.evaluateFarmActions())
+    actions.push(...this.evaluateTowerActions()) 
+    actions.push(...this.evaluateTownActions())
+    actions.push(...this.evaluateAdventureActions())
+    actions.push(...this.evaluateForgeActions())
+    actions.push(...this.evaluateMineActions())
+    actions.push(...this.evaluateHelperActions())
+    actions.push(...this.evaluateNavigationActions())
+    
+    // Filter valid actions and sort by score
+    const validActions = actions.filter(action => this.checkActionPrerequisites(action))
+    validActions.sort((a, b) => this.scoreAction(b) - this.scoreAction(a))
+    
+    return validActions
+  }
+
+  /**
+   * Get reasoning for why an action would be chosen
+   */
+  private getActionReasoning(action: GameAction): string {
+    const score = this.scoreAction(action)
+    const bottlenecks = this.getBottleneckPriorities()
+    
+    // Build reasoning based on action type and current game state
+    const reasons: string[] = []
+    
+    // Check if action addresses bottlenecks
+    if (this.resolvesBottleneck(action, bottlenecks)) {
+      const bottleneck = bottlenecks.find(b => this.resolvesBottleneck(action, [b]))
+      if (bottleneck) {
+        reasons.push(`Addresses ${bottleneck.type} bottleneck`)
+      }
+    }
+    
+    // Add persona-specific reasoning
+    if (this.persona?.type === 'speedrunner' && score > 7) {
+      reasons.push('High efficiency action')
+    } else if (this.persona?.type === 'casual' && action.energyCost < 30) {
+      reasons.push('Low energy requirement')
+    } else if (this.persona?.type === 'weekend-warrior') {
+      const dayOfWeek = Math.floor(this.gameState.time.day) % 7
+      if (dayOfWeek >= 5) {
+        reasons.push('Weekend intensive activity')
+      }
+    }
+    
+    // Add resource-based reasoning
+    if (action.type === 'plant' && this.gameState.resources.seeds) {
+      const seedCount = this.gameState.resources.seeds instanceof Map ? 
+        this.gameState.resources.seeds.size : Object.keys(this.gameState.resources.seeds).length
+      if (seedCount > 5) {
+        reasons.push('Abundant seeds available')
+      }
+    }
+    
+    if (action.type === 'harvest') {
+      const readyCrops = this.gameState.processes.crops?.filter(crop => crop.readyToHarvest).length || 0
+      if (readyCrops > 0) {
+        reasons.push(`${readyCrops} crops ready to harvest`)
+      }
+    }
+    
+    // Default reasoning based on score
+    if (reasons.length === 0) {
+      if (score > 8) {
+        reasons.push('Highest priority action')
+      } else if (score > 5) {
+        reasons.push('Good progression choice')
+      } else {
+        reasons.push('Available action to maintain progress')
+      }
+    }
+    
+    return reasons.join(', ')
   }
   
   /**
@@ -4322,6 +4396,331 @@ export class SimulationEngine {
   }
 
   /**
+   * Phase 8O: Get bottleneck priorities for enhanced decision making
+   */
+  private getBottleneckPriorities(): Array<{ type: string; priority: number; details?: any }> {
+    const bottlenecks: Array<{ type: string; priority: number; details?: any }> = []
+    
+    // Check for water shortage (< 2x plots)
+    const farmPlots = this.gameState.progression.farmPlots || 3
+    const waterCurrent = this.gameState.resources.water.current
+    const waterNeeded = farmPlots * 2
+    
+    if (waterCurrent < waterNeeded) {
+      bottlenecks.push({ 
+        type: 'water', 
+        priority: 10,
+        details: { current: waterCurrent, needed: waterNeeded, shortage: waterNeeded - waterCurrent }
+      })
+    }
+    
+    // Check for seed shortage (< plots)
+    const totalSeeds = Array.from(this.gameState.resources.seeds.values()).reduce((a, b) => a + b, 0)
+    if (totalSeeds < farmPlots) {
+      bottlenecks.push({ 
+        type: 'seeds', 
+        priority: 8,
+        details: { current: totalSeeds, needed: farmPlots, shortage: farmPlots - totalSeeds }
+      })
+    }
+    
+    // Check for plot shortage (>90% used)
+    const plantedPlots = this.gameState.farm.crops.filter(c => c.planted).length
+    const plotUsage = plantedPlots / farmPlots
+    
+    if (plotUsage > 0.9) {
+      bottlenecks.push({ 
+        type: 'plots', 
+        priority: 7,
+        details: { used: plantedPlots, total: farmPlots, usage: plotUsage }
+      })
+    }
+    
+    // Check for tool requirements for next cleanup
+    const nextCleanup = this.getNextCleanupAction()
+    if (nextCleanup && !this.hasRequiredTool(nextCleanup)) {
+      bottlenecks.push({ 
+        type: 'tool', 
+        priority: 9,
+        details: { action: nextCleanup.id, tool: nextCleanup.tool_required }
+      })
+    }
+    
+    return bottlenecks.sort((a, b) => b.priority - a.priority)
+  }
+
+  /**
+   * Phase 8O: Enhanced action scoring with bottleneck resolution and persona preferences
+   */
+  private scoreActionEnhanced(action: GameAction, bottlenecks: Array<{ type: string; priority: number }>): number {
+    let score = this.scoreAction(action) // Use existing scoring as base
+    
+    // Apply efficiency multiplier based on action type
+    const efficiencyMultiplier = this.getEfficiencyMultiplier(action)
+    score *= efficiencyMultiplier
+    
+    // Apply persona preferences
+    const personaMultiplier = this.getPersonaPreference(action)
+    score *= personaMultiplier
+    
+    // Bottleneck resolution bonus (2x score)
+    if (this.resolvesBottleneck(action, bottlenecks)) {
+      console.log(`🎯 Action ${action.type} resolves bottleneck - doubling score`)
+      score *= 2.0
+    }
+    
+    // Resource efficiency bonus
+    const resourceEfficiency = this.getResourceEfficiency(action)
+    score *= resourceEfficiency
+    
+    // Time efficiency (prefer quick actions when many tasks pending)
+    const pendingTaskCount = bottlenecks.length
+    if (pendingTaskCount > 3 && action.time && action.time < 60) {
+      score *= 1.2 // 20% bonus for quick actions when busy
+    }
+    
+    return score
+  }
+
+  /**
+   * Phase 8O: Apply persona strategy to action selection
+   */
+  private applyPersonaStrategy(
+    scoredActions: Array<{ action: GameAction; score: number }>, 
+    bottlenecks: Array<{ type: string; priority: number }>
+  ): GameAction[] {
+    const strategy = this.getPersonaStrategy()
+    const topActions = scoredActions.slice(0, 10) // Consider top 10 actions
+    
+    switch (strategy) {
+      case 'aggressive_expansion':
+        // Speedrunner: Focus on progression, take more actions
+        return this.selectTopActions(
+          topActions.filter(sa => this.isProgressionAction(sa.action)).map(sa => sa.action),
+          Math.min(5, topActions.length)
+        )
+        
+      case 'steady_progress':
+        // Casual: Balanced approach, fewer actions
+        return this.selectTopActions(
+          topActions.map(sa => sa.action),
+          Math.min(2, topActions.length)
+        )
+        
+      case 'burst_progress':
+        // Weekend Warrior: Efficient batching based on day
+        const isWeekend = this.gameState.time.day % 7 >= 5 // Friday-Sunday
+        const actionCount = isWeekend ? Math.min(6, topActions.length) : Math.min(1, topActions.length)
+        
+        return this.selectTopActions(
+          topActions.map(sa => sa.action),
+          actionCount
+        )
+        
+      default:
+        return this.selectTopActions(topActions.map(sa => sa.action), 3)
+    }
+  }
+
+  /**
+   * Get efficiency multiplier based on action type and current tools
+   */
+  private getEfficiencyMultiplier(action: GameAction): number {
+    // Tool-based efficiency
+    if (action.type === 'cleanup' && action.target) {
+      const requiredTool = this.getRequiredTool(action.target)
+      if (requiredTool && this.hasUpgradedTool(requiredTool)) {
+        return 1.25 // 25% bonus for upgraded tools
+      }
+    }
+    
+    // Mining efficiency
+    if (action.type === 'mine' && this.gameState.inventory.tools.has('pickaxe_3')) {
+      return 1.3 // 30% bonus for advanced pickaxe
+    }
+    
+    return 1.0 // Base efficiency
+  }
+
+  /**
+   * Get persona preference multiplier for action types
+   */
+  private getPersonaPreference(action: GameAction): number {
+    if (!this.persona?.id) return 1.0
+    
+    const preferences = {
+      speedrunner: {
+        farming: 0.7,      // Lower priority on farming
+        adventures: 1.2,   // High priority on progression  
+        crafting: 1.0,     // Maximum efficiency in crafting
+        mining: 0.8,       // Good mining efficiency
+        cleanup: 1.1       // Focus on expansion
+      },
+      casual: {
+        farming: 1.0,      // Focus on reliable farming
+        adventures: 0.6,   // Less risky adventures
+        crafting: 0.7,     // Some crafting mistakes
+        mining: 0.5,       // Minimal mining
+        cleanup: 0.8       // Steady cleanup
+      },
+      'weekend-warrior': {
+        farming: 0.9,      // Good farming on active days
+        adventures: 1.1,   // Big adventure pushes
+        crafting: 0.8,     // Batch crafting
+        mining: 1.0,       // Deep mining sessions
+        cleanup: 0.7       // Focus on other activities
+      }
+    }
+    
+    const personaPrefs = preferences[this.persona.id] || preferences.casual
+    const actionCategory = this.getActionCategory(action)
+    
+    return personaPrefs[actionCategory] || 1.0
+  }
+
+  /**
+   * Check if action resolves any current bottlenecks
+   */
+  private resolvesBottleneck(action: GameAction, bottlenecks: Array<{ type: string; priority: number }>): boolean {
+    for (const bottleneck of bottlenecks) {
+      switch (bottleneck.type) {
+        case 'water':
+          if (action.type === 'pump' || action.type === 'water') return true
+          break
+        case 'seeds':
+          if (action.type === 'catch_seeds' || action.screen === 'tower') return true
+          break
+        case 'plots':
+          if (action.type === 'cleanup' && action.effects?.includes('plots_added')) return true
+          break
+        case 'tool':
+          if (action.type === 'craft' && action.target?.includes('tool')) return true
+          break
+      }
+    }
+    return false
+  }
+
+  /**
+   * Get resource efficiency rating for action
+   */
+  private getResourceEfficiency(action: GameAction): number {
+    const energyCost = action.energyCost || 0
+    const goldCost = action.goldCost || 0
+    const timeCost = action.time || 1
+    
+    // Prefer low-cost, high-value actions
+    if (energyCost <= 10 && goldCost <= 50) {
+      return 1.2 // 20% bonus for efficient actions
+    }
+    
+    if (energyCost > 50 || goldCost > 500) {
+      return 0.8 // 20% penalty for expensive actions
+    }
+    
+    return 1.0
+  }
+
+  /**
+   * Get persona strategy type
+   */
+  private getPersonaStrategy(): string {
+    if (!this.persona?.id) return 'steady_progress'
+    
+    const strategies = {
+      speedrunner: 'aggressive_expansion',
+      casual: 'steady_progress',
+      'weekend-warrior': 'burst_progress'
+    }
+    
+    return strategies[this.persona.id] || 'steady_progress'
+  }
+
+  /**
+   * Check if action is progression-focused
+   */
+  private isProgressionAction(action: GameAction): boolean {
+    return action.type === 'adventure' || 
+           action.type === 'cleanup' || 
+           action.type === 'craft' ||
+           (action.type === 'buy' && action.target?.includes('blueprint'))
+  }
+
+  /**
+   * Get action category for persona preferences
+   */
+  private getActionCategory(action: GameAction): string {
+    if (action.type === 'plant' || action.type === 'harvest' || action.type === 'water') {
+      return 'farming'
+    }
+    if (action.type === 'adventure') {
+      return 'adventures'  
+    }
+    if (action.type === 'craft') {
+      return 'crafting'
+    }
+    if (action.type === 'mine') {
+      return 'mining'
+    }
+    if (action.type === 'cleanup') {
+      return 'cleanup'
+    }
+    return 'farming' // Default fallback
+  }
+
+  /**
+   * Get next cleanup action that should be prioritized
+   */
+  private getNextCleanupAction(): any {
+    // Find the next available cleanup based on progression
+    const farmStage = this.gameState.progression.farmStage || 1
+    
+    // This would normally query the CSV data for next cleanup
+    // For now, return a basic structure
+    return {
+      id: 'next_cleanup',
+      tool_required: 'hoe'
+    }
+  }
+
+  /**
+   * Check if hero has required tool for action
+   */
+  private hasRequiredTool(action: any): boolean {
+    if (!action.tool_required) return true
+    return this.gameState.inventory.tools.has(action.tool_required)
+  }
+
+  /**
+   * Check if hero has upgraded version of tool
+   */
+  private hasUpgradedTool(toolName: string): boolean {
+    const upgradedTools = [`${toolName}_plus`, `${toolName}_master`]
+    return upgradedTools.some(tool => this.gameState.inventory.tools.has(tool))
+  }
+
+  /**
+   * Get required tool for cleanup action
+   */
+  private getRequiredTool(actionTarget: string): string | null {
+    // Tool requirements mapping
+    const toolMapping = {
+      'till_soil': 'hoe',
+      'clear_boulders': 'hammer', 
+      'remove_stumps': 'axe',
+      'level_ground': 'shovel'
+    }
+    
+    for (const [pattern, tool] of Object.entries(toolMapping)) {
+      if (actionTarget.includes(pattern)) {
+        return tool
+      }
+    }
+    
+    return null
+  }
+
+  /**
    * Phase 8L: Executes material selling action
    */
   private executeSellMaterialAction(action: GameAction): { success: boolean; events: GameEvent[] } {
@@ -4699,8 +5098,7 @@ export class SimulationEngine {
       case 'farm':
         return true // Always accessible
       case 'tower':
-        return this.gameState.progression.currentPhase !== 'Tutorial' ||
-               this.gameState.progression.unlockedUpgrades.includes('tower_access')
+        return true // FIXED: Tower should always be accessible for seed collection - core game mechanic
       case 'town':
         return this.gameState.progression.currentPhase !== 'Tutorial' ||
                this.gameState.progression.unlockedUpgrades.includes('town_access')

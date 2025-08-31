@@ -5,13 +5,14 @@
       <!-- Compact Phase Timeline -->
       <div class="flex items-center justify-between">
         <div class="flex-1">
-          <div class="flex justify-between text-xs text-sim-text-secondary mb-1">
-            <span>Tutorial</span>
-            <span>Early</span>
-            <span>Mid</span>
-            <span>Late</span>
-            <span>End</span>
-          </div>
+                  <div class="flex justify-between text-xs text-sim-text-secondary mb-1">
+          <span>Tutorial</span>
+          <span>Early</span>
+          <span>Mid</span>
+          <span>Late</span>
+          <span>End</span>
+          <span>Post</span>
+        </div>
           
           <!-- Progress Bar -->
           <div class="h-2 bg-sim-background rounded-full overflow-hidden">
@@ -25,7 +26,11 @@
         <!-- Compact Info -->
         <div class="ml-4 text-right">
           <div class="text-sm font-semibold">{{ currentPhase?.name || 'Tutorial' }}</div>
-          <div class="text-xs text-sim-text-secondary">Day {{ gameState?.time.day || 0 }} • {{ progressPercent.toFixed(1) }}%</div>
+          <div class="text-xs text-sim-text-secondary">
+            <span v-if="props.widgetPhaseProgress?.nextMilestone">{{ props.widgetPhaseProgress.nextMilestone }}</span>
+            <span v-else>Day {{ gameState?.time.day || 0 }}</span>
+            • {{ progressPercent.toFixed(1) }}%
+          </div>
         </div>
       </div>
     </div>
@@ -39,41 +44,88 @@ import type { GameState } from '@/types'
 
 interface Props {
   gameState: GameState | null
+  widgetPhaseProgress?: {
+    currentPhase: string
+    phaseProgress: number
+    nextMilestone: string
+    milestonesCompleted: string[]
+    milestonesRemaining: string[]
+    estimatedTimeToNext: number
+  }
+  widgetProgression?: {
+    heroLevel: number
+    experience: number
+    farmStage: number
+    farmPlots: number
+    availablePlots: number
+    currentPhase: string
+    completedAdventures: string[]
+    unlockedUpgrades: string[]
+    unlockedAreas: string[]
+  }
 }
 
 const props = defineProps<Props>()
 
-// Game phases configuration
-const phases = [
-  { name: 'Tutorial', description: 'Learning basic mechanics', maxDay: 3 },
-  { name: 'Early', description: 'Establishing farm and basic tools', maxDay: 10 },
-  { name: 'Mid', description: 'Expanding operations and combat', maxDay: 20 },
-  { name: 'Late', description: 'Advanced upgrades and optimization', maxDay: 30 },
-  { name: 'End', description: 'Final objectives and mastery', maxDay: 35 }
-]
-
-const currentPhaseIndex = computed(() => {
-  if (!props.gameState) return 0
-  
-  const day = props.gameState.time.day
-  for (let i = 0; i < phases.length; i++) {
-    if (day <= phases[i].maxDay) {
-      return i
-    }
-  }
-  return phases.length - 1
-})
+// Game phases configuration (fallback)
+const phaseNames = ['Tutorial', 'Early Game', 'Mid Game', 'Late Game', 'Endgame']
 
 const currentPhase = computed(() => {
-  return phases[currentPhaseIndex.value]
+  if (props.widgetPhaseProgress?.currentPhase) {
+    return { 
+      name: props.widgetPhaseProgress.currentPhase,
+      description: `Progress toward ${props.widgetPhaseProgress.nextMilestone}`
+    }
+  }
+  
+  if (props.widgetProgression?.currentPhase) {
+    return { 
+      name: props.widgetProgression.currentPhase,
+      description: 'Upgrade-based progression'
+    }
+  }
+  
+  // Fallback to time-based for backwards compatibility
+  if (props.gameState?.time.day <= 3) {
+    return { name: 'Tutorial', description: 'Learning basic mechanics' }
+  } else if (props.gameState?.time.day <= 10) {
+    return { name: 'Early Game', description: 'Establishing farm and basic tools' }
+  } else if (props.gameState?.time.day <= 20) {
+    return { name: 'Mid Game', description: 'Expanding operations and combat' }
+  } else if (props.gameState?.time.day <= 30) {
+    return { name: 'Late Game', description: 'Advanced upgrades and optimization' }
+  } else {
+    return { name: 'Endgame', description: 'Final objectives and mastery' }
+  }
 })
 
 const progressPercent = computed(() => {
-  if (!props.gameState) return 0
+  // Use milestone-based progress if available
+  if (props.widgetPhaseProgress?.phaseProgress !== undefined) {
+    return Math.max(0, Math.min(100, props.widgetPhaseProgress.phaseProgress))
+  }
   
-  const day = props.gameState.time.day
-  const maxDay = 35 // Total simulation length
+  // Fallback calculation based on farm plots (better than time-based)
+  if (props.widgetProgression?.farmPlots) {
+    const plots = props.widgetProgression.farmPlots
+    if (plots <= 10) {
+      return (plots / 10) * 25 // 0-25% for first 10 plots
+    } else if (plots <= 30) {
+      return 25 + ((plots - 10) / 20) * 25 // 25-50% for plots 11-30
+    } else if (plots <= 60) {
+      return 50 + ((plots - 30) / 30) * 25 // 50-75% for plots 31-60
+    } else if (plots <= 90) {
+      return 75 + ((plots - 60) / 30) * 25 // 75-100% for plots 61-90
+    } else {
+      return 100
+    }
+  }
   
-  return Math.min((day / maxDay) * 100, 100)
+  // Final fallback to time-based
+  if (props.gameState?.time.day) {
+    return Math.min((props.gameState.time.day / 35) * 100, 100)
+  }
+  
+  return 0
 })
 </script>

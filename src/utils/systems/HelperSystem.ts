@@ -1,8 +1,10 @@
-// HelperSystem - Phase 8M Helper Automation with Level Scaling
-// Handles all helper automation with proper level scaling formulas and dual-role support
+// HelperSystem - Phase 8N Helper Automation with Level Scaling and Enhanced Sowing
+// Handles all helper automation with proper level scaling formulas, dual-role support, and multi-plot sowing
 
 import type { GameState, GnomeState } from '@/types'
 import { GnomeHousingSystem } from './GnomeHousing'
+import { SeedSystem } from './SeedSystem'
+import { WaterSystem } from './WaterSystem'
 
 export interface HelperScaling {
   base: number
@@ -167,7 +169,7 @@ export class HelperSystem {
   }
 
   /**
-   * Waterer Helper: Waters crops automatically
+   * Waterer Helper: Waters crops automatically (Phase 8N: Enhanced with WaterSystem)
    * Level scaling: 5 + level plots/minute (5-15 at L0-L10)
    */
   private static processWatererHelper(
@@ -186,25 +188,26 @@ export class HelperSystem {
 
     if (plotsToWater <= 0) return
 
-    // Find dry plots that need watering
-    const dryPlots = gameState.processes.crops
-      .filter(crop => crop.cropType && crop.waterLevel < 0.5)
-      .slice(0, plotsToWater)
+    // Calculate water needed based on efficiency
+    const wateringEfficiency = WaterSystem.calculateWateringEfficiency(gameState)
+    const waterNeeded = Math.ceil(plotsToWater / wateringEfficiency.toolEfficiency)
 
-    let plotsWatered = 0
-    // Water the plots if we have water available
-    for (const plot of dryPlots) {
-      if (gameState.resources.water.current > 0) {
-        plot.waterLevel = 1.0
-        gameState.resources.water.current--
-        plotsWatered++
-      } else {
-        break // No more water available
-      }
+    // Check if we have enough water
+    if (gameState.resources.water.current < waterNeeded) {
+      gnome.currentTask = `insufficient_water_needed_${waterNeeded}_have_${Math.floor(gameState.resources.water.current)}`
+      return
     }
 
-    if (plotsWatered > 0) {
-      gnome.currentTask = `watered_${plotsWatered}_plots`
+    // Use WaterSystem for efficient distribution
+    const waterDistribution = WaterSystem.distributeWaterToCrops(gameState, waterNeeded)
+    
+    if (waterDistribution.plotsWatered > 0) {
+      // Consume water from resources
+      gameState.resources.water.current -= waterDistribution.waterUsed
+      
+      gnome.currentTask = `watered_${waterDistribution.plotsWatered}_plots_${waterDistribution.waterUsed.toFixed(1)}_water`
+    } else {
+      gnome.currentTask = 'no_plots_need_water'
     }
   }
 
@@ -234,8 +237,8 @@ export class HelperSystem {
   }
 
   /**
-   * Sower Helper: Plants seeds automatically after harvest
-   * Level scaling: 3 + level seeds/minute (3-13 at L0-L10), prefers high-energy seeds
+   * Sower Helper: Plants seeds automatically after harvest (Phase 8N: Multi-plot processing)
+   * Level scaling: 3 + level plots/minute (3-13 at L0-L10), uses intelligent seed distribution
    */
   private static processSowerHelper(
     gameState: GameState, 
@@ -247,45 +250,77 @@ export class HelperSystem {
   ): void {
     if (!gameState.processes?.crops) return
 
+    // CRITICAL FIX: Use plots per minute, not seeds per minute
     const scaling = HELPER_SCALING.sower
-    const seedsPerMinute = scaling.formula(gnomeLevel) * efficiencyMultiplier
-    const seedsToPlant = Math.floor(seedsPerMinute * deltaMinutes)
+    const plotsPerMinute = scaling.formula(gnomeLevel) * efficiencyMultiplier  // 3-13 plots/minute
+    const plotsToPlant = Math.floor(plotsPerMinute * deltaMinutes)
 
-    if (seedsToPlant <= 0) return
+    if (plotsToPlant <= 0) return
 
-    // Find empty plots that can be planted
-    const emptyPlots = gameState.processes.crops
-      .filter(crop => !crop.cropType && crop.waterLevel > 0.3) // Only plant in watered plots
-      .slice(0, seedsToPlant)
-
-    if (emptyPlots.length === 0) return
-
-    // Get available seeds, sorted by energy value (prefer high-energy seeds)
-    const availableSeeds = this.getAvailableSeedsForPlanting(gameState, gameDataStore)
+    // Find empty plots that can be planted (prioritize watered plots)
+    const wateredEmptyPlots = gameState.processes.crops
+      .filter(crop => !crop.cropId && crop.waterLevel > 0.3) // Prefer watered plots
     
-    let plantsPlanted = 0
-    for (const plot of emptyPlots) {
-      if (availableSeeds.length === 0) break
+    const dryEmptyPlots = gameState.processes.crops
+      .filter(crop => !crop.cropId && crop.waterLevel <= 0.3) // Dry plots as backup
+    
+    // Combine plots with watered plots having priority
+    const allEmptyPlots = [...wateredEmptyPlots, ...dryEmptyPlots]
+      .slice(0, plotsToPlant)
 
-      const seedType = availableSeeds[0].id
-      if (gameState.resources.seeds.get(seedType) > 0) {
+    if (allEmptyPlots.length === 0) return
+
+    // Use new SeedSystem for intelligent seed selection
+    const seedSelection = SeedSystem.selectSeedForPlanting(gameState, gameState.resources.seeds)
+    
+    if (!seedSelection.selectedSeed) {
+      gnome.currentTask = 'no_seeds_available'
+      return
+    }
+
+    let plantsPlanted = 0
+    let seedTypesUsed: string[] = []
+    
+    // Process multiple plots per tick (CRITICAL FIX)
+    for (let i = 0; i < allEmptyPlots.length; i++) {
+      const plot = allEmptyPlots[i]
+      
+      // Re-select seed for diversity (but not every single plot)
+      let seedToUse = seedSelection.selectedSeed
+      if (i % 3 === 0) {  // Re-select every 3rd plot for variety
+        const newSelection = SeedSystem.selectSeedForPlanting(gameState, gameState.resources.seeds)
+        if (newSelection.selectedSeed) {
+          seedToUse = newSelection.selectedSeed
+        }
+      }
+      
+      // Check if we have this seed available
+      const availableSeeds = gameState.resources.seeds.get(seedToUse) || 0
+      if (availableSeeds > 0) {
         // Plant the seed
-        plot.cropType = seedType
+        plot.cropId = seedToUse
+        plot.cropType = seedToUse // Ensure both fields are set for compatibility
         plot.growthProgress = 0
         plot.growthStage = 0
-        plot.isReady = false
-        plot.isDead = false
+        plot.maxStages = 3 // Default stages
+        plot.readyToHarvest = false
+        plot.isWithered = false
+        plot.droughtTime = 0
         
         // Consume seed
-        const currentSeeds = gameState.resources.seeds.get(seedType) || 0
-        gameState.resources.seeds.set(seedType, currentSeeds - 1)
+        gameState.resources.seeds.set(seedToUse, availableSeeds - 1)
         
         plantsPlanted++
+        if (!seedTypesUsed.includes(seedToUse)) {
+          seedTypesUsed.push(seedToUse)
+        }
       }
     }
 
     if (plantsPlanted > 0) {
-      gnome.currentTask = `planted_${plantsPlanted}_seeds`
+      gnome.currentTask = `planted_${plantsPlanted}_plots_${seedTypesUsed.length}_varieties`
+    } else {
+      gnome.currentTask = 'insufficient_seeds'
     }
   }
 
@@ -363,7 +398,7 @@ export class HelperSystem {
   }
 
   /**
-   * Seed Catcher Helper: Boosts tower efficiency
+   * Seed Catcher Helper: Boosts tower efficiency (Phase 8N: Enhanced with SeedSystem)
    * Level scaling: 10% + (level * 2%) catch bonus (10-30% at L0-L10)
    */
   private static processSeedCatcherHelper(
@@ -376,17 +411,24 @@ export class HelperSystem {
     // Calculate bonus rate using level scaling
     const scaling = HELPER_SCALING.seed_catcher
     const bonusRate = scaling.formula(gnomeLevel) * efficiencyMultiplier
-    const bonusChance = bonusRate * deltaMinutes / 60 // Per hour rate
-
-    if (Math.random() < bonusChance) {
-      // Add a random seed based on current tower reach level
-      const seedTypes = Array.from(gameState.resources.seeds.keys())
-      if (seedTypes.length > 0) {
-        const randomSeed = seedTypes[Math.floor(Math.random() * seedTypes.length)]
-        const currentSeeds = gameState.resources.seeds.get(randomSeed) || 0
-        gameState.resources.seeds.set(randomSeed, currentSeeds + 1)
-        gnome.currentTask = `caught_bonus_${randomSeed}`
-      }
+    
+    // Helper provides additional manual catching efficiency
+    const towerReach = this.getCurrentTowerReach(gameState)
+    const windLevel = Math.min(towerReach, 11)
+    
+    // Process as if doing manual catching at reduced rate
+    const catchingResult = SeedSystem.processManualCatching(
+      gameState, 
+      deltaMinutes * bonusRate, // Reduced time based on helper efficiency
+      windLevel,
+      'none', // No net bonus for helpers
+      true // Active session
+    )
+    
+    if (catchingResult.seedsGained > 0) {
+      gnome.currentTask = `caught_${catchingResult.seedsGained}_seeds_${catchingResult.seedTypes.join(',')}`
+    } else {
+      gnome.currentTask = `helping_tower_efficiency_${Math.round(bonusRate * 100)}%`
     }
   }
 
@@ -635,5 +677,32 @@ export class HelperSystem {
     }
 
     return energyValues[cropType] || 1
+  }
+  
+  /**
+   * Helper method to get current tower reach level (Phase 8N)
+   */
+  private static getCurrentTowerReach(gameState: GameState): number {
+    // Simplified tower reach calculation - would normally check tower upgrades
+    const heroLevel = gameState.progression.heroLevel
+    const baseReach = Math.min(heroLevel, 11) // Hero level contributes to reach
+    
+    // Check for tower reach upgrades
+    const upgrades = gameState.progression.unlockedUpgrades
+    let reachBonus = 0
+    
+    if (upgrades.includes('tower_reach_11')) reachBonus = Math.max(reachBonus, 11)
+    else if (upgrades.includes('tower_reach_10')) reachBonus = Math.max(reachBonus, 10)
+    else if (upgrades.includes('tower_reach_9')) reachBonus = Math.max(reachBonus, 9)
+    else if (upgrades.includes('tower_reach_8')) reachBonus = Math.max(reachBonus, 8)
+    else if (upgrades.includes('tower_reach_7')) reachBonus = Math.max(reachBonus, 7)
+    else if (upgrades.includes('tower_reach_6')) reachBonus = Math.max(reachBonus, 6)
+    else if (upgrades.includes('tower_reach_5')) reachBonus = Math.max(reachBonus, 5)
+    else if (upgrades.includes('tower_reach_4')) reachBonus = Math.max(reachBonus, 4)
+    else if (upgrades.includes('tower_reach_3')) reachBonus = Math.max(reachBonus, 3)
+    else if (upgrades.includes('tower_reach_2')) reachBonus = Math.max(reachBonus, 2)
+    else if (upgrades.includes('tower_reach_1')) reachBonus = Math.max(reachBonus, 1)
+    
+    return Math.max(baseReach, reachBonus)
   }
 }

@@ -4,7 +4,7 @@
 
 The SimulationEngine is the core intelligence system that powers the TimeHero Simulator. It provides realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships.
 
-**Status**: ✅ Production-Ready with Real-Time Data Flow
+**Status**: ✅ Production-Ready with Real-Time Data Flow & Intelligent Seed Management (Phase 8N Complete)
 
 ## Architecture Overview
 
@@ -26,6 +26,8 @@ SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge �
 
 **Game Systems**:
 - `src/utils/systems/CropSystem.ts` - Crop growth and water management
+- `src/utils/systems/SeedSystem.ts` - Intelligent seed collection and tower navigation (Phase 8N)
+- `src/utils/systems/WaterSystem.ts` - Water retention and auto-pump systems (Phase 8N)
 - `src/utils/systems/HelperSystem.ts` - Helper automation and management  
 - `src/utils/systems/CombatSystem.ts` - Real combat with weapon advantages
 - `src/utils/systems/CraftingSystem.ts` - Forge crafting with heat management
@@ -177,6 +179,67 @@ Crops → Plant (FREE, time only) → Harvest (FREE, adds energy) → Energy →
 - Removed incorrect energy costs from planting actions (now FREE)
 - Eliminated all energy regeneration (only from harvests)
 - Set starting gold to 0 (earn through adventures)
+
+### Seed Management System (Phase 8N Implementation)
+
+**Comprehensive Seed Collection & Navigation**: The simulation implements intelligent seed management with emergency collection, proactive thresholds, and smart tower navigation.
+
+**Core Seed Flow**: Farm (depletes seeds) → Tower (manual catching) → Farm (plant & grow)
+
+**Key Features**:
+- ✅ **Emergency Collection**: ULTRA HIGH priority (9999 score) when seeds < plots count (critical shortage)
+- ✅ **Proactive Collection**: HIGH priority (750 score) when seeds < 70% of buffer (4-6 seeds for 3 plots)
+- ✅ **Smart Tower Exit**: Auto-return to farm when seeds ≥ target (2x plots or 6 minimum)
+- ✅ **Free Emergency Catching**: Seed collection costs 0 energy during critical shortages
+- ✅ **Frequency Optimization**: 2min check-ins during critical, 5min during low seeds
+
+```typescript
+// Phase 8N Seed Management Logic
+const seedBuffer = Math.max(farmPlots * 2, 6) // Want 2x seeds per plot, minimum 6
+const criticalThreshold = farmPlots // Critical when seeds = plots  
+const lowThreshold = Math.floor(seedBuffer * 0.7) // Low when < 70% of buffer
+
+// Emergency navigation to tower
+if (seedMetrics.totalSeeds < criticalThreshold) {
+  actions.push({
+    id: `emergency_tower_nav_${Date.now()}`,
+    type: 'move',
+    target: 'tower',
+    energyCost: 0, // FREE during emergencies
+    // Ultra high priority scoring: 9999
+  })
+}
+
+// Smart tower exit when seeds sufficient
+if (!needsSeeds && seedMetrics.totalSeeds >= seedTargetBase) {
+  console.log(`🚪 TOWER EXIT: Seeds sufficient (${seedMetrics.totalSeeds}/${seedTargetBase}) - returning to farm`)
+  actions.push({
+    type: 'move',
+    target: 'farm',
+    // Return immediately to prioritize farming
+  })
+}
+```
+
+**Tower Navigation Intelligence**:
+- **Emergency Priority**: Overrides all other actions when seeds critical
+- **Block Tower Exit**: Prevents leaving tower during seed shortage with very low scores
+- **Smart Return Logic**: Auto-generates farm navigation when seed targets met
+- **Check-in Frequency**: Adaptive intervals based on seed status (2min critical, 5min low, 5min normal)
+
+**Seed Catching Mechanics**:
+- **Manual Catching**: 5 energy/minute normally, FREE during emergencies
+- **Wind Level Integration**: Uses SeedSystem for realistic catch rates
+- **Proactive Targeting**: Collects seeds before running out (not just emergency)
+- **Energy Management**: Emergency catching bypasses energy requirements
+
+**Phase 8N Critical Fixes Applied**:
+- Fixed duplicate `evaluateNavigationActions()` methods causing 0 valid actions
+- Removed invalid GameAction properties (`toScreen`, `description`) that filtered out actions
+- Added comprehensive action generation and filtering debug logging
+- Implemented tower exit logic to prevent hero getting stuck at tower
+- Enhanced crop counting logic (removed non-existent `cropType` property)
+- Added emergency check-in frequency overrides for responsive seed management
 
 ### Adventure System  
 - **Real Combat**: Pentagon weapon advantage system with boss mechanics
@@ -378,6 +441,11 @@ inventory: {
 - Comprehensive error handling and logging
 
 ✅ **Recent Fixes Applied**:
+- **Phase 8N Seed Management**: Comprehensive seed collection system with emergency and proactive collection
+- **Phase 8N Navigation Intelligence**: Smart tower exit logic and adaptive check-in frequencies  
+- **Phase 8N Action Pipeline**: Fixed duplicate methods and invalid properties causing 0 valid actions
+- **Phase 8N Debug System**: Enhanced action generation/filtering logging for future debugging
+- **Phase 8N Critical Fixes**: Resolved hero getting stuck at tower by implementing return-to-farm logic
 - **Phase 8K Economic Fix**: Completely corrected the economic model to match game design
 - **Phase 8K**: Fixed harvest actions to give energy (not gold) using CSV `effect` values  
 - **Phase 8K**: Removed incorrect energy costs from harvest and planting actions
@@ -392,6 +460,14 @@ inventory: {
 - Validated CSV data flow from store to worker
 
 ✅ **Testing Verified**:
+- **Phase 8N**: Complete seed management cycle - farm → tower → collect seeds → return to farm ✅
+- **Phase 8N**: Emergency seed collection triggers at 0 seeds with ultra-high priority (9999)
+- **Phase 8N**: Proactive seed collection activates at 3/6 seeds with high priority (750)
+- **Phase 8N**: Smart tower exit auto-returns to farm when seeds sufficient (8/6 seeds)
+- **Phase 8N**: Free emergency catching bypasses energy costs during critical shortages
+- **Phase 8N**: Adaptive check-in frequency (2min critical, 5min low seeds, 5min normal)
+- **Phase 8N**: Action pipeline generates valid moves after fixing duplicate methods
+- **Phase 8N**: Enhanced debug logging captures action generation and filtering issues
 - **Phase 8K**: Correct economic flow - harvests add energy, no energy costs for farming
 - **Phase 8K**: Energy only from crop harvests (35 for beetroot, 1-8 for others)
 - **Phase 8K**: Planting and harvesting are FREE actions (time-based only)

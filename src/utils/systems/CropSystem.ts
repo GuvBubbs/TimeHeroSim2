@@ -1,7 +1,8 @@
-// CropSystem - Phase 8C Implementation
-// Realistic crop growth and water management system
+// CropSystem - Phase 8N Implementation
+// Realistic crop growth and water management system with retention upgrades
 
 import type { GameState, CropState } from '@/types'
+import { WaterSystem } from './WaterSystem'
 
 /**
  * Crop growth and water management system
@@ -38,8 +39,11 @@ export class CropSystem {
         }
       }
       
-      // Calculate growth rate based on water availability
-      const growthRate = crop.waterLevel > 0.3 ? 1.0 : 0.5
+      // Process water drainage using new WaterSystem with retention upgrades
+      WaterSystem.processWaterDrainage(crop, deltaMinutes, gameState)
+      
+      // Calculate growth rate based on water availability (Phase 8N: 75% slower when dry)
+      const growthRate = crop.waterLevel > 0.3 ? 1.0 : 0.25  // Changed from 0.5 to 0.25 (75% slower)
       
       // Update growth progress
       const growthIncrement = (deltaMinutes / growthTime) * growthRate
@@ -52,59 +56,19 @@ export class CropSystem {
       if (crop.growthProgress >= 1.0) {
         crop.readyToHarvest = true
       }
-      
-      // Water consumption (0.01 per minute base rate)
-      const waterConsumption = 0.01 * deltaMinutes
-      crop.waterLevel = Math.max(0, crop.waterLevel - waterConsumption)
-      
-      // Track drought time for potential future mechanics
-      if (crop.waterLevel <= 0) {
-        crop.droughtTime += deltaMinutes
-      } else {
-        // Reset drought timer when watered
-        crop.droughtTime = 0
-      }
     }
   }
   
   /**
-   * Distribute water to crops that need it most
+   * Distribute water to crops that need it most (Phase 8N: Enhanced with WaterSystem)
    * @param gameState Current game state
    * @param waterAmount Total amount of water to distribute
    * @returns Amount of water actually used
    */
   static distributeWater(gameState: GameState, waterAmount: number): number {
-    // Find crops that need water (not at full water)
-    const cropsNeedingWater = gameState.processes.crops.filter(crop => 
-      crop.waterLevel < 1.0
-    )
-    
-    if (cropsNeedingWater.length === 0) {
-      return 0 // No crops need water
-    }
-    
-    // Sort by water level (driest first)
-    cropsNeedingWater.sort((a, b) => a.waterLevel - b.waterLevel)
-    
-    let waterUsed = 0
-    let remainingWater = waterAmount
-    
-    // Distribute water evenly, prioritizing driest crops
-    for (const crop of cropsNeedingWater) {
-      if (remainingWater <= 0) break
-      
-      // Calculate how much water this crop needs to reach full (1.0)
-      const waterNeeded = 1.0 - crop.waterLevel
-      
-      // Give this crop water (limited by what's available)
-      const waterToGive = Math.min(waterNeeded, remainingWater / cropsNeedingWater.length)
-      
-      crop.waterLevel = Math.min(1.0, crop.waterLevel + waterToGive)
-      waterUsed += waterToGive
-      remainingWater -= waterToGive
-    }
-    
-    return waterUsed
+    // Use enhanced WaterSystem distribution logic
+    const result = WaterSystem.distributeWaterToCrops(gameState, waterAmount)
+    return result.waterUsed
   }
   
   /**
@@ -149,5 +113,45 @@ export class CropSystem {
   static calculateTotalWaterNeeded(gameState: GameState): number {
     return gameState.processes.crops
       .reduce((total, crop) => total + (1.0 - crop.waterLevel), 0)
+  }
+  
+  /**
+   * Get comprehensive water and crop metrics (Phase 8N integration)
+   * @param gameState Current game state
+   * @returns Detailed metrics for decision making
+   */
+  static getCropWaterMetrics(gameState: GameState): {
+    totalCrops: number
+    dryPlots: number
+    criticalPlots: number
+    readyToHarvest: number
+    averageWaterLevel: number
+    retentionMultiplier: number
+    growthEfficiency: number
+  } {
+    const crops = gameState.processes.crops
+    const totalCrops = crops.length
+    const dryPlots = crops.filter(crop => crop.waterLevel < 0.5).length
+    const criticalPlots = crops.filter(crop => crop.waterLevel < 0.2).length
+    const readyToHarvest = crops.filter(crop => crop.readyToHarvest).length
+    
+    const averageWaterLevel = totalCrops > 0 ? 
+      crops.reduce((sum, crop) => sum + crop.waterLevel, 0) / totalCrops : 0
+    
+    const retentionMultiplier = WaterSystem.getRetentionMultiplier(gameState)
+    
+    // Calculate overall growth efficiency (how many crops are growing at full rate)
+    const fullGrowthCrops = crops.filter(crop => crop.waterLevel > 0.3).length
+    const growthEfficiency = totalCrops > 0 ? fullGrowthCrops / totalCrops : 1.0
+    
+    return {
+      totalCrops,
+      dryPlots,
+      criticalPlots,
+      readyToHarvest,
+      averageWaterLevel: Math.round(averageWaterLevel * 100) / 100,
+      retentionMultiplier,
+      growthEfficiency: Math.round(growthEfficiency * 100) / 100
+    }
   }
 }

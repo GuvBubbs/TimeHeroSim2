@@ -9,6 +9,8 @@ import { HelperSystem } from './systems/HelperSystem'
 import { CraftingSystem } from './systems/CraftingSystem'
 import { MiningSystem } from './systems/MiningSystem'
 import { CombatSystem, type WeaponData, type ArmorData, type RouteConfig, type WeaponType, type ArmorEffect } from './systems/CombatSystem'
+import { WaterSystem } from './systems/WaterSystem'
+import { SeedSystem, MANUAL_CATCHING, AUTO_CATCHERS } from './systems/SeedSystem'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -96,7 +98,7 @@ export class SimulationEngine {
         initialState: {
           plots: 3, // FIXED: Start with 3 plots per farm_stages.csv (Tutorial area 3>8)
           water: 100,
-          energy: 100,
+          energy: 0, // PHASE 8N: Start with 0 energy - gain through harvesting
           unlockedLandStages: ['stage1']
         },
         cropMechanics: {
@@ -357,12 +359,10 @@ export class SimulationEngine {
   private initializeSeeds(): Map<string, number> {
     const seeds = new Map<string, number>()
     
-    // Starting seeds from game design (match CSV IDs exactly)
-    seeds.set('turnip', 12)
-    seeds.set('beetroot', 8)  // Fixed: CSV uses 'beetroot', not 'beet'
-    seeds.set('carrot', 5)
-    seeds.set('potato', 15)
+    // PHASE 8N: Start with ZERO seeds - must use tower to collect ALL seeds
+    // This forces immediate tower usage and realistic seed scarcity gameplay
     
+    console.log('🌰 Phase 8N: Starting with ZERO seeds - must use tower to collect ALL seeds')
     return seeds
   }
 
@@ -420,15 +420,15 @@ export class SimulationEngine {
       },
       resources: {
         energy: {
-          current: farmParams.initialState.energy,
-          max: farmParams.initialState.energy,
+          current: 0, // PHASE 8N: Start with 0 energy - gain through harvesting
+          max: 50, // PHASE 8N: Energy max capacity is 50
           regenerationRate: 0 // FIXED: No energy regen - energy only from crop harvests
         },
         gold: 50, // FIXED: Starting gold should be 50 to break circular dependency (Phase 8L)
         water: {
-          current: farmParams.initialState.water,
-          max: farmParams.waterSystem.maxWaterStorage,
-          autoGenRate: 10 * farmParams.waterSystem.pumpEfficiency
+          current: 0, // PHASE 8N: Start with 0 water - pump to fill tank
+          max: 20, // PHASE 8N: Start with 20 water capacity per user requirements  
+          autoGenRate: 10 * (farmParams.waterSystem?.pumpEfficiency || 0)
         },
         seeds: this.initializeSeeds(),
         materials: this.initializeMaterials()
@@ -509,6 +509,18 @@ export class SimulationEngine {
         wateringThreshold: 25, // farmParams.automation.autoWater.threshold,
         energyReserve: 20 // farmParams.automation.autoPlant.energyThreshold
       },
+      location: {
+        currentScreen: 'farm', // Start on farm screen
+        screenHistory: [], // Track navigation history
+        lastVisited: {
+          farm: 480,
+          tower: 0,
+          town: 0,
+          adventure: 0,
+          forge: 0,
+          mine: 0
+        }
+      },
       priorities: {
         cleanupOrder: farmParams.landExpansion?.prioritizeCleanupOrder || [],
         toolCrafting: [],
@@ -565,6 +577,21 @@ export class SimulationEngine {
         HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
       } catch (error) {
         console.error('Error in HelperSystem.processHelpers:', error)
+      }
+      
+      try {
+        // Phase 8N: Process auto-pump water generation
+        WaterSystem.processAutoPumpGeneration(this.gameState, deltaTime)
+      } catch (error) {
+        console.error('Error in WaterSystem.processAutoPumpGeneration:', error)
+      }
+      
+      try {
+        // Phase 8N: Process auto-catcher seed collection
+        const towerReach = this.getCurrentTowerReach()
+        SeedSystem.processAutoCatcher(this.gameState, deltaTime, towerReach)
+      } catch (error) {
+        console.error('Error in SeedSystem.processAutoCatcher:', error)
       }
       
       // Process adventures if active
@@ -773,9 +800,15 @@ export class SimulationEngine {
     
     // Comprehensive decision making using parameter system
     
-    // 1. Emergency actions first (based on decision parameters)
-    if (this.parameters.decisions?.interrupts?.enabled) {
+    // 1. Emergency actions first (PHASE 8N: Always enabled for seed emergencies)
+    if (this.parameters.decisions?.interrupts?.enabled || true) { // Always check for emergencies
       const emergencyActions = this.evaluateEmergencyActions()
+      if (emergencyActions.length > 0) {
+        console.log(`🚨 EMERGENCY ACTIONS GENERATED: ${emergencyActions.length} actions`)
+        for (const action of emergencyActions) {
+          console.log(`   - ${action.type}: ${action.target || action.id}`)
+        }
+      }
       actions.push(...emergencyActions)
     }
     
@@ -791,8 +824,24 @@ export class SimulationEngine {
     const navigationActions = this.evaluateNavigationActions()
     actions.push(...navigationActions)
     
-    // 5. Filter actions by prerequisites (Phase 6E Enhancement)
-    const validActions = actions.filter(action => this.checkActionPrerequisites(action))
+    // 5. Filter actions by prerequisites (Phase 6E Enhancement) 
+    console.log(`🔍 FILTERING: ${actions.length} total actions before prerequisite check:`)
+    for (const action of actions) {
+      console.log(`   - ${action.type} (${action.target || action.id}) at ${action.screen || 'no screen'}`)
+    }
+    
+    const validActions = actions.filter(action => {
+      try {
+        const isValid = this.checkActionPrerequisites(action)
+        console.log(`🔍 FILTER RESULT: ${action.type} (${action.target || action.id}) -> ${isValid ? 'VALID' : 'INVALID'}`)
+        return isValid
+      } catch (error) {
+        console.log(`❌ FILTER ERROR: ${action.type} (${action.target || action.id}) -> ERROR: ${error instanceof Error ? error.message : String(error)}`)
+        return false
+      }
+    })
+    
+    console.log(`🔍 FILTERED: ${validActions.length} valid actions after prerequisite check`)
     
     // 6. Score and prioritize valid actions
     const scoredActions = validActions.map(action => ({
@@ -804,58 +853,19 @@ export class SimulationEngine {
     scoredActions.sort((a, b) => b.score - a.score)
     
     // Return top 3 actions (don't overwhelm the system)
-    return scoredActions.slice(0, 3).map(item => {
+    const topActions = scoredActions.slice(0, 3).map(item => {
       item.action.score = item.score
       return item.action
     })
-  }
-
-  /**
-   * Evaluates emergency actions based on critical thresholds
-   */
-  private evaluateEmergencyActions(): GameAction[] {
-    const actions: GameAction[] = []
-    const farmParams = this.parameters.farm
     
-    // Emergency energy management
-    if (this.gameState.resources.energy.current <= 10) {
-      // Consider energy-generating activities
-      const readyToHarvest = this.gameState.processes.crops.filter(crop => crop.readyToHarvest)
-      if (readyToHarvest.length > 0) {
-        actions.push({
-          id: `emergency_harvest_${Date.now()}`,
-          type: 'harvest',
-          screen: 'farm',
-          target: readyToHarvest[0].plotId,
-          duration: 2,
-          energyCost: 0, // FIXED: Harvesting is FREE, only planting costs energy
-          goldCost: 0,
-          prerequisites: [],
-          expectedRewards: { energy: 2, items: [readyToHarvest[0].cropId] } // Crops give energy, not gold!
-        })
-      }
+    // Debug log all actions being considered
+    console.log(`🎯 DECISION RESULTS: ${validActions.length} valid actions, top 3:`)
+    for (let i = 0; i < Math.min(3, scoredActions.length); i++) {
+      const item = scoredActions[i]
+      console.log(`   ${i + 1}. ${item.action.type} (${item.action.target || item.action.id}) - Score: ${item.score}`)
     }
     
-    // Emergency watering
-    const criticallyDryPlots = this.gameState.processes.crops.filter(
-      crop => crop.waterLevel < 10 && !crop.isWithered && !crop.readyToHarvest
-    )
-    
-    if (criticallyDryPlots.length > 0 && this.gameState.automation.wateringEnabled) {
-      actions.push({
-        id: `emergency_water_${Date.now()}`,
-        type: 'water',
-        screen: 'farm',
-        target: criticallyDryPlots[0].plotId,
-        duration: 1,
-        energyCost: 1,
-        goldCost: 0,
-        prerequisites: [],
-        expectedRewards: {}
-      })
-    }
-    
-    return actions
+    return topActions
   }
 
   /**
@@ -926,25 +936,34 @@ export class SimulationEngine {
       })
     }
     
-    // Plant new crops if we have empty plots and energy
-    const emptyPlots = farmParams.initialState.plots - this.gameState.processes.crops.length
+    // Plant new crops if we have empty plots and energy (FIXED: Check for actual empty plots)
+    const totalPlots = this.gameState.progression.farmPlots || this.gameState.progression.availablePlots || 3
+    const activeCrops = this.gameState.processes.crops.filter(crop => crop.cropId && !crop.readyToHarvest).length
+    const emptyPlots = totalPlots - activeCrops
+    
+    console.log(`🌾 Farm Analysis: ${totalPlots} total plots, ${activeCrops} active crops, ${emptyPlots} empty plots`)
+    
+    // CRITICAL FIX: Plant in ALL available empty plots, not just one
     if (emptyPlots > 0 && 
         this.gameState.automation.plantingEnabled && 
         this.gameState.resources.energy.current > this.gameState.automation.energyReserve) {
       
-      const bestCrop = this.selectCropToPlant()
-      if (bestCrop) {
-        actions.push({
-          id: `plant_${Date.now()}`,
-          type: 'plant',
-          screen: 'farm',
-          target: bestCrop,
-          duration: 2,
-          energyCost: 0, // FIXED: Planting is FREE, only costs time
-          goldCost: 0,
-          prerequisites: [],
-          expectedRewards: {}
-        })
+      // Create planting actions for each empty plot (up to energy/seed limits)
+      for (let i = 0; i < Math.min(emptyPlots, 3); i++) { // Max 3 actions per check-in
+        const bestCrop = this.selectCropToPlant()
+        if (bestCrop && (this.gameState.resources.seeds.get(bestCrop) || 0) > 0) {
+          actions.push({
+            id: `plant_${bestCrop}_${Date.now()}_${i}`,
+            type: 'plant',
+            screen: 'farm',
+            target: bestCrop,
+            duration: 2,
+            energyCost: 0, // FIXED: Planting is FREE, only costs time
+            goldCost: 0,
+            prerequisites: [],
+            expectedRewards: {}
+          })
+        }
       }
     }
     
@@ -956,7 +975,7 @@ export class SimulationEngine {
         screen: 'farm',
         target: 'well',
         duration: 1,
-        energyCost: 5,
+        energyCost: 0, // PHASE 8N: Free water pumping
         goldCost: 0,
         prerequisites: [],
         expectedRewards: { water: 20 }
@@ -1087,7 +1106,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Evaluates tower-specific actions (Phase 6E Implementation)
+   * Evaluates tower-specific actions (Phase 8N: Enhanced with SeedSystem)
    */
   private evaluateTowerActions(): GameAction[] {
     const actions: GameAction[] = []
@@ -1095,13 +1114,44 @@ export class SimulationEngine {
     
     if (!towerParams) return actions
     
-    // Manual seed catching
-    const totalSeeds = Array.from(this.gameState.resources.seeds.values()).reduce((a, b) => a + b, 0)
-    const needsSeeds = totalSeeds < (towerParams.decisionLogic?.seedTargetMultiplier || 2) * 10
+    // Get current tower metrics using SeedSystem
+    const towerReach = this.getCurrentTowerReach()
+    const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
+    const seedMetrics = SeedSystem.getSeedMetrics(this.gameState)
     
-    if (needsSeeds && this.gameState.resources.energy.current > 20) {
-      const catchDuration = towerParams.decisionLogic?.catchDuration || 2
-      const expectedCatchRate = towerParams.catchMechanics?.manualCatchRate || 60
+    // Manual seed catching (Phase 8N: Enhanced with wind mechanics, aggressive in early game)
+    const farmPlots = this.gameState.progression.farmPlots || 3
+    const seedTargetBase = Math.max(farmPlots * 2, 6)  // At least 6 seeds, 2x farm plots
+    const needsSeeds = seedMetrics.totalSeeds < seedTargetBase
+    
+    // PHASE 8N FIX: Navigate back to farm when seeds are sufficient
+    if (!needsSeeds && seedMetrics.totalSeeds >= seedTargetBase) {
+      console.log(`🚪 TOWER EXIT: Seeds sufficient (${seedMetrics.totalSeeds}/${seedTargetBase}) - returning to farm`)
+      actions.push({
+        id: `tower_to_farm_${Date.now()}`,
+        type: 'move',
+        screen: 'tower',
+        target: 'farm',
+        duration: 1,
+        energyCost: 0,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {}
+      })
+      return actions // Return immediately to prioritize farm return
+    }
+    
+    if (needsSeeds && this.gameState.resources.energy.current > 30) {
+      const catchDuration = towerParams.decisionLogic?.catchDuration || 3
+      
+      // Use SeedSystem to calculate expected catch rate
+      const catchRate = MANUAL_CATCHING.calculateCatchRate(
+        windLevel.level,
+        this.getBestNet(),
+        this.getPersonaCatchingSkill()
+      )
+      
+      const expectedSeeds = Math.floor(catchRate.seedsPerMinute * catchDuration)
       
       actions.push({
         id: `catch_seeds_${Date.now()}`,
@@ -1113,26 +1163,27 @@ export class SimulationEngine {
         goldCost: 0,
         prerequisites: [],
         expectedRewards: {
-          items: ['seeds_mixed'],
-          resources: { seeds: Math.floor(expectedCatchRate * catchDuration / 60) }
+          items: ['seeds_mixed']
         }
       })
     }
     
-    // Auto-catcher management
-    if (towerParams.autoCatcher && this.gameState.resources.gold >= 100) {
-      const autoCatcherLevel = this.getAutoCatcherLevel()
-      const upgradeThreshold = towerParams.decisionLogic?.upgradeThreshold || 0.5
+    // Auto-catcher upgrades (Phase 8N: Enhanced with SeedSystem rates)
+    if (this.gameState.resources.gold >= 1000) {
+      const currentAutoCatcher = this.getAutoCatcherTier()
+      const nextTier = this.getNextAutoCatcherTier(currentAutoCatcher)
       
-      if (autoCatcherLevel === 0 || (this.gameState.resources.gold >= 200 * Math.pow(2, autoCatcherLevel))) {
+      if (nextTier) {
+        const tierData = AUTO_CATCHERS[nextTier]
+        
         actions.push({
-          id: `upgrade_autocatcher_${Date.now()}`,
+          id: `upgrade_autocatcher_${nextTier}_${Date.now()}`,
           type: 'purchase',
           screen: 'tower',
-          target: 'auto_catcher',
+          target: nextTier,
           duration: 1,
           energyCost: 0,
-          goldCost: 100 * Math.pow(2, autoCatcherLevel),
+          goldCost: tierData.cost,
           prerequisites: [],
           expectedRewards: {}
         })
@@ -1142,7 +1193,7 @@ export class SimulationEngine {
     // Tower reach upgrades
     if (towerParams.unlockProgression?.reachLevelCosts && 
         this.gameState.resources.energy.current > 50) {
-      const currentReach = this.getTowerReachLevel()
+      const currentReach = this.getCurrentTowerReach()
       const nextCost = towerParams.unlockProgression.reachLevelCosts[currentReach]
       
       if (nextCost && this.gameState.resources.gold >= nextCost) {
@@ -1150,7 +1201,7 @@ export class SimulationEngine {
           id: `tower_reach_upgrade_${Date.now()}`,
           type: 'purchase',
           screen: 'tower',
-          target: `reach_level_${currentReach + 1}`,
+          target: `tower_reach_${currentReach + 1}`,
           duration: 2,
           energyCost: towerParams.unlockProgression.reachLevelEnergy?.[currentReach] || 20,
           goldCost: nextCost,
@@ -1597,39 +1648,161 @@ export class SimulationEngine {
   }
 
   /**
-   * Selects the best crop to plant based on current strategy
+   * Selects the best crop to plant based on current strategy (Phase 8N: Enhanced with SeedSystem)
    */
   private selectCropToPlant(): string | null {
-    const availableSeeds = Array.from(this.gameState.resources.seeds.entries())
-      .filter(([crop, amount]) => amount > 0)
-      .map(([crop, amount]) => crop)
+    // Use SeedSystem for intelligent seed selection
+    const seedSelection = SeedSystem.selectSeedForPlanting(this.gameState, this.gameState.resources.seeds)
     
-    if (availableSeeds.length === 0) return null
-    
-    // Use planting strategy from parameters
-    const strategy = this.gameState.automation.plantingStrategy
-    
-    switch (strategy) {
-      case 'highest-value':
-        // Simple value-based selection (in real game, would use crop data)
-        return availableSeeds[0] // Placeholder
-        
-      case 'fastest-growth':
-        // Would select fastest growing crop
-        return availableSeeds[0] // Placeholder
-        
-      case 'balanced':
-        // Would balance value and growth time
-        return availableSeeds[0] // Placeholder
-        
-      case 'diverse':
-        // Would ensure variety in planted crops
-        return availableSeeds[0] // Placeholder
-        
-      default:
-        return availableSeeds[0]
+    if (seedSelection.selectedSeed) {
+      console.log(`🌱 Selected ${seedSelection.selectedSeed} using ${seedSelection.strategy} strategy`)
+      return seedSelection.selectedSeed
     }
+    
+    return null
   }
+
+  /**
+   * Evaluate emergency actions that need immediate attention (PHASE 8N)
+   */
+  private evaluateEmergencyActions(): GameAction[] {
+    const actions: GameAction[] = []
+
+    // PROACTIVE SEED COLLECTION WITH BETTER THRESHOLDS (Phase 8N)
+    const seedMetrics = SeedSystem.getSeedMetrics(this.gameState)
+    const farmPlots = this.gameState.progression.farmPlots || 3
+    
+    // IMPROVED: More aggressive seed collection thresholds
+    const seedBuffer = Math.max(farmPlots * 2, 6) // Want 2x seeds per plot, minimum 6 seeds
+    const criticalThreshold = farmPlots // Critical when seeds = plots  
+    const lowThreshold = Math.floor(seedBuffer * 0.7) // Low when < 70% of buffer
+    
+    const isCritical = seedMetrics.totalSeeds < criticalThreshold
+    const isLow = seedMetrics.totalSeeds < lowThreshold
+    const needsSeeds = isCritical || isLow
+    
+    console.log(`🔍 SEED CHECK: ${seedMetrics.totalSeeds}/${seedBuffer} seeds (${farmPlots} plots), critical: ${isCritical}, low: ${isLow}, energy: ${this.gameState.resources.energy.current}`)
+
+    if (needsSeeds && this.gameState.resources.energy.current >= 0) {
+      const urgency = isCritical ? 'CRITICAL' : 'LOW'
+      console.log(`🚨 SEED ${urgency}: ${seedMetrics.totalSeeds} seeds < ${isCritical ? criticalThreshold : lowThreshold} threshold - forcing tower actions`)
+
+      // Force navigation to tower if not already there
+      if (this.gameState.location.currentScreen !== 'tower') {
+        actions.push({
+          id: `emergency_tower_nav_${Date.now()}`,
+          type: 'move',
+          screen: this.gameState.location.currentScreen,
+          target: 'tower',
+          duration: 1,
+          energyCost: 0,
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: {}
+        })
+      } else {
+        // If already at tower, force seed catching action
+        const towerReach = this.getCurrentTowerReach()
+        const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
+        const catchRate = MANUAL_CATCHING.calculateCatchRate(
+          windLevel.level,
+          this.getBestNet(),
+          this.getPersonaCatchingSkill()
+        )
+        const catchDuration = 5 // Extended duration for emergency catching
+        const expectedSeeds = Math.floor(catchRate.seedsPerMinute * catchDuration)
+
+        actions.push({
+          id: `emergency_catch_seeds_${Date.now()}`,
+          type: 'catch_seeds',
+          screen: 'tower',
+          target: 'manual_catch',
+          duration: catchDuration,
+          energyCost: 0, // PHASE 8N: Emergency seed collection is FREE when critically low  
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: {
+            items: ['seeds_mixed']
+          }
+        })
+      }
+    }
+
+    // Emergency energy management (harvest ready crops when energy very low)
+    if (this.gameState.resources.energy.current <= 10) {
+      const readyToHarvest = this.gameState.processes.crops.filter(crop => crop.readyToHarvest)
+      if (readyToHarvest.length > 0) {
+        actions.push({
+          id: `emergency_harvest_${Date.now()}`,
+          type: 'harvest',
+          screen: 'farm',
+          target: readyToHarvest[0].plotId,
+          duration: 5,
+          energyCost: 0,
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: {}
+        })
+      }
+    }
+
+    return actions
+  }
+
+  /**
+   * Evaluate actions based on current screen location (PHASE 8N)
+   */
+  private evaluateScreenActions(): GameAction[] {
+    const actions: GameAction[] = []
+    const currentScreen = this.gameState.location.currentScreen
+
+    switch (currentScreen) {
+      case 'farm':
+        const farmActions = this.evaluateFarmActions()
+        actions.push(...farmActions)
+        break
+      case 'tower':
+        const towerActions = this.evaluateTowerActions()
+        actions.push(...towerActions)
+        break
+      case 'town':
+        const townActions = this.evaluateTownActions()
+        actions.push(...townActions)
+        break
+      case 'adventure':
+        const adventureActions = this.evaluateAdventureActions()
+        actions.push(...adventureActions)
+        break
+      case 'forge':
+        const forgeActions = this.evaluateForgeActions()
+        actions.push(...forgeActions)
+        break
+      case 'mine':
+        const mineActions = this.evaluateMineActions()
+        actions.push(...mineActions)
+        break
+      default:
+        // Default to farm actions if screen is unknown
+        const defaultActions = this.evaluateFarmActions()
+        actions.push(...defaultActions)
+    }
+
+    return actions
+  }
+
+  /**
+   * Evaluate helper management actions (PHASE 8N)
+   */
+  private evaluateHelperActions(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // For now, return empty array - helper actions would be rescue, train, assign, etc.
+    // This will be implemented in a future phase
+    
+    return actions
+  }
+
+
 
   /**
    * Enhanced action scoring using parameter-based evaluation
@@ -1710,8 +1883,53 @@ export class SimulationEngine {
         
       case 'move':
         // Navigation scoring based on screen priorities
+        const targetScreen = action.target as string
+        
+        // PHASE 8N: PROACTIVE PRIORITY for tower navigation during seed shortage
+        if (targetScreen === 'tower') {
+          const seedMetrics = SeedSystem.getSeedMetrics(this.gameState)
+          const farmPlots = this.gameState.progression.farmPlots || 3
+          const seedBuffer = Math.max(farmPlots * 2, 6)
+          const criticalThreshold = farmPlots
+          const lowThreshold = Math.floor(seedBuffer * 0.7)
+          
+          const isCritical = seedMetrics.totalSeeds < criticalThreshold
+          const isLow = seedMetrics.totalSeeds < lowThreshold
+          
+          if (isCritical) {
+            score = 998 // Just slightly lower than catch_seeds to ensure proper sequencing
+            console.log(`🚨 CRITICAL TOWER NAV SCORE: ${score} (${seedMetrics.totalSeeds} seeds < ${criticalThreshold} critical)`)
+            break
+          } else if (isLow) {
+            score = 700 // High priority for proactive navigation
+            console.log(`⚠️ PROACTIVE TOWER NAV SCORE: ${score} (${seedMetrics.totalSeeds} seeds < ${lowThreshold} buffer)`)
+            break
+          }
+        }
+        
+        // PHASE 8N: PREVENT navigation away from tower during seed shortage
+        if (this.gameState.location.currentScreen === 'tower') {
+          const seedMetrics = SeedSystem.getSeedMetrics(this.gameState)
+          const farmPlots = this.gameState.progression.farmPlots || 3
+          const seedBuffer = Math.max(farmPlots * 2, 6)
+          const criticalThreshold = farmPlots
+          const lowThreshold = Math.floor(seedBuffer * 0.7)
+          
+          const isCritical = seedMetrics.totalSeeds < criticalThreshold
+          const isLow = seedMetrics.totalSeeds < lowThreshold
+          
+          if (isCritical && targetScreen !== 'tower') {
+            score = 1 // Very low score to discourage leaving tower during critical shortage
+            console.log(`🚫 BLOCKING TOWER EXIT: Low score ${score} for moving to ${targetScreen} during CRITICAL seed shortage`)
+            break
+          } else if (isLow && targetScreen !== 'tower') {
+            score = 5 // Low score to discourage leaving tower when running low
+            console.log(`🚫 DISCOURAGING TOWER EXIT: Low score ${score} for moving to ${targetScreen} during seed shortage`)
+            break
+          }
+        }
+        
         if (decisionParams?.screenPriorities?.weights) {
-          const targetScreen = action.target as string
           const weights = decisionParams.screenPriorities.weights
           const weight = weights instanceof Map ? 
             (weights.get(targetScreen) || 1) : 
@@ -1762,6 +1980,49 @@ export class SimulationEngine {
         if (this.gameState.resources.gold < 100) {
           score += 20 // Adventures are primary gold source
         }
+        break
+        
+      case 'catch_seeds':
+        // PHASE 8N: Seed collection priority (critical when seeds low)
+        const seedMetrics = SeedSystem.getSeedMetrics(this.gameState)
+        const farmPlots = this.gameState.progression.farmPlots || 3
+        const seedsPerPlot = seedMetrics.totalSeeds / farmPlots
+        
+        // Base score for seed catching
+        score = 25
+        
+        // PROACTIVE SEED COLLECTION PRIORITY (Phase 8N: Improved thresholds)
+        const seedBuffer = Math.max(farmPlots * 2, 6) // Want 2x seeds per plot, minimum 6
+        const criticalThreshold = farmPlots // Critical when seeds = plots
+        const lowThreshold = Math.floor(seedBuffer * 0.7) // Low when < 70% of buffer
+        
+        const isCritical = seedMetrics.totalSeeds < criticalThreshold
+        const isLow = seedMetrics.totalSeeds < lowThreshold
+        
+        if (isCritical) {
+          // ULTRA HIGH PRIORITY: Critical seed shortage
+          if (this.gameState.location.currentScreen === 'tower') {
+            score = 9999  // ULTRA MAXIMUM priority when at tower during critical shortage
+            console.log(`🚨 ULTRA HIGH PRIORITY: catch_seeds at tower during CRITICAL shortage: ${score}`)
+          } else {
+            score = 999  // MAXIMUM priority when critical (but not at tower)
+            console.log(`🚨 CRITICAL PRIORITY: catch_seeds when seeds critically low: ${score}`)
+          }
+        } else if (isLow) {
+          // HIGH PRIORITY: Proactive seed collection when running low  
+          if (this.gameState.location.currentScreen === 'tower') {
+            score = 750  // High priority for proactive collection at tower
+            console.log(`⚠️ HIGH PRIORITY: catch_seeds at tower for proactive collection: ${score}`)
+          } else {
+            score = 400  // Moderate priority when low (need to navigate first)
+            console.log(`⚠️ MODERATE PRIORITY: catch_seeds when seeds running low: ${score}`)
+          }
+        } else if (seedsPerPlot < 3) {
+          score = 200  // Standard priority for maintaining buffer
+        }
+        
+        // PHASE 8N: No energy bonus needed - emergency catching is free
+        console.log(`🎯 SEED CATCH SCORE: ${score} (${seedMetrics.totalSeeds} seeds, ${seedsPerPlot.toFixed(1)} per plot, at ${this.gameState.location.currentScreen})`)
         break
         
       default:
@@ -2134,8 +2395,8 @@ export class SimulationEngine {
     
     this.gameState.resources.water.current += waterToAdd
     
-    // Consume energy
-    this.gameState.resources.energy.current -= action.energyCost
+    // PHASE 8N: Free water pumping - no energy cost
+    // this.gameState.resources.energy.current -= action.energyCost
     
     events.push({
       timestamp: this.gameState.time.totalMinutes,
@@ -2172,10 +2433,14 @@ export class SimulationEngine {
             const growthTime = cropData ? parseInt(cropData.time) || 10 : 10
             const stages = cropData ? this.parseGrowthStages(cropData.notes) : 3
             
+            // Find next available plot ID
+            const plotId = `plot_${this.gameState.processes.crops.length + 1}`
+            
             this.gameState.resources.seeds.set(action.target, currentSeeds - 1)
             this.gameState.processes.crops.push({
-              plotId: `plot_${this.gameState.processes.crops.length + 1}`,
+              plotId: plotId,
               cropId: action.target,
+              // cropType not needed - using cropId only
               plantedAt: this.gameState.time.totalMinutes,
               growthTimeRequired: growthTime,
               waterLevel: 1.0, // Start fully watered (0-1 scale)
@@ -2189,12 +2454,19 @@ export class SimulationEngine {
               droughtTime: 0
             })
             
+            const totalPlots = this.gameState.progression.farmPlots || 3
+            const activeCrops = this.gameState.processes.crops.length
+            
             events.push({
               timestamp: this.gameState.time.totalMinutes,
               type: 'action_plant',
-              description: `Planted ${action.target} (${growthTime}min growth, ${stages} stages)`,
-              importance: 'low'
+              description: `Planted ${action.target} in ${plotId} (${growthTime}min growth) - ${activeCrops}/${totalPlots} plots active`,
+              importance: 'medium'
             })
+            
+            console.log(`🌱 PLANTED: ${action.target} in ${plotId} (${activeCrops}/${totalPlots} plots active, ${currentSeeds - 1} seeds remaining)`)
+          } else {
+            console.log(`❌ PLANTING FAILED: No ${action.target} seeds available`)
           }
         }
         break
@@ -2233,24 +2505,7 @@ export class SimulationEngine {
         }
         break
         
-      case 'catch_seeds':
-        // Add seeds to inventory
-        const seedsGained = action.expectedRewards.resources?.seeds || 0
-        if (seedsGained > 0) {
-          // Distribute seeds randomly among available types
-          const seedTypes = Array.from(this.gameState.resources.seeds.keys())
-          const seedType = seedTypes[Math.floor(Math.random() * seedTypes.length)]
-          const currentAmount = this.gameState.resources.seeds.get(seedType) || 0
-          this.gameState.resources.seeds.set(seedType, currentAmount + seedsGained)
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_catch_seeds',
-            description: `Caught ${seedsGained} seeds in tower`,
-            importance: 'low'
-          })
-        }
-        break
+
         
       case 'train':
         // Award experience for training
@@ -2392,18 +2647,69 @@ export class SimulationEngine {
         
       case 'move':
         // Change screens
-        if (action.target && action.target !== this.gameState.location.currentScreen) {
-          this.gameState.location.currentScreen = action.target as GameScreen
+        console.log(`🚪 MOVE EXECUTION: action.target='${action.target}', action.toScreen='${action.toScreen}', current='${this.gameState.location.currentScreen}'`)
+        
+        const targetScreen = action.target || action.toScreen
+        if (targetScreen && targetScreen !== this.gameState.location.currentScreen) {
+          const fromScreen = this.gameState.location.currentScreen
+          this.gameState.location.currentScreen = targetScreen as GameScreen
           this.gameState.location.timeOnScreen = 0
-          this.gameState.location.screenHistory.push(action.target as GameScreen)
+          this.gameState.location.screenHistory.push(targetScreen as GameScreen)
           this.gameState.location.navigationReason = `AI decision: ${action.id}`
+          
+          console.log(`🚪 MOVED: ${fromScreen} → ${targetScreen}`)
           
           events.push({
             timestamp: this.gameState.time.totalMinutes,
             type: 'action_move',
-            description: `Moved to ${action.target}`,
+            description: `Moved to ${targetScreen}`,
             importance: 'low'
           })
+        }
+        break
+
+      case 'catch_seeds':
+        // Handle seed catching at tower (Phase 8N)
+        if (this.gameState.location.currentScreen === 'tower') {
+          const towerReach = this.getTowerReachLevel()
+          const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
+          const netType = this.getBestNet()
+          
+          // PHASE 8N: Handle emergency free catching
+          const isEmergencyCatch = action.energyCost === 0
+          const originalEnergy = this.gameState.resources.energy.current
+          
+          // Temporarily give enough energy for emergency catching
+          if (isEmergencyCatch) {
+            console.log(`🚨 EMERGENCY SEED CATCH: Free energy for critical seed collection`)
+            this.gameState.resources.energy.current = Math.max(originalEnergy, 100)
+          }
+          
+          const catchingResult = SeedSystem.processManualCatching(
+            this.gameState,
+            action.duration || 5,
+            windLevel.level,
+            netType,
+            true
+          )
+          
+          // Restore original energy for emergency catches
+          if (isEmergencyCatch) {
+            this.gameState.resources.energy.current = originalEnergy
+            console.log(`🚨 EMERGENCY CATCH COMPLETE: Energy restored to ${originalEnergy}`)
+          }
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'catch_seeds',
+            description: `${isEmergencyCatch ? '[EMERGENCY]' : ''} Caught ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) at ${windLevel.name} level`,
+            data: { seeds: catchingResult.seedsGained, types: catchingResult.seedTypes, energy: isEmergencyCatch ? 0 : catchingResult.energyUsed },
+            importance: 'medium'
+          })
+          
+          console.log(`🌰 SEED CATCH: ${isEmergencyCatch ? '[EMERGENCY FREE]' : ''} Gained ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) - Energy: ${isEmergencyCatch ? 'FREE' : catchingResult.energyUsed}`)
+        } else {
+          console.log(`❌ SEED CATCH FAILED: Not at tower (currently at ${this.gameState.location.currentScreen})`)
         }
         break
 
@@ -2440,6 +2746,36 @@ export class SimulationEngine {
       case 'train_helper':
         // Delegate to helper training handler
         return this.executeTrainHelperAction(action)
+        
+      case 'move':
+        // Handle screen navigation (PHASE 8N)
+        if (action.toScreen) {
+          const fromScreen = this.gameState.location.currentScreen
+          
+          // Update screen history
+          if (this.gameState.location.screenHistory) {
+            this.gameState.location.screenHistory.push({
+              from: fromScreen,
+              to: action.toScreen,
+              timestamp: this.gameState.time.totalMinutes,
+              reason: action.description || 'No reason given'
+            })
+          }
+          
+          // Update current screen
+          this.gameState.location.currentScreen = action.toScreen
+          this.gameState.location.lastVisited[action.toScreen] = this.gameState.time.totalMinutes
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'navigation',
+            description: `Moved from ${fromScreen} to ${action.toScreen}`,
+            importance: 'low'
+          })
+          
+          console.log(`🚪 NAVIGATION: ${fromScreen} → ${action.toScreen} (${action.description || 'No reason given'})`)
+        }
+        break
         
       case 'cleanup':
         // Delegate to cleanup action handler
@@ -2726,6 +3062,131 @@ export class SimulationEngine {
    */
   getGameState(): GameState {
     return this.gameState
+  }
+  
+  /**
+   * Get current tower reach level (Phase 8N)
+   */
+  private getCurrentTowerReach(): number {
+    const heroLevel = this.gameState.progression.heroLevel
+    const baseReach = Math.min(heroLevel, 11) // Hero level contributes to reach
+    
+    // Check for tower reach upgrades
+    const upgrades = this.gameState.progression.unlockedUpgrades
+    let reachBonus = 0
+    
+    if (upgrades.includes('tower_reach_11')) reachBonus = Math.max(reachBonus, 11)
+    else if (upgrades.includes('tower_reach_10')) reachBonus = Math.max(reachBonus, 10)
+    else if (upgrades.includes('tower_reach_9')) reachBonus = Math.max(reachBonus, 9)
+    else if (upgrades.includes('tower_reach_8')) reachBonus = Math.max(reachBonus, 8)
+    else if (upgrades.includes('tower_reach_7')) reachBonus = Math.max(reachBonus, 7)
+    else if (upgrades.includes('tower_reach_6')) reachBonus = Math.max(reachBonus, 6)
+    else if (upgrades.includes('tower_reach_5')) reachBonus = Math.max(reachBonus, 5)
+    else if (upgrades.includes('tower_reach_4')) reachBonus = Math.max(reachBonus, 4)
+    else if (upgrades.includes('tower_reach_3')) reachBonus = Math.max(reachBonus, 3)
+    else if (upgrades.includes('tower_reach_2')) reachBonus = Math.max(reachBonus, 2)
+    else if (upgrades.includes('tower_reach_1')) reachBonus = Math.max(reachBonus, 1)
+    
+    return Math.max(baseReach, reachBonus)
+  }
+  
+  /**
+   * Get best available net for seed catching (Phase 8N)
+   */
+  private getBestNet(): keyof typeof MANUAL_CATCHING.nets {
+    const tools = this.gameState.inventory.tools
+    
+    if (tools.has('crystal_net') && tools.get('crystal_net')?.isEquipped) return 'crystal_net'
+    if (tools.has('golden_net') && tools.get('golden_net')?.isEquipped) return 'golden_net'
+    if (tools.has('net_ii') && tools.get('net_ii')?.isEquipped) return 'net_ii'
+    if (tools.has('net_i') && tools.get('net_i')?.isEquipped) return 'net_i'
+    
+    return 'none'
+  }
+  
+  /**
+   * Get persona-based catching skill modifier (Phase 8N)
+   */
+  private getPersonaCatchingSkill(): number {
+    const heroLevel = this.gameState.progression.heroLevel
+    const baseSkill = 0.7 + (heroLevel - 1) * 0.02 // 0.7 to 0.9 range
+    
+    // Apply persona modifiers
+    const personaModifier = this.persona?.efficiency || 0.7
+    const finalSkill = baseSkill * personaModifier
+    
+    return Math.min(0.95, Math.max(0.7, finalSkill))
+  }
+  
+  /**
+   * Get current auto-catcher tier (Phase 8N)
+   */
+  private getAutoCatcherTier(): keyof typeof AUTO_CATCHERS | null {
+    const upgrades = this.gameState.progression.unlockedUpgrades
+    
+    if (upgrades.includes('tier_iii')) return 'tier_iii'
+    if (upgrades.includes('tier_ii')) return 'tier_ii'
+    if (upgrades.includes('tier_i')) return 'tier_i'
+    
+    return null
+  }
+  
+  /**
+   * Get next auto-catcher tier available for purchase (Phase 8N)
+   */
+  private getNextAutoCatcherTier(currentTier: keyof typeof AUTO_CATCHERS | null): keyof typeof AUTO_CATCHERS | null {
+    if (!currentTier) return 'tier_i'
+    if (currentTier === 'tier_i') return 'tier_ii'
+    if (currentTier === 'tier_ii') return 'tier_iii'
+    
+    return null // Already at max tier
+  }
+
+  /**
+   * Process offline water generation from auto-pumps (Phase 8N)
+   * @param offlineTimeMinutes Time spent offline in minutes
+   */
+  processOfflineWaterGeneration(offlineTimeMinutes: number): {
+    waterGenerated: number
+    pumpLevel: string | null
+    message: string
+  } {
+    if (offlineTimeMinutes <= 0) {
+      return { waterGenerated: 0, pumpLevel: null, message: '' }
+    }
+    
+    const result = WaterSystem.calculateOfflineWater(
+      offlineTimeMinutes,
+      this.gameState.resources.water.max,
+      this.gameState
+    )
+    
+    if (result.generated > 0) {
+      // Add water to current resources
+      const currentWater = this.gameState.resources.water.current
+      const maxWater = this.gameState.resources.water.max
+      const actualAdded = Math.min(result.generated, maxWater - currentWater)
+      
+      this.gameState.resources.water.current += actualAdded
+      
+      // Create event log
+      this.addGameEvent({
+        timestamp: this.gameState.time.totalMinutes,
+        type: 'offline_water_generation',
+        description: `${result.message} (${actualAdded} added, ${result.generated - actualAdded} overflow)`,
+        importance: 'medium'
+      })
+      
+      console.log(`💧 Offline Water Generation: ${result.message}`)
+      
+      return {
+        waterGenerated: actualAdded,
+        pumpLevel: result.pumpLevel,
+        message: result.message
+      }
+    }
+    
+    return { waterGenerated: 0, pumpLevel: result.pumpLevel, message: 'No auto-pump installed' }
   }
 
   /**
@@ -3674,8 +4135,33 @@ export class SimulationEngine {
     // Calculate time since last check-in
     const timeSinceLastCheckin = this.gameState.time.totalMinutes - this.lastCheckinTime
     
-    // PHASE 8L FIX: More frequent check-ins for testing and better gameplay  
-    const MIN_CHECKIN_INTERVAL = 15 // Check in every 15 game minutes (30 ticks at 0.5x)
+    // CRITICAL FIX: More aggressive check-ins in early game for better plot utilization
+    let MIN_CHECKIN_INTERVAL = 15 // Base interval
+    
+    // Adjust check-in frequency based on game phase and plot utilization
+    const farmPlots = this.gameState.progression.farmPlots || 3
+    const activeCrops = this.gameState.processes.crops.filter(crop => crop.cropId && !crop.readyToHarvest).length
+    const plotUtilization = farmPlots > 0 ? activeCrops / farmPlots : 0
+    
+    // PHASE 8N: Emergency check-in frequency for seed shortages
+    const seedMetrics = SeedSystem.getSeedMetrics(this.gameState)
+    const seedBuffer = Math.max(farmPlots * 2, 6)
+    const criticalThreshold = farmPlots
+    const lowThreshold = Math.floor(seedBuffer * 0.7)
+    
+    if (seedMetrics.totalSeeds < criticalThreshold) {
+      MIN_CHECKIN_INTERVAL = 2 // URGENT: Check every 2 minutes during seed crisis
+    } else if (seedMetrics.totalSeeds < lowThreshold) {
+      MIN_CHECKIN_INTERVAL = 5 // FREQUENT: Check every 5 minutes when seeds running low
+    } else if (plotUtilization < 0.8 && this.gameState.progression.currentPhase === 'Tutorial') {
+      MIN_CHECKIN_INTERVAL = 5 // Very frequent in tutorial with low utilization
+    } else if (plotUtilization < 0.6) {
+      MIN_CHECKIN_INTERVAL = 8 // More frequent with poor utilization
+    } else if (this.gameState.progression.currentPhase === 'Tutorial') {
+      MIN_CHECKIN_INTERVAL = 10 // Frequent in tutorial phase
+    }
+    
+    console.log(`⏰ Check-in logic: ${farmPlots} plots, ${activeCrops} active (${Math.round(plotUtilization * 100)}% util), ${seedMetrics.totalSeeds} seeds, interval: ${MIN_CHECKIN_INTERVAL}min`)
     
     if (timeSinceLastCheckin >= MIN_CHECKIN_INTERVAL) {
       console.log('🎬 SimulationEngine: Regular check-in at', currentHour + ':' + currentMinute.toString().padStart(2, '0'), '(', timeSinceLastCheckin, 'min since last)')
@@ -3978,13 +4464,17 @@ export class SimulationEngine {
    * Enhanced prerequisite checking using CSV data relationships (Phase 6E)
    */
   private checkActionPrerequisites(action: GameAction): boolean {
+    console.log(`🔍 PREREQ CHECK: ${action.type} action (energy: ${this.gameState.resources.energy.current}/${action.energyCost || 0}, gold: ${this.gameState.resources.gold}/${action.goldCost || 0})`)
+    
     // 1. Energy requirements
     if (action.energyCost && action.energyCost > this.gameState.resources.energy.current) {
+      console.log(`❌ PREREQ FAILED: Insufficient energy (${this.gameState.resources.energy.current} < ${action.energyCost})`)
       return false
     }
     
     // 2. Gold requirements
     if (action.goldCost && action.goldCost > this.gameState.resources.gold) {
+      console.log(`❌ PREREQ FAILED: Insufficient gold (${this.gameState.resources.gold} < ${action.goldCost})`)
       return false
     }
     
@@ -3993,6 +4483,7 @@ export class SimulationEngine {
       for (const [material, amount] of Object.entries(action.materialCosts)) {
         const available = this.gameState.resources.materials.get(material.toLowerCase()) || 0
         if (available < amount) {
+          console.log(`❌ PREREQ FAILED: Insufficient ${material} (${available} < ${amount})`)
           return false
         }
       }
@@ -4002,10 +4493,13 @@ export class SimulationEngine {
     if (action.prerequisites && action.prerequisites.length > 0) {
       for (const prereqId of action.prerequisites) {
         if (!this.hasPrerequisite(prereqId)) {
+          console.log(`❌ PREREQ FAILED: Missing prerequisite ${prereqId}`)
           return false
         }
       }
     }
+    
+    console.log(`✅ BASIC PREREQS PASSED: ${action.type} - proceeding to action-specific checks`)
     
     // 5. Action-specific prerequisites
     switch (action.type) {
@@ -4016,12 +4510,56 @@ export class SimulationEngine {
       case 'catch_seeds':
         return this.checkTowerPrerequisites(action)
       case 'move':
-        return this.checkScreenAccessPrerequisites(action.toScreen)
+        const moveTarget = action.toScreen || action.target  
+        return this.checkScreenAccessPrerequisites(moveTarget)
       case 'rescue':
         return this.checkHelperRescuePrerequisites(action)
       default:
+        console.log(`✅ PREREQ PASSED: ${action.type} (no specific requirements)`)
         return true
     }
+  }
+
+
+
+  /**
+   * Get current auto-catcher level (Phase 8N)
+   */
+  private getAutoCatcherLevel(): number {
+    const upgrades = this.gameState.progression.unlockedUpgrades
+    
+    if (upgrades.includes('tier_iii')) return 3
+    if (upgrades.includes('tier_ii')) return 2
+    if (upgrades.includes('tier_i')) return 1
+    
+    return 0
+  }
+
+  /**
+   * Get current tower reach level (Phase 8N)
+   */
+  private getTowerReachLevel(): number {
+    // Simplified tower reach calculation - would normally check tower upgrades
+    const heroLevel = this.gameState.progression.heroLevel
+    const baseReach = Math.min(heroLevel, 11) // Hero level contributes to reach
+    
+    // Check for tower reach upgrades
+    const upgrades = this.gameState.progression.unlockedUpgrades
+    let reachBonus = 0
+    
+    if (upgrades.includes('tower_reach_11')) reachBonus = Math.max(reachBonus, 11)
+    else if (upgrades.includes('tower_reach_10')) reachBonus = Math.max(reachBonus, 10)
+    else if (upgrades.includes('tower_reach_9')) reachBonus = Math.max(reachBonus, 9)
+    else if (upgrades.includes('tower_reach_8')) reachBonus = Math.max(reachBonus, 8)
+    else if (upgrades.includes('tower_reach_7')) reachBonus = Math.max(reachBonus, 7)
+    else if (upgrades.includes('tower_reach_6')) reachBonus = Math.max(reachBonus, 6)
+    else if (upgrades.includes('tower_reach_5')) reachBonus = Math.max(reachBonus, 5)
+    else if (upgrades.includes('tower_reach_4')) reachBonus = Math.max(reachBonus, 4)
+    else if (upgrades.includes('tower_reach_3')) reachBonus = Math.max(reachBonus, 3)
+    else if (upgrades.includes('tower_reach_2')) reachBonus = Math.max(reachBonus, 2)
+    else if (upgrades.includes('tower_reach_1')) reachBonus = Math.max(reachBonus, 1)
+    
+    return Math.max(baseReach, reachBonus)
   }
 
   /**
@@ -4128,22 +4666,28 @@ export class SimulationEngine {
    * Checks tower-specific prerequisites  
    */
   private checkTowerPrerequisites(action: GameAction): boolean {
-    // Check tower access
-    if (!this.checkScreenAccessPrerequisites('tower')) {
+    console.log(`🔍 TOWER PREREQ CHECK: current screen = '${this.gameState.location.currentScreen}', action = ${action.type}`)
+    
+    // Tower actions require being at the tower screen
+    if (this.gameState.location.currentScreen !== 'tower') {
+      console.log(`❌ TOWER PREREQ FAILED: Not at tower (current: '${this.gameState.location.currentScreen}')`)
       return false
     }
     
-    // Check auto-catcher requirements
+    // Check auto-catcher requirements (optional)
     if (action.requiresAutoCatcher && this.getAutoCatcherLevel() === 0) {
+      console.log(`❌ TOWER PREREQ FAILED: Requires auto-catcher but level is 0`)
       return false
     }
     
-    // Check tower reach level for advanced seed types
+    // Check tower reach level for advanced seed types (optional)
     const reachLevel = this.getTowerReachLevel()
     if (action.seedTier && action.seedTier > reachLevel) {
+      console.log(`❌ TOWER PREREQ FAILED: Seed tier ${action.seedTier} > reach level ${reachLevel}`)
       return false
     }
     
+    console.log(`✅ TOWER PREREQ PASSED: At tower screen, action can proceed`)
     return true
   }
 

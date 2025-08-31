@@ -94,7 +94,7 @@ export class SimulationEngine {
     return {
       farm: {
         initialState: {
-          plots: 4,
+          plots: 3, // FIXED: Start with 3 plots per farm_stages.csv (Tutorial area 3>8)
           water: 100,
           energy: 100,
           unlockedLandStages: ['stage1']
@@ -357,9 +357,9 @@ export class SimulationEngine {
   private initializeSeeds(): Map<string, number> {
     const seeds = new Map<string, number>()
     
-    // Starting seeds from game design
+    // Starting seeds from game design (match CSV IDs exactly)
     seeds.set('turnip', 12)
-    seeds.set('beet', 8) 
+    seeds.set('beetroot', 8)  // Fixed: CSV uses 'beetroot', not 'beet'
     seeds.set('carrot', 5)
     seeds.set('potato', 15)
     
@@ -422,9 +422,9 @@ export class SimulationEngine {
         energy: {
           current: farmParams.initialState.energy,
           max: farmParams.initialState.energy,
-          regenerationRate: 1 // 1 energy per minute base
+          regenerationRate: 0 // FIXED: No energy regen - energy only from crop harvests
         },
-        gold: 100, // Starting gold
+        gold: 0, // FIXED: Starting gold should be 0, not 100
         water: {
           current: farmParams.initialState.water,
           max: farmParams.waterSystem.maxWaterStorage,
@@ -437,8 +437,8 @@ export class SimulationEngine {
         heroLevel: 1,
         experience: 0,
         farmStage: 1,
-        farmPlots: farmParams.initialState.plots || 4,
-        availablePlots: farmParams.initialState.plots || 4,
+        farmPlots: farmParams.initialState.plots || 3, // FIXED: Default to 3 plots
+        availablePlots: farmParams.initialState.plots || 3, // FIXED: Default to 3 plots
         currentPhase: 'Early',
         completedAdventures: [],
         completedCleanups: new Set<string>(),
@@ -475,7 +475,7 @@ export class SimulationEngine {
           },
           {
             plotId: 'plot_2', 
-            cropId: 'beet',
+            cropId: 'beetroot',  // Fixed: Match CSV ID
             plantedAt: -30,
             growthTimeRequired: 90, // 1.5 hours  
             waterLevel: 60,
@@ -570,8 +570,8 @@ export class SimulationEngine {
       // Process adventures if active
       this.processActiveAdventures(deltaTime)
       
-      // Process resource regeneration
-      this.processResourceRegeneration(deltaTime)
+      // FIXED: Disabled resource regeneration - energy should only come from crop harvests
+      // this.processResourceRegeneration(deltaTime)
       
       // Make AI decisions
       const decisions = this.makeDecisions()
@@ -696,12 +696,13 @@ export class SimulationEngine {
    * Processes resource regeneration (energy and water)
    */
   private processResourceRegeneration(deltaTime: number): void {
-    // Energy regeneration: +0.5 per minute up to max
-    const energyRegen = 0.5 * deltaTime
-    this.gameState.resources.energy.current = Math.min(
-      this.gameState.resources.energy.max,
-      this.gameState.resources.energy.current + energyRegen
-    )
+    // FIXED: No energy regeneration - energy only comes from crop harvests
+    // Energy should always be whole numbers
+    // const energyRegen = 0.5 * deltaTime
+    // this.gameState.resources.energy.current = Math.min(
+    //   this.gameState.resources.energy.max,
+    //   this.gameState.resources.energy.current + energyRegen
+    // )
 
     // Water auto-pump generation if unlocked
     if (this.gameState.resources.water.autoGenRate > 0) {
@@ -750,11 +751,11 @@ export class SimulationEngine {
     
     // Adventures are now processed immediately in executeAction, no ongoing processing needed
     
-    // Regenerate energy
-    this.gameState.resources.energy.current = Math.min(
-      this.gameState.resources.energy.max,
-      this.gameState.resources.energy.current + this.gameState.resources.energy.regenerationRate * deltaTime
-    )
+    // FIXED: No energy regeneration - energy only from crop harvests
+    // this.gameState.resources.energy.current = Math.min(
+    //   this.gameState.resources.energy.max,
+    //   this.gameState.resources.energy.current + this.gameState.resources.energy.regenerationRate * deltaTime
+    // )
     
     return events
   }
@@ -827,10 +828,10 @@ export class SimulationEngine {
           screen: 'farm',
           target: readyToHarvest[0].plotId,
           duration: 2,
-          energyCost: 3,
+          energyCost: 0, // FIXED: Harvesting is FREE, only planting costs energy
           goldCost: 0,
           prerequisites: [],
-          expectedRewards: { gold: 10, items: [readyToHarvest[0].cropId] }
+          expectedRewards: { energy: 2, items: [readyToHarvest[0].cropId] } // Crops give energy, not gold!
         })
       }
     }
@@ -897,10 +898,10 @@ export class SimulationEngine {
         screen: 'farm',
         target: readyToHarvest[0].plotId,
         duration: 2,
-        energyCost: 3,
+        energyCost: 0, // FIXED: Harvesting is FREE, only planting costs energy
         goldCost: 0,
         prerequisites: [],
-        expectedRewards: { gold: 10, items: [readyToHarvest[0].cropId] }
+        expectedRewards: { energy: 2, items: [readyToHarvest[0].cropId] } // Crops give energy, not gold!
       })
     }
     
@@ -939,7 +940,7 @@ export class SimulationEngine {
           screen: 'farm',
           target: bestCrop,
           duration: 2,
-          energyCost: 8,
+          energyCost: 0, // FIXED: Planting is FREE, only costs time
           goldCost: 0,
           prerequisites: [],
           expectedRewards: {}
@@ -1734,6 +1735,25 @@ export class SimulationEngine {
         }
         break
         
+      case 'adventure':
+        // Adventure scoring based on energy and potential gold rewards
+        score = 30 // Base score for adventure
+        
+        // Higher score when we have good energy (adventures consume energy)
+        if (this.gameState.resources.energy.current > 60) {
+          score += 30 // Significant bonus when energy is high
+        }
+        
+        // Bonus for expected gold rewards 
+        const goldReward = action.expectedRewards?.gold || 0
+        score += goldReward * 0.5 // Scale gold rewards into score
+        
+        // Bonus when gold is low (need income source)
+        if (this.gameState.resources.gold < 100) {
+          score += 20 // Adventures are primary gold source
+        }
+        break
+        
       default:
         score = 10 // Default score for other actions
     }
@@ -2183,13 +2203,21 @@ export class SimulationEngine {
             c => c.plotId !== action.target
           )
           
-          // Award rewards
-          this.gameState.resources.gold += action.expectedRewards.gold || 0
+          // CRITICAL FIX: Crops produce ENERGY, not gold!
+          // Get energy value from CSV crop data
+          const cropData = this.gameDataStore.getItemById(harvestCrop.cropId)
+          const energyValue = cropData ? (parseInt(cropData.effect) || 1) : 1 // effect = energy value (35 for beetroot)
+          
+          // Add energy (capped at max energy)
+          this.gameState.resources.energy.current = Math.min(
+            this.gameState.resources.energy.max,
+            this.gameState.resources.energy.current + energyValue
+          )
           
           events.push({
             timestamp: this.gameState.time.totalMinutes,
             type: 'action_harvest',
-            description: `Harvested ${harvestCrop.cropId}`,
+            description: `Harvested ${harvestCrop.cropId} for +${energyValue} energy`,
             importance: 'medium'
           })
         }
@@ -3957,7 +3985,9 @@ export class SimulationEngine {
         return this.gameState.progression.currentPhase !== 'Tutorial' ||
                this.gameState.progression.unlockedUpgrades.includes('town_access')
       case 'adventure':
-        return this.gameState.progression.heroLevel >= 3 ||
+        // CRITICAL FIX: Allow basic adventures from Tutorial phase for economic flow
+        // Heroes need to convert energy to gold early in the game
+        return this.gameState.progression.heroLevel >= 1 || // Lowered from 3 to 1
                this.gameState.progression.unlockedUpgrades.includes('adventure_access')
       case 'forge':
         return this.gameState.progression.currentPhase === 'Mid' ||

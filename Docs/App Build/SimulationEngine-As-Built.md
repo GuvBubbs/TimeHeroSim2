@@ -149,6 +149,35 @@ private shouldHeroActNow(): boolean {
 - **Cleanup Actions**: CSV-driven farm expansion with prerequisite checking
 - **Plot Management**: Dynamic plot allocation and availability tracking
 
+### Economic Model (Phase 8K Critical Fix)
+
+**Core Economic Flow**: The simulation implements the correct Time Hero economic model where energy is the central currency:
+
+```
+Crops → Plant (FREE, time only) → Harvest (FREE, adds energy) → Energy → Adventures (gold) + Cleanup (plots)
+```
+
+**Key Economic Principles**:
+- ✅ **Planting**: FREE action, only costs time (duration from CSV)
+- ✅ **Harvesting**: FREE action, adds energy based on crop `effect` value  
+- ✅ **Energy Sources**: Only from crop harvests (no regeneration)
+- ✅ **Gold Sources**: Only from adventures (consumes energy)
+- ✅ **Plot Expansion**: Cleanup actions (consumes energy)
+- ✅ **Starting Resources**: 0 gold, 100 energy, 3 plots
+
+**Energy Values by Crop** (from crops.csv `effect` field):
+- Carrot: 1 energy, Radish: 1 energy
+- Potato: 2 energy, Turnip: 2 energy, Cabbage: 3 energy
+- Corn: 5 energy, Tomato: 4 energy, Spinach: 5 energy
+- Strawberry: 8 energy, Beetroot: 35 energy
+
+**Phase 8K Fixes Applied**:
+- Fixed harvest execution to use `cropData.effect` for energy values
+- Removed incorrect energy costs from harvest actions (now FREE)
+- Removed incorrect energy costs from planting actions (now FREE)
+- Eliminated all energy regeneration (only from harvests)
+- Set starting gold to 0 (earn through adventures)
+
 ### Adventure System  
 - **Real Combat**: Pentagon weapon advantage system with boss mechanics
 - **Route Management**: Short/Medium/Long adventures with scaled rewards
@@ -349,6 +378,11 @@ inventory: {
 - Comprehensive error handling and logging
 
 ✅ **Recent Fixes Applied**:
+- **Phase 8K Economic Fix**: Completely corrected the economic model to match game design
+- **Phase 8K**: Fixed harvest actions to give energy (not gold) using CSV `effect` values  
+- **Phase 8K**: Removed incorrect energy costs from harvest and planting actions
+- **Phase 8K**: Eliminated all energy regeneration - energy only from crop harvests
+- **Phase 8K**: Set starting gold to 0 and starting plots to 3 per farm_stages.csv
 - **Phase 8J Critical Fix**: Rewrote `shouldHeroActNow()` to prevent simulation stalling
 - **Phase 8J**: Added missing pump water evaluation and enhanced debug logging
 - **Phase 8J**: Improved action scoring for cleanup and pump actions
@@ -358,9 +392,13 @@ inventory: {
 - Validated CSV data flow from store to worker
 
 ✅ **Testing Verified**:
+- **Phase 8K**: Correct economic flow - harvests add energy, no energy costs for farming
+- **Phase 8K**: Energy only from crop harvests (35 for beetroot, 1-8 for others)
+- **Phase 8K**: Planting and harvesting are FREE actions (time-based only)
+- **Phase 8K**: Starting resources correct (0 gold, 100 energy, 3 plots)
 - **Phase 8J**: Continuous action execution beyond tick 1 (fixed simulation stalling)
 - **Phase 8J**: Regular action cycles every ~30 ticks with healthy resource progression
-- **Phase 8J**: Energy-based triggers working (100 → 89 → 100 energy cycles)
+- **Phase 8J**: Energy-based triggers working (energy accumulation from harvests)
 - End-to-end data flow from SimulationEngine to UI widgets
 - Real-time resource updates (energy, gold, water)
 - Action execution and event logging

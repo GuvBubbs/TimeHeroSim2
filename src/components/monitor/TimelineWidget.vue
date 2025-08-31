@@ -56,8 +56,8 @@
         </div>
         <div class="text-xs space-y-1 max-h-20 overflow-y-auto">
           <div 
-            v-for="event in recentEvents" 
-            :key="event.timestamp"
+            v-for="(event, index) in recentEvents" 
+            :key="`${event.timestamp}-${index}`"
             class="flex justify-between items-center"
           >
             <div class="flex items-center gap-1">

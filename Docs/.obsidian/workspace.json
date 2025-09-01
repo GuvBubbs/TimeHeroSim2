@@ -172,7 +172,9 @@
   },
   "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
-    "Sim Design/Sim Refactor/Logs.rtf",
+    "Sim Design/Playable Sim/phase-9a-seed-catching-fixes.md",
+    "Sim Design/Playable Sim",
+    "Sim Design/untitled folder",
     "starting-conditions.md",
     "Sim Design/Sim Refactor/phase-8q-widget-polish.md",
     "Sim Design/Sim Refactor/phase-8p-critical-widgets.md",
@@ -184,6 +186,7 @@
     "Sim Design/Sim Refactor/phase-8j-simulation-stall-fix.md",
     "Sim Design/Sim Refactor/phase-8i-complete-integration.md",
     "Sim Design/Sim Refactor/phase-8h-integration-fixes.md",
+    "Sim Design/Sim Refactor/Logs.rtf",
     "Archive/PHASE8G-COMPLETION-SUMMARY.md",
     "Archive/8I IMPLEMENTATION_SUMMARY.md",
     "App Build/SimulationEngine-As-Built.md",
@@ -202,10 +205,8 @@
     "farm_cleanups.csv",
     "Time Hero - Unified Game Design & Progression.md",
     "Sim Design/End to end Build",
-    "Sim Design/untitled folder",
     "Sim Design/Sim Refactor",
     "Archive",
-    "untitled folder",
-    "App Build/Upgrade Tree"
+    "untitled folder"
   ]
 }

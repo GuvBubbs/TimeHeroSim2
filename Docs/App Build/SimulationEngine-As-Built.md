@@ -439,8 +439,15 @@ inventory: {
 - CSV data integration with validation
 - Bottleneck detection and victory conditions
 - Comprehensive error handling and logging
+- **Blueprint → Build → Unlock progression system** (Phase 9A)
+- **Structure building with prerequisite validation** (Phase 9A)
 
 ✅ **Recent Fixes Applied**:
+- **Phase 9A Blueprint System**: Complete blueprint → build → unlock progression system implemented
+- **Phase 9A Build Action Priority**: Fixed critical scoring issue - build actions now score 900 vs ~9.5, ensuring immediate execution
+- **Phase 9A Structure Building**: Hero can purchase blueprints, return to farm, build structures, and unlock new areas
+- **Phase 9A Navigation Prerequisites**: Tower access now properly requires tower_reach_1 to be built, not just unlocked
+- **Phase 9A Timed Seed Catching**: Changed from instant seed rewards to proper timed sessions (5-minute duration)
 - **Phase 8Q Widget Integration**: Fixed critical data flow issues preventing Current Action and Next Decision widgets from working
 - **Phase 8Q Bottleneck Fix**: Corrected `getBottleneckPriorities()` method accessing non-existent `gameState.farm.crops` (changed to `gameState.processes.crops`)
 - **Phase 8Q Action Display**: Enhanced `WidgetDataAdapter.transformCurrentAction()` to show recent completed actions when no ongoing process
@@ -465,6 +472,11 @@ inventory: {
 - Validated CSV data flow from store to worker
 
 ✅ **Testing Verified**:
+- **Phase 9A**: Complete blueprint → build → unlock flow working (farm → town → buy blueprint → farm → build tower → tower accessible) ✅
+- **Phase 9A**: Build action scoring fixed - ultra-high priority (900) ensures immediate execution ✅ 
+- **Phase 9A**: Hero reaches tower and initiates seed catching sessions ✅
+- **Phase 9A**: Navigation prerequisites properly validate built structures (not just unlocked areas) ✅
+- **Phase 9A**: Blueprint purchase, return navigation, and structure building all functional ✅
 - **Phase 8Q**: Next Decision widget displays real decisions ("pump", "catch_seeds") with reasoning ✅
 - **Phase 8Q**: Current Action widget shows recent completed actions when no ongoing process ✅
 - **Phase 8Q**: Complete data flow SimulationEngine → Worker → Bridge → Widgets working ✅
@@ -490,3 +502,21 @@ inventory: {
 - Action execution and event logging
 - Persona behavior differences (speedrunner vs casual)
 - CSV data validation and error handling
+
+## 🚨 **Known Issues (Phase 9A)**
+
+### **Critical: Seed Catching Sessions Not Completing**
+- **Problem**: Hero reaches tower and starts seed catching sessions but they never complete
+- **Symptoms**: 
+  - Multiple "🌰 SEED CATCHING STARTED" log entries
+  - No seed rewards being awarded
+  - Seed count remains at 0 despite multiple 5-minute sessions
+  - Hero trapped in infinite catch loop at tower
+- **Root Cause**: `processOngoingActivities()` not properly processing `gameState.processes.seedCatching` completion
+- **Impact**: Blocks complete economic cycle (plant → harvest → town → blueprint → build → tower → **catch seeds** → plant)
+- **Status**: Blueprint system is **fully functional**, seed catching completion logic needs fixing
+
+### **Secondary: No Smart Tower Exit** 
+- **Problem**: Hero should return to farm when sufficient seeds collected
+- **Current**: Hero stays at tower indefinitely trying to catch seeds
+- **Expected**: Auto-return to farm when seed targets met (similar to Phase 8N logic)

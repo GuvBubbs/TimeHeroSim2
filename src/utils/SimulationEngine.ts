@@ -27,7 +27,8 @@ import type {
   LocationState,
   AutomationState,
   PriorityState,
-  GameScreen
+  GameScreen,
+  BlueprintState
 } from '@/types'
 
 /**
@@ -387,7 +388,7 @@ export class SimulationEngine {
     
     // Initialize standard materials with starting amounts
     materials.set('wood', 25)
-    materials.set('stone', 18)
+    materials.set('stone', 23) // PHASE 9A: Increased stone (18+5) for sword crafting
     materials.set('copper', 3)
     materials.set('iron', 7)
     materials.set('silver', 2)
@@ -445,13 +446,15 @@ export class SimulationEngine {
         completedAdventures: [],
         completedCleanups: new Set<string>(),
         unlockedUpgrades: [],
-        unlockedAreas: ['farm'],
+        unlockedAreas: ['farm'], // Only farm initially - other areas unlocked when structures built
+        builtStructures: new Set(['farm']), // Farm always built, other structures need blueprints + building
         victoryConditionsMet: false
       },
       inventory: {
         tools: new Map(),
         weapons: new Map(), // Start empty - must purchase blueprints and craft weapons
         armor: new Map(),
+        blueprints: new Map(), // Start empty - must purchase blueprints from town vendors
         capacity: 100,
         currentWeight: 0
       },
@@ -459,7 +462,8 @@ export class SimulationEngine {
         crops: [], // FIXED: Start with completely empty plots - no pre-planted crops
         adventure: null,
         crafting: [],
-        mining: null
+        mining: null,
+        seedCatching: null // Start with no active seed catching - must navigate to tower and start manually
       },
       helpers: {
         gnomes: [],
@@ -482,18 +486,6 @@ export class SimulationEngine {
         targetCrops: new Map(), // farmParams.automation.targetSeedRatios || new Map(),
         wateringThreshold: 25, // farmParams.automation.autoWater.threshold,
         energyReserve: 5 // Lower threshold for early game - farmParams.automation.autoPlant.energyThreshold
-      },
-      location: {
-        currentScreen: 'farm', // Start on farm screen
-        screenHistory: [], // Track navigation history
-        lastVisited: {
-          farm: 480,
-          tower: 0,
-          town: 0,
-          adventure: 0,
-          forge: 0,
-          mine: 0
-        }
       },
       priorities: {
         cleanupOrder: farmParams.landExpansion?.prioritizeCleanupOrder || [],
@@ -718,7 +710,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Processes ongoing activities (crops, crafting, adventures)
+   * Processes ongoing activities (crops, crafting, adventures, seed catching)
    */
   private processOngoingActivities(deltaTime: number): GameEvent[] {
     const events: GameEvent[] = []
@@ -749,6 +741,42 @@ export class SimulationEngine {
             importance: 'high'
           })
         }
+      }
+    }
+    
+    // Process active seed catching sessions
+    if (this.gameState.processes.seedCatching && !this.gameState.processes.seedCatching.isComplete) {
+      const seedCatch = this.gameState.processes.seedCatching
+      const elapsedTime = this.gameState.time.totalMinutes - seedCatch.startedAt
+      
+      // Update progress based on elapsed time
+      seedCatch.progress = Math.min(1.0, elapsedTime / seedCatch.duration)
+      
+      if (seedCatch.progress >= 1.0) {
+        // Seed catching complete - award seeds
+        seedCatch.isComplete = true
+        
+        // Calculate seeds caught based on wind level and net type
+        const seedsAwarded = seedCatch.expectedSeeds
+        
+        // Add seeds to inventory (mix of available seed types based on tower reach)
+        const currentCarrotSeeds = this.gameState.resources.seeds.get('carrot') || 0
+        this.gameState.resources.seeds.set('carrot', currentCarrotSeeds + Math.floor(seedsAwarded * 0.6))
+        
+        const currentRadishSeeds = this.gameState.resources.seeds.get('radish') || 0
+        this.gameState.resources.seeds.set('radish', currentRadishSeeds + Math.floor(seedsAwarded * 0.4))
+        
+        events.push({
+          timestamp: this.gameState.time.totalMinutes,
+          type: 'seed_catching_complete',
+          description: `Seed catching session complete! Caught ${seedsAwarded} seeds using ${seedCatch.netType} net`,
+          importance: 'high'
+        })
+        
+        // Clear the active seed catching session
+        this.gameState.processes.seedCatching = null
+        
+        console.log(`🌰 SEED CATCHING COMPLETE: +${seedsAwarded} seeds (${Math.floor(seedsAwarded * 0.6)} carrot, ${Math.floor(seedsAwarded * 0.4)} radish)`)
       }
     }
     
@@ -920,11 +948,11 @@ export class SimulationEngine {
     console.log(`🌾 Farm Analysis: ${totalPlots} total plots, ${activeCrops} active crops, ${emptyPlots} empty plots`)
     
     // CRITICAL FIX: Plant in ALL available empty plots, not just one
+    // PHASE 9A: Planting is FREE - no energy requirement to plant seeds
     if (emptyPlots > 0 && 
-        this.gameState.automation.plantingEnabled && 
-        this.gameState.resources.energy.current > this.gameState.automation.energyReserve) {
+        this.gameState.automation.plantingEnabled) {
       
-      // Create planting actions for each empty plot (up to energy/seed limits)
+      // Create planting actions for each empty plot (up to seed limits)
       for (let i = 0; i < Math.min(emptyPlots, 3); i++) { // Max 3 actions per check-in
         const bestCrop = this.selectCropToPlant()
         if (bestCrop && (this.gameState.resources.seeds.get(bestCrop) || 0) > 0) {
@@ -961,6 +989,14 @@ export class SimulationEngine {
     // Cleanup actions for farm expansion (Phase 8B Implementation)
     const cleanupActions = this.evaluateCleanupActions()
     actions.push(...cleanupActions)
+    
+    // CRITICAL: Build actions for purchased blueprints
+    const buildActions = this.evaluateBuildActions()
+    actions.push(...buildActions)
+    
+    // CRITICAL FIX: Generate town navigation when blueprint purchases needed (Phase 9A)
+    const townNavigationActions = this.evaluateTownNavigationFromFarm()
+    actions.push(...townNavigationActions)
     
     return actions
   }
@@ -1038,6 +1074,110 @@ export class SimulationEngine {
     }
     
     return actions
+  }
+
+  /**
+   * Evaluates build actions for purchased blueprints
+   */
+  private evaluateBuildActions(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Check all purchased blueprints that haven't been built yet
+    for (const [blueprintId, blueprint] of this.gameState.inventory.blueprints) {
+      if (blueprint.purchased && !blueprint.isBuilt) {
+        const buildAction = this.evaluateBuildAction(blueprintId, blueprint)
+        if (buildAction) {
+          actions.push(buildAction)
+        }
+      }
+    }
+    
+    return actions
+  }
+
+  /**
+   * PHASE 9A: Generate town navigation from farm when blueprint purchases needed
+   */
+  private evaluateTownNavigationFromFarm(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Only generate when currently at farm
+    if (this.gameState.location.currentScreen !== 'farm') {
+      return actions
+    }
+    
+    // Check if hero needs tower access and can afford blueprint
+    if (this.needsTowerAccess()) {
+      const blueprintNeeded = !this.gameState.inventory.blueprints.has('blueprint_tower_reach_1')
+      const canAffordBlueprint = this.gameState.resources.gold >= 25
+      
+      if (blueprintNeeded && canAffordBlueprint) {
+        console.log(`🏃‍♂️ GENERATING TOWN NAVIGATION: Blueprint needed, ${this.gameState.resources.gold} gold available`)
+        
+        actions.push({
+          id: `move_to_town_for_blueprint_${Date.now()}`,
+          type: 'move',
+          screen: 'farm', // Current screen
+          target: 'town', // Target screen  
+          duration: 1,
+          energyCost: 0,
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: {},
+          description: 'Navigate to town for blueprint purchase',
+          toScreen: 'town' // Explicit target for move actions
+        })
+      }
+    }
+    
+    // Future: Add other urgent town navigation needs (weapon blueprints, etc.)
+    
+    return actions
+  }
+
+  /**
+   * Evaluates building a specific blueprint
+   */
+  private evaluateBuildAction(blueprintId: string, blueprint: BlueprintState): GameAction | null {
+    const buildCost = blueprint.buildCost
+    
+    // Check energy requirements
+    if (buildCost.energy && this.gameState.resources.energy.current < buildCost.energy) {
+      console.log(`❌ BUILD BLOCKED: Insufficient energy for ${blueprintId} (${this.gameState.resources.energy.current} < ${buildCost.energy})`)
+      return null
+    }
+    
+    // Check material requirements
+    if (buildCost.materials) {
+      for (const [materialName, amount] of buildCost.materials) {
+        const available = this.gameState.resources.materials.get(materialName) || 0
+        if (available < amount) {
+          console.log(`❌ BUILD BLOCKED: Insufficient ${materialName} for ${blueprintId} (${available} < ${amount})`)
+          return null
+        }
+      }
+    }
+    
+    // Generate build action
+    const structureId = blueprintId.replace('blueprint_', '')
+    
+    console.log(`🏗️ GENERATING BUILD ACTION: ${structureId} with ULTRA-HIGH priority (900)`)
+    
+    return {
+      id: `build_${structureId}_${Date.now()}`,
+      type: 'build',
+      screen: 'farm',
+      target: structureId,
+      duration: buildCost.time || 5, // Default 5 minutes if no time specified
+      energyCost: buildCost.energy || 0,
+      goldCost: 0, // No gold cost for building (already paid for blueprint)
+      prerequisites: [blueprintId], // Must own the blueprint
+      expectedRewards: {
+        items: [structureId] // Building the structure
+      },
+      description: `Build ${structureId} from purchased blueprint`,
+      score: 900 // ULTRA HIGH PRIORITY - Critical for progression, must execute before other actions
+    }
   }
 
   /**
@@ -1199,6 +1339,14 @@ export class SimulationEngine {
     
     if (!townParams) return actions
     
+    // CRITICAL: Blueprint purchase flow - check if hero needs tower access
+    const blueprintPurchases = this.evaluateBlueprintPurchases()
+    actions.push(...blueprintPurchases)
+    
+    // PHASE 9A: Navigate back to farm after blueprint purchases to build structures
+    const returnToFarmActions = this.evaluateReturnToFarmForBuilding()
+    actions.push(...returnToFarmActions)
+    
     // Phase 8L: Material trading for gold generation
     const materialSales = this.evaluateMaterialSales()
     actions.push(...materialSales)
@@ -1263,6 +1411,138 @@ export class SimulationEngine {
     }
     
     return actions
+  }
+
+  /**
+   * Evaluates blueprint purchases needed for progression
+   */
+  private evaluateBlueprintPurchases(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Check if hero needs tower access for seed collection
+    if (this.needsTowerAccess()) {
+      const towerBlueprint = this.evaluateTowerBlueprintPurchase()
+      if (towerBlueprint) {
+        actions.push(towerBlueprint)
+      }
+    }
+    
+    // Future: Add other blueprint purchases (pumps, storage, gnome housing, etc.)
+    
+    return actions
+  }
+
+  /**
+   * PHASE 9A: Navigate back to farm after blueprint purchases to build structures
+   */
+  private evaluateReturnToFarmForBuilding(): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Only generate when currently in town
+    if (this.gameState.location.currentScreen !== 'town') {
+      return actions
+    }
+    
+    // Check if hero has purchased blueprints that need to be built
+    let hasUnbuiltBlueprints = false
+    for (const [blueprintId, blueprint] of this.gameState.inventory.blueprints) {
+      if (blueprint.purchased && !blueprint.isBuilt) {
+        hasUnbuiltBlueprints = true
+        console.log(`🏠 UNBUILT BLUEPRINT FOUND: ${blueprintId}`)
+        break
+      }
+    }
+    
+    if (hasUnbuiltBlueprints) {
+      console.log(`🏠 GENERATING FARM NAVIGATION: Need to return to farm to build purchased blueprints`)
+      
+      actions.push({
+        id: `move_farm_for_building_${Date.now()}`,
+        type: 'move',
+        screen: 'town',
+        target: 'farm',
+        toScreen: 'farm',
+        duration: 1,
+        energyCost: 0,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {},
+        description: 'Return to farm to build purchased blueprints',
+        score: 600 // Very high priority - hero needs to get back to build
+      })
+    }
+    
+    return actions
+  }
+
+  /**
+   * Determines if hero needs tower access for seed collection
+   */
+  private needsTowerAccess(): boolean {
+    // Already have tower built
+    if (this.gameState.progression.builtStructures.has('tower_reach_1')) {
+      return false
+    }
+    
+    // Already purchased tower blueprint but haven't built it yet
+    if (this.gameState.inventory.blueprints.has('blueprint_tower_reach_1')) {
+      return false
+    }
+    
+    // Check if seeds are low using existing SeedSystem logic
+    const seedMetrics = SeedSystem.getSeedMetrics(this.gameState)
+    const farmPlots = this.gameState.progression.farmPlots || 3
+    const seedBuffer = Math.max(farmPlots * 2, 6) // Want 2x seeds per plot, minimum 6 seeds
+    const lowThreshold = Math.floor(seedBuffer * 0.7) // Low when < 70% of buffer
+    
+    return seedMetrics.totalSeeds < lowThreshold
+  }
+
+  /**
+   * Evaluates purchasing blueprint_tower_reach_1 if conditions are met - generates navigation OR purchase
+   */
+  private evaluateTowerBlueprintPurchase(): GameAction | null {
+    const TOWER_BLUEPRINT_COST = 25
+    
+    // Check if can afford it
+    if (this.gameState.resources.gold < TOWER_BLUEPRINT_COST) {
+      return null
+    }
+    
+    // CRITICAL FIX: Check if hero is in town
+    const currentScreen = this.gameState.location.currentScreen
+    
+    if (currentScreen !== 'town') {
+      // Hero needs to navigate to town first - HIGH PRIORITY
+      console.log(`🏃‍♂️ NAVIGATION NEEDED: Generate town navigation for blueprint purchase (${TOWER_BLUEPRINT_COST} gold available)`)
+      return {
+        id: `navigate_town_for_blueprint_${Date.now()}`,
+        type: 'move',
+        screen: currentScreen, // Current screen  
+        target: 'town',
+        duration: 1,
+        energyCost: 0,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {}
+      }
+    } else {
+      // Hero is in town - generate purchase action
+      console.log(`💰 PURCHASE READY: Generate blueprint purchase in town (${TOWER_BLUEPRINT_COST} gold available)`)
+      return {
+        id: `purchase_blueprint_tower_reach_1_${Date.now()}`,
+        type: 'purchase',
+        screen: 'town',
+        target: 'blueprint_tower_reach_1',
+        duration: 1,
+        energyCost: 0,
+        goldCost: TOWER_BLUEPRINT_COST,
+        prerequisites: [], // No prerequisites for basic tower blueprint
+        expectedRewards: { 
+          items: ['blueprint_tower_reach_1']
+        }
+      }
+    }
   }
 
   /**
@@ -1587,8 +1867,18 @@ export class SimulationEngine {
       case 'town':
         // Navigate to town if we have gold to spend or need upgrades
         const gold = this.gameState.resources.gold
-        const goldScore = gold >= 100 ? 7 : gold >= 50 ? 5 : 2  // FIXED: >= instead of >
-        return { reason: 'Purchase upgrades', score: goldScore }
+        let townScore = gold >= 100 ? 7 : gold >= 50 ? 5 : 2  // FIXED: >= instead of >
+        
+        // PHASE 9A: High priority for town when blueprint purchases are needed
+        if (this.needsTowerAccess()) {
+          const blueprintNeeded = !this.gameState.inventory.blueprints.has('blueprint_tower_reach_1')
+          if (blueprintNeeded && gold >= 25) {
+            townScore = 500  // Very high priority for critical blueprint purchase
+            return { reason: 'CRITICAL: Buy tower blueprint', score: townScore }
+          }
+        }
+        
+        return { reason: 'Purchase upgrades', score: townScore }
         
       case 'adventure':
         // Navigate for adventure if have good energy and equipment
@@ -1735,6 +2025,20 @@ export class SimulationEngine {
    * Enhanced action scoring using parameter-based evaluation
    */
   private scoreAction(action: GameAction): number {
+    // PHASE 9A: Ultra-high priority for blueprint purchase navigation
+    if (action.type === 'move' && action.target === 'town' && action.description?.includes('blueprint purchase')) {
+      const urgencyScore = 800 // Ultra-high priority
+      console.log(`🎯 BLUEPRINT NAVIGATION SCORE: ${urgencyScore} for ${action.description}`)
+      return urgencyScore
+    }
+
+    // PHASE 9A: Ultra-high priority for build actions (critical progression)
+    if (action.type === 'build') {
+      const buildScore = action.score || 900 // Use pre-set score or default to 900
+      console.log(`🏗️ BUILD ACTION SCORE: ${buildScore} for build ${action.target}`)
+      return buildScore
+    }
+
     let score = 0
     const farmParams = this.parameters.farm
     const decisionParams = this.parameters.decisions
@@ -1811,6 +2115,18 @@ export class SimulationEngine {
       case 'move':
         // Navigation scoring based on screen priorities
         const targetScreen = action.target as string
+        
+        // PHASE 9A: ULTRA HIGH PRIORITY for town navigation when blueprint purchases needed
+        if (targetScreen === 'town' && this.needsTowerAccess()) {
+          const blueprintNeeded = !this.gameState.inventory.blueprints.has('blueprint_tower_reach_1')
+          const canAfford = this.gameState.resources.gold >= 25
+          
+          if (blueprintNeeded && canAfford) {
+            score = 800 // ULTRA HIGH priority for critical blueprint purchase navigation
+            console.log(`🏃‍♂️ ULTRA HIGH TOWN NAV SCORE: ${score} (blueprint needed, ${this.gameState.resources.gold} gold available)`)
+            break
+          }
+        }
         
         // PHASE 8N: PROACTIVE PRIORITY for tower navigation during seed shortage
         if (targetScreen === 'tower') {
@@ -2500,8 +2816,30 @@ export class SimulationEngine {
         // Handle purchases
         this.gameState.resources.gold -= action.goldCost
         
+        // CRITICAL: Handle blueprint purchases
+        if (action.target && action.target.startsWith('blueprint_')) {
+          const blueprintId = action.target
+          
+          // Add blueprint to inventory
+          this.gameState.inventory.blueprints.set(blueprintId, {
+            id: blueprintId,
+            purchased: true,
+            isBuilt: false,
+            buildCost: this.getBlueprintBuildCost(blueprintId)
+          })
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'blueprint_purchase',
+            description: `Purchased ${blueprintId} blueprint for ${action.goldCost} gold`,
+            importance: 'high'
+          })
+          
+          console.log(`📜 BLUEPRINT PURCHASED: ${blueprintId} for ${action.goldCost} gold`)
+          console.log(`📜 BLUEPRINT INVENTORY: ${Array.from(this.gameState.inventory.blueprints.keys()).join(', ')}`)
+        }
         // Phase 8L: Handle emergency wood bundles
-        if (action.target && action.target.startsWith('emergency_wood_')) {
+        else if (action.target && action.target.startsWith('emergency_wood_')) {
           const woodAmount = action.expectedRewards?.materials?.wood || 0
           if (woodAmount > 0) {
             const currentWood = this.gameState.resources.materials.get('wood') || 0
@@ -2596,29 +2934,36 @@ export class SimulationEngine {
         break
 
       case 'catch_seeds':
-        // Handle seed catching at tower - FIXED: No energy cost
+        // Handle seed catching at tower - FIXED: Now timed process, no energy cost
         if (this.gameState.location.currentScreen === 'tower') {
           const towerReach = this.getTowerReachLevel()
           const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
           const netType = this.getBestNet()
+          const duration = action.duration || 5
           
-          const catchingResult = SeedSystem.processManualCatching(
-            this.gameState,
-            action.duration || 5,
-            windLevel.level,
-            netType,
-            true
-          )
+          // Calculate expected seeds to catch  
+          const catchRate = MANUAL_CATCHING.calculateCatchRate(windLevel.level, netType, this.getPersonaCatchingSkill())
+          const expectedSeeds = Math.floor(catchRate.seedsPerMinute * duration)
+          
+          // Start timed seed catching process
+          this.gameState.processes.seedCatching = {
+            startedAt: this.gameState.time.totalMinutes,
+            duration: duration,
+            progress: 0,
+            windLevel: windLevel.level,
+            netType: netType,
+            expectedSeeds: expectedSeeds,
+            isComplete: false
+          }
           
           events.push({
             timestamp: this.gameState.time.totalMinutes,
-            type: 'catch_seeds',
-            description: `Caught ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) at ${windLevel.name} level`,
-            data: { seeds: catchingResult.seedsGained, types: catchingResult.seedTypes, energy: 0 },
+            type: 'seed_catching_started',
+            description: `Started seed catching session with ${netType} net at ${windLevel.name} level (${duration} min, expecting ~${expectedSeeds} seeds)`,
             importance: 'medium'
           })
           
-          console.log(`🌰 SEED CATCH: Gained ${catchingResult.seedsGained} seeds (${catchingResult.seedTypes.join(', ')}) - Energy: FREE (always)`)
+          console.log(`🌰 SEED CATCHING STARTED: ${duration}min session with ${netType} net at ${windLevel.name} level (expecting ~${expectedSeeds} seeds)`)
         } else {
           console.log(`❌ SEED CATCH FAILED: Not at tower (currently at ${this.gameState.location.currentScreen})`)
         }
@@ -2692,12 +3037,55 @@ export class SimulationEngine {
         // Delegate to cleanup action handler
         return this.executeCleanupAction(action)
         
+      case 'build':
+        // Handle building structures from blueprints
+        return this.executeBuildAction(action)
+        
       case 'sell_material':
         // Phase 8L: Handle material selling for gold
         return this.executeSellMaterialAction(action)
     }
     
     return { success: true, events }
+  }
+
+  /**
+   * Gets build cost for a blueprint from CSV data
+   */
+  private getBlueprintBuildCost(blueprintId: string): { energy?: number; materials?: Map<string, number>; time?: number } {
+    // Map blueprint ID to build action ID (remove blueprint_ prefix)
+    const buildActionId = blueprintId.replace('blueprint_', '')
+    
+    try {
+      // Query build action from farm_actions.csv
+      const buildAction = this.gameDataStore.getItemById(buildActionId)
+      if (buildAction) {
+        const cost: { energy?: number; materials?: Map<string, number>; time?: number } = {}
+        
+        if (buildAction.energy_cost) {
+          cost.energy = parseInt(buildAction.energy_cost) || 0
+        }
+        
+        if (buildAction.time) {
+          cost.time = parseInt(buildAction.time) || 0
+        }
+        
+        if (buildAction.materials_cost) {
+          cost.materials = CSVDataParser.parseMaterials(buildAction.materials_cost)
+        }
+        
+        return cost
+      }
+    } catch (error) {
+      console.warn(`Failed to get build cost for ${blueprintId}:`, error)
+    }
+    
+    // Fallback costs for known blueprints
+    const fallbackCosts: { [key: string]: { energy?: number; time?: number } } = {
+      'blueprint_tower_reach_1': { energy: 5, time: 2 }
+    }
+    
+    return fallbackCosts[blueprintId] || { energy: 10, time: 5 }
   }
 
   /**
@@ -4761,6 +5149,85 @@ export class SimulationEngine {
   }
 
   /**
+   * Executes building a structure from a blueprint
+   */
+  private executeBuildAction(action: GameAction): { success: boolean; events: GameEvent[] } {
+    const events: GameEvent[] = []
+    
+    if (!action.target) {
+      return { success: false, events: [] }
+    }
+    
+    const structureId = action.target
+    const blueprintId = `blueprint_${structureId}`
+    
+    // Verify blueprint ownership
+    const blueprint = this.gameState.inventory.blueprints.get(blueprintId)
+    if (!blueprint || !blueprint.purchased || blueprint.isBuilt) {
+      console.log(`❌ BUILD FAILED: Invalid blueprint state for ${blueprintId}`)
+      return { success: false, events: [] }
+    }
+    
+    // Consume energy
+    this.gameState.resources.energy.current -= action.energyCost
+    
+    // Consume materials if required
+    if (blueprint.buildCost.materials) {
+      for (const [materialName, amount] of blueprint.buildCost.materials) {
+        const current = this.gameState.resources.materials.get(materialName) || 0
+        this.gameState.resources.materials.set(materialName, current - amount)
+      }
+    }
+    
+    // Mark blueprint as built
+    blueprint.isBuilt = true
+    this.gameState.inventory.blueprints.set(blueprintId, blueprint)
+    
+    // Add structure to built structures
+    this.gameState.progression.builtStructures.add(structureId)
+    
+    // CRITICAL: Unlock corresponding screen access
+    this.updateUnlockedAreasFromBuiltStructures()
+    
+    // Add to unlocked upgrades for compatibility with existing systems
+    this.gameState.progression.unlockedUpgrades.push(structureId)
+    
+    events.push({
+      timestamp: this.gameState.time.totalMinutes,
+      type: 'structure_built',
+      description: `Built ${structureId} from blueprint (${action.duration} min, ${action.energyCost} energy)`,
+      importance: 'high'
+    })
+    
+    console.log(`🏗️ STRUCTURE BUILT: ${structureId} - screen access updated`)
+    
+    return { success: true, events }
+  }
+
+  /**
+   * Updates unlockedAreas based on built structures
+   */
+  private updateUnlockedAreasFromBuiltStructures(): void {
+    const structureToArea: { [key: string]: string } = {
+      'tower_reach_1': 'tower',
+      // Future: Add other structure -> area mappings
+    }
+    
+    // Update unlocked areas based on built structures
+    const newAreas = new Set(this.gameState.progression.unlockedAreas)
+    
+    for (const structureId of this.gameState.progression.builtStructures) {
+      const areaId = structureToArea[structureId]
+      if (areaId && !newAreas.has(areaId)) {
+        newAreas.add(areaId)
+        console.log(`🔓 AREA UNLOCKED: ${areaId} (from building ${structureId})`)
+      }
+    }
+    
+    this.gameState.progression.unlockedAreas = Array.from(newAreas)
+  }
+
+  /**
    * Phase 8L: Evaluates material selling opportunities at town material trader
    */
   private evaluateMaterialSales(): GameAction[] {
@@ -4981,6 +5448,15 @@ export class SimulationEngine {
       return true
     }
     
+    // CRITICAL FIX: Check purchased blueprints
+    if (this.gameState.inventory.blueprints.has(prereqId)) {
+      const blueprint = this.gameState.inventory.blueprints.get(prereqId)
+      console.log(`🔍 PREREQUISITE CHECK: ${prereqId} blueprint found, purchased: ${blueprint?.purchased}`)
+      if (blueprint && blueprint.purchased) {
+        return true
+      }
+    }
+    
     // Check owned tools/weapons
     if (this.gameState.inventory.tools.has(prereqId) || 
         this.gameState.inventory.weapons.has(prereqId)) {
@@ -5104,7 +5580,12 @@ export class SimulationEngine {
       case 'farm':
         return true // Always accessible
       case 'tower':
-        return true // FIXED: Tower should always be accessible for seed collection - core game mechanic
+        // CRITICAL: Tower only accessible after tower_reach_1 is built
+        const hasTower = this.gameState.progression.builtStructures.has('tower_reach_1')
+        if (!hasTower) {
+          console.log(`🚫 TOWER ACCESS BLOCKED: tower_reach_1 not built yet`)
+        }
+        return hasTower
       case 'town':
         return this.gameState.progression.currentPhase !== 'Tutorial' ||
                this.gameState.progression.unlockedUpgrades.includes('town_access')

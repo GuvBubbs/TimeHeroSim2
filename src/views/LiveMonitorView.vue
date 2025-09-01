@@ -11,7 +11,11 @@
 
     <!-- Phase Progress Banner -->
     <div class="mb-6">
-      <PhaseProgress :gameState="currentState" />
+      <PhaseProgress 
+        :gameState="currentState"
+        :widgetPhaseProgress="widgetData.phaseProgress"
+        :widgetProgression="widgetData.progression"
+      />
     </div>
 
     <!-- Simulation Controls -->
@@ -30,8 +34,8 @@
             </span>
           </div>
           
-          <div v-if="currentState" class="text-sm text-sim-text-secondary">
-            Day {{ currentState.time.day }}, {{ formatTime(currentState.time) }}
+          <div v-if="widgetData.time" class="text-sm text-sim-text-secondary">
+            Day {{ widgetData.time.day }}, {{ formatTime(widgetData.time) }}
           </div>
           
           <div v-if="currentStats" class="text-sm text-sim-text-secondary">
@@ -83,13 +87,44 @@
             :disabled="!bridgeStatus.isInitialized"
             class="bg-sim-surface border border-sim-border rounded px-2 py-1 text-sm"
           >
-            <option value="0.5">0.5x</option>
-            <option value="1">1x</option>
-            <option value="5">5x</option>
-            <option value="10">10x</option>
-            <option value="50">50x</option>
-            <option value="100">100x</option>
+            <option value="0.5">0.5x (9.6min/day)</option>
+            <option value="1">1x (4.8min/day)</option>
+            <option value="2">2x (2.4min/day)</option>
+            <option value="5">5x (~1min/day)</option>
+            <option value="max">Max (12sec/day)</option>
           </select>
+          
+          <!-- Phase 8L: Logging Controls -->
+          <div class="flex items-center gap-2 ml-4">
+            <label class="text-sm text-gray-400">Log Level:</label>
+            <select 
+              v-model="logLevel" 
+              @change="updateLogLevel"
+              class="bg-gray-700 text-white px-2 py-1 rounded text-sm"
+            >
+              <option value="verbose">Verbose (Debug)</option>
+              <option value="normal">Normal</option>
+              <option value="reduced">Reduced</option>
+              <option value="minimal">Minimal</option>
+              <option value="errors">Errors Only</option>
+            </select>
+            
+            <label class="text-sm text-gray-400 ml-4">Categories:</label>
+            <div class="flex gap-2">
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.farming" @change="updateLogLevel"> Farm
+              </label>
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.combat" @change="updateLogLevel"> Combat
+              </label>
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.crafting" @change="updateLogLevel"> Craft
+              </label>
+              <label class="text-xs">
+                <input type="checkbox" v-model="logCategories.economy" @change="updateLogLevel"> Economy
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -101,25 +136,34 @@
       <div class="grid grid-cols-12 gap-4">
         <!-- Current Location -->
         <div class="col-span-3 h-80">
-          <CurrentLocation :gameState="currentState" />
+          <CurrentLocation 
+            :gameState="currentState" 
+            :widgetLocation="widgetData.location"
+          />
         </div>
         
         <!-- Resources -->
         <div class="col-span-3 h-80">
-          <ResourcesWidget :gameState="currentState" />
+          <ResourcesWidget 
+            :gameState="currentState" 
+            :widgetResources="widgetData.resources" 
+          />
         </div>
         
         <!-- Equipment -->
         <div class="col-span-3 h-80">
-          <EquipmentWidget :gameState="currentState" />
+          <EquipmentWidget 
+            :gameState="currentState"
+            :widgetEquipment="widgetData.equipment"
+          />
         </div>
         
         <!-- Current Action -->
         <div class="col-span-3 h-80">
           <CurrentAction 
             :gameState="currentState"
-            :currentAction="mockCurrentAction"
-            :nextAction="mockNextAction"
+            :currentAction="widgetData.currentAction.action"
+            :nextAction="widgetData.currentAction.nextAction"
           />
         </div>
       </div>
@@ -130,24 +174,37 @@
         <div class="col-span-9 space-y-4">
           <!-- Farm Visualizer -->
           <div class="h-80">
-            <FarmVisualizerWidget :gameState="currentState" />
+            <FarmVisualizerWidget 
+              :gameState="currentState"
+              :widgetFarmGrid="widgetData.farmGrid"
+            />
           </div>
           
           <!-- Mini Upgrade Tree -->
           <div class="h-48">
-            <MiniUpgradeTreeWidget :gameState="currentState" />
+            <MiniUpgradeTreeWidget 
+              :gameState="currentState"
+              :widgetUpgrades="widgetData.upgrades"
+            />
           </div>
           
           <!-- Timeline -->
           <div class="h-32">
-            <TimelineWidget :gameState="currentState" :events="recentEvents" />
+            <TimelineWidget 
+              :gameState="currentState" 
+              :events="recentEvents"
+              :widgetTimeline="widgetData.timeline"
+            />
           </div>
         </div>
         
         <!-- Right Column: Action Log (Tall & Narrow) -->
         <div class="col-span-3">
           <div class="h-[640px]">
-            <ActionLog :events="recentEvents" />
+            <ActionLog 
+              :events="recentEvents"
+              :widgetTimeline="widgetData.timeline"
+            />
           </div>
         </div>
       </div>
@@ -156,45 +213,38 @@
       <div class="grid grid-cols-12 gap-4">
         <!-- Screen Time -->
         <div class="col-span-4 h-80">
-          <ScreenTimeWidget :gameState="currentState" />
+          <ScreenTimeWidget 
+            :gameState="currentState"
+            :widgetLocation="widgetData.location"
+            :widgetTime="widgetData.time"
+          />
         </div>
         
         <!-- Helper Management -->
         <div class="col-span-4 h-80">
-          <HelperManagementWidget :gameState="currentState" />
+          <HelperManagementWidget 
+            :gameState="currentState"
+            :widgetHelpers="widgetData.helpers"
+          />
         </div>
         
         <!-- Next Decision -->
         <div class="col-span-4 h-80">
-          <NextDecisionWidget :gameState="currentState" />
+          <NextDecisionWidget 
+            :gameState="currentState"
+            :widgetCurrentAction="widgetData.currentAction"
+            :widgetPhaseProgress="widgetData.phaseProgress"
+          />
         </div>
       </div>
 
-      <!-- Performance Monitor (Full Width Strip) -->
+      <!-- Performance Monitor (Full Width Enhanced) -->
       <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-12 h-32">
-          <BaseWidget title="Performance Monitor" icon="fas fa-tachometer-alt">
-            <div class="flex justify-between items-center h-full">
-              <div class="flex gap-8 text-sm w-full">
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">Sim Speed</span>
-                  <span class="font-mono text-lg">{{ currentStats?.averageTickTime?.toFixed(0) || 0 }} ms/tick</span>
-                </div>
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">UI FPS</span>
-                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 10) + 55 }}</span>
-                </div>
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">Memory</span>
-                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 50) + 100 }} MB</span>
-                </div>
-                <div class="flex flex-col items-center justify-center flex-1">
-                  <span class="text-sim-text-secondary text-xs">CPU</span>
-                  <span class="font-mono text-lg">{{ Math.floor(Math.random() * 15) + 5 }}%</span>
-                </div>
-              </div>
-            </div>
-          </BaseWidget>
+        <div class="col-span-12">
+          <PerformanceMonitorWidget 
+            :gameState="currentState"
+            :currentStats="currentStats"
+          />
         </div>
       </div>
     </div>
@@ -218,6 +268,8 @@
 import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { SimulationBridge } from '@/utils/SimulationBridge'
 import { SimulationBridgeTest } from '@/utils/SimulationBridgeTest'
+import { WidgetDataAdapter } from '@/utils/WidgetDataAdapter'
+import { liveMonitorDebug } from '@/utils/LiveMonitorDebug'
 import type { GameState, GameEvent, SimulationStats } from '@/types'
 
 // Import widgets
@@ -236,6 +288,7 @@ import MiniUpgradeTreeWidget from '@/components/monitor/MiniUpgradeTreeWidget.vu
 import TimelineWidget from '@/components/monitor/TimelineWidget.vue'
 import ScreenTimeWidget from '@/components/monitor/ScreenTimeWidget.vue'
 import NextDecisionWidget from '@/components/monitor/NextDecisionWidget.vue'
+import PerformanceMonitorWidget from '@/components/monitor/PerformanceMonitorWidget.vue'
 
 // State
 const bridge = ref<SimulationBridge | null>(null)
@@ -245,51 +298,99 @@ const recentEvents = ref<GameEvent[]>([])
 const selectedSpeed = ref('1')
 const errorMessage = ref('')
 
+// Phase 8L: Logging Controls
+const logLevel = ref('normal')
+const logCategories = reactive({
+  farming: true,
+  combat: true,
+  crafting: true,
+  economy: true
+})
+
 const bridgeStatus = reactive({
   isInitialized: false,
   isRunning: false,
   workerReady: false
 })
 
+// Widget-specific reactive data (transformed from GameState)
+const widgetData = reactive({
+  resources: WidgetDataAdapter.transformResources(null),
+  progression: WidgetDataAdapter.transformProgression(null),
+  location: WidgetDataAdapter.transformLocation(null),
+  time: WidgetDataAdapter.transformTime(null),
+  processes: WidgetDataAdapter.transformProcesses(null),
+  inventory: WidgetDataAdapter.transformInventory(null),
+  currentAction: WidgetDataAdapter.transformCurrentAction(null),
+  farmGrid: WidgetDataAdapter.transformFarmVisualization(null),
+  helpers: WidgetDataAdapter.transformHelpers(null),
+  equipment: WidgetDataAdapter.transformEquipment(null),
+  timeline: WidgetDataAdapter.transformTimeline(null),
+  upgrades: WidgetDataAdapter.transformUpgrades(null),
+  phaseProgress: WidgetDataAdapter.transformPhaseProgress(null)
+})
+
+// For backwards compatibility with existing polling (will remove after testing)
 const statsInterval = ref<ReturnType<typeof setInterval> | null>(null)
 
-// Mock actions for demonstration
-const mockCurrentAction = computed(() => {
-  if (Math.random() > 0.7) {
-    return {
-      id: 'demo-action',
-      type: 'plant' as const,
-      screen: 'farm' as const,
-      target: 'Plot 7',
-      duration: 5,
-      energyCost: 1,
-      goldCost: 0,
-      prerequisites: [],
-      expectedRewards: {
-        gold: 3
-      },
-      score: 8.5
-    }
-  }
-  return null
-})
+// Mock actions no longer needed - using real data from widgetData.currentAction
 
-const mockNextAction = computed(() => {
-  if (!mockCurrentAction.value && Math.random() > 0.5) {
-    return {
-      id: 'demo-next',
-      type: 'water' as const,
-      screen: 'farm' as const,
-      duration: 2,
-      energyCost: 0,
-      goldCost: 0,
-      prerequisites: [],
-      expectedRewards: {},
-      score: 6.2
-    }
+// Widget Update Methods
+const updateWidgets = (gameState: GameState | null) => {
+  console.log('📊 LiveMonitor: Updating widgets with gameState:', gameState)
+  
+  if (!gameState) {
+    console.warn('⚠️ LiveMonitor: Received null gameState, using defaults')
+    return
   }
-  return null
-})
+
+  // Validate the game state structure
+  if (!WidgetDataAdapter.validateGameState(gameState)) {
+    console.error('❌ LiveMonitor: Invalid GameState structure received')
+    return
+  }
+
+  try {
+    // Transform GameState to widget-friendly formats - using transformAll for efficiency
+    const allTransforms = WidgetDataAdapter.transformAll(gameState, recentEvents.value)
+    
+    // Update all widget data
+    widgetData.resources = allTransforms.resources
+    widgetData.progression = allTransforms.progression
+    widgetData.location = allTransforms.location
+    widgetData.time = allTransforms.time
+    widgetData.processes = allTransforms.processes
+    widgetData.inventory = allTransforms.inventory
+    widgetData.currentAction = allTransforms.currentAction
+    widgetData.farmGrid = allTransforms.farmGrid
+    widgetData.helpers = allTransforms.helpers
+    widgetData.equipment = allTransforms.equipment
+    widgetData.timeline = allTransforms.timeline
+    widgetData.upgrades = allTransforms.upgrades
+    widgetData.phaseProgress = allTransforms.phaseProgress
+    
+    // Update the raw state for compatibility
+    currentState.value = gameState
+    
+    console.log('✅ LiveMonitor: All widgets updated successfully', {
+      energy: widgetData.resources.energy.current,
+      gold: widgetData.resources.gold,
+      day: widgetData.time.day,
+      farmPlots: widgetData.progression.farmPlots,
+      currentPhase: widgetData.phaseProgress.currentPhase,
+      activeGnomes: widgetData.helpers.gnomes.length,
+      currentActionType: widgetData.currentAction.action?.type,
+      seedTypes: Object.keys(widgetData.resources.seeds).length,
+      materialTypes: Object.keys(widgetData.resources.materials).length,
+      farmGridPlotsReady: widgetData.farmGrid.summary.ready,
+      recentEventsCount: widgetData.timeline.recentEvents.length
+    })
+    
+  } catch (error) {
+    console.error('❌ LiveMonitor: Error updating widgets:', error)
+    errorMessage.value = `Widget update failed: ${error}`
+  }
+}
 
 // Methods
 const getStatusText = (): string => {
@@ -311,9 +412,47 @@ const initializeSimulation = async () => {
     
     await bridge.value.initialize(testConfig)
     
+    // Set up event-driven updates instead of polling
+    bridge.value.onTick((tickData) => {
+      console.log('🔄 LiveMonitor: Received tick event', {
+        tickCount: tickData.tickCount,
+        hasGameState: !!tickData.gameState,
+        executedActions: tickData.executedActions.length,
+        events: tickData.events.length
+      })
+      
+      // Update widgets with real-time game state
+      updateWidgets(tickData.gameState)
+      
+      // Update events for ActionLog widget
+      if (tickData.events.length > 0) {
+        recentEvents.value = [...tickData.events.slice(-50), ...recentEvents.value.slice(0, 50)]
+      }
+    })
+    
+    bridge.value.onStats((statsData) => {
+      console.log('📈 LiveMonitor: Received stats update', statsData)
+      currentStats.value = statsData
+    })
+    
+    bridge.value.onError((errorData) => {
+      console.error('❌ LiveMonitor: Simulation error:', errorData)
+      errorMessage.value = errorData.message
+      if (errorData.fatal) {
+        bridgeStatus.isRunning = false
+        bridgeStatus.isInitialized = false
+      }
+    })
+    
+    bridge.value.onComplete((completeData) => {
+      console.log('🏁 LiveMonitor: Simulation completed:', completeData.reason)
+      bridgeStatus.isRunning = false
+      updateWidgets(completeData.finalState)
+    })
+    
     bridgeStatus.isInitialized = true
     
-    console.log('✅ LiveMonitor: Simulation initialized')
+    console.log('✅ LiveMonitor: Simulation initialized with event handlers')
   } catch (error) {
     console.error('❌ LiveMonitor: Initialization failed:', error)
     errorMessage.value = `Initialization failed: ${error}`
@@ -364,12 +503,56 @@ const changeSpeed = async () => {
   if (!bridge.value) return
   
   try {
-    const speed = parseFloat(selectedSpeed.value)
+    // Handle 'max' speed specially
+    let speed: number
+    if (selectedSpeed.value === 'max') {
+      speed = 1000 // Map 'max' to high number that worker will recognize
+    } else {
+      speed = parseFloat(selectedSpeed.value)
+    }
+    
     await bridge.value.setSpeed(speed)
-    console.log(`🏃 LiveMonitor: Speed changed to ${speed}x`)
+    console.log(`🏃 LiveMonitor: Speed changed to ${selectedSpeed.value}x`)
+    
+    // Phase 8L: Auto-adjust log level based on speed
+    autoAdjustLogLevel(selectedSpeed.value)
   } catch (error) {
     console.error('❌ LiveMonitor: Speed change failed:', error)
     errorMessage.value = `Speed change failed: ${error}`
+  }
+}
+
+// Phase 8L: Auto-adjust log level based on speed
+const autoAdjustLogLevel = (speed: string) => {
+  const speedToLogLevel: { [key: string]: string } = {
+    '0.5': 'normal',     // Can handle more logs at slow speed
+    '1': 'reduced',      
+    '2': 'minimal',
+    '5': 'minimal',
+    'max': 'errors'      // Only errors at max speed
+  }
+  
+  const suggestedLevel = speedToLogLevel[speed]
+  if (suggestedLevel && suggestedLevel !== logLevel.value) {
+    console.log(`📝 Auto-adjusting log level from ${logLevel.value} to ${suggestedLevel} for ${speed}x speed`)
+    logLevel.value = suggestedLevel
+    updateLogLevel()
+  }
+}
+
+// Phase 8L: Update log level and categories
+const updateLogLevel = () => {
+  const config = {
+    level: logLevel.value,
+    categories: { ...logCategories }
+  }
+  
+  console.log('📝 Updated logging configuration:', config)
+  
+  // Send to simulation bridge if available
+  if (bridge.value) {
+    // For now just log - in full implementation would send to worker
+    console.log('🔧 Would send logging config to worker:', config)
   }
 }
 
@@ -382,20 +565,29 @@ const formatTime = (time: any): string => {
 
 // Lifecycle
 onMounted(() => {
-  console.log('📊 LiveMonitor mounted - Phase 6D Core Widget Implementation Complete')
+  console.log('📊 LiveMonitor mounted - Event-driven widget system active')
   
-  // Poll for stats every second
-  statsInterval.value = setInterval(async () => {
-    if (bridge.value && bridgeStatus.isInitialized) {
-      try {
-        const result = await bridge.value.getState()
-        currentState.value = result.gameState
-        currentStats.value = result.stats
-      } catch (error) {
-        console.warn('Stats polling failed:', error)
-      }
+  // Initialize widget data with defaults
+  updateWidgets(null)
+  
+  // Make debug utilities available
+  if (import.meta.env.DEV) {
+    console.log('🧪 Debug utilities available:')
+    console.log('  - liveMonitorDebug.testDataTransformation()')
+    console.log('  - liveMonitorDebug.inspectLiveMonitorState()')
+    console.log('  - liveMonitorDebug.simulateTickEvent()')
+    
+    // Run a quick transformation test
+    const testResult = liveMonitorDebug.testDataTransformation()
+    if (testResult.isValid) {
+      console.log('✅ Data transformation pipeline working correctly')
+    } else {
+      console.error('❌ Data transformation pipeline has issues')
     }
-  }, 1000)
+  }
+  
+  // No more polling - using event-driven updates via bridge.onTick()
+  console.log('🔄 LiveMonitor: Event-driven updates enabled, polling disabled')
 })
 
 onBeforeUnmount(() => {

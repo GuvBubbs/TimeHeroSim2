@@ -19,20 +19,16 @@ export interface ResourceState {
   energy: {
     current: number
     max: number
-    regenRate: number     // Per minute
+    regenerationRate: number     // Per minute
   }
   gold: number
   water: {
     current: number
     max: number
-    pumpRate: number      // Per minute when pumping
+    autoGenRate: number      // Per minute when auto-pumping
   }
-  seeds: {
-    [cropType: string]: number
-  }
-  materials: {
-    [materialId: string]: number
-  }
+  seeds: Map<string, number>
+  materials: Map<string, number>
 }
 
 /**
@@ -42,8 +38,11 @@ export interface ProgressionState {
   heroLevel: number
   experience: number
   farmStage: number           // Land expansion level
+  farmPlots: number           // Current number of farm plots
+  availablePlots: number      // Plots that can be used (not withered/blocked)
   currentPhase: string        // Early, Mid, Late game phase
   completedAdventures: string[]
+  completedCleanups: Set<string>  // Cleanup actions that have been completed
   unlockedUpgrades: string[]
   unlockedAreas: string[]
   victoryConditionsMet: boolean
@@ -93,9 +92,15 @@ export interface CropState {
   cropId: string
   plantedAt: number        // Total minutes when planted
   growthTimeRequired: number
-  waterLevel: number
+  waterLevel: number       // 0-1 (percentage)
   isWithered: boolean
   readyToHarvest: boolean
+  
+  // Enhanced growth tracking
+  growthProgress: number   // 0-1 (percentage of growth completed)
+  growthStage: number      // Current visual stage (0 to maxStages)
+  maxStages: number        // Total growth stages for this crop
+  droughtTime: number      // Minutes with waterLevel = 0 (for tracking only)
 }
 
 /**
@@ -198,6 +203,16 @@ export interface AutomationState {
   targetCrops: Map<string, number> // From parameters
   wateringThreshold: number
   energyReserve: number
+  
+  // Decision engine state
+  nextDecision?: {
+    action: string
+    reason: string
+    nextCheck: number
+    priority?: number
+    target?: string
+    alternatives?: Array<{ action: string; score: number }>
+  } | null
 }
 
 /**
@@ -231,7 +246,7 @@ export interface GameState {
  */
 export interface GameAction {
   id: string
-  type: 'move' | 'plant' | 'water' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper'
+  type: 'move' | 'plant' | 'water' | 'pump' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper' | 'cleanup'
   screen: GameScreen
   target?: string          // Item ID, plot ID, etc.
   duration: number         // Expected duration in minutes

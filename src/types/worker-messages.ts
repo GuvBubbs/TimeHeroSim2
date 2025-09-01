@@ -26,6 +26,7 @@ export interface InitializeMessage {
   data: {
     config: SerializedSimulationConfig
     serializedParameters?: any // Additional parameter data if needed
+    gameData?: any // Game data from Pinia store for worker context
   }
 }
 

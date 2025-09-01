@@ -57,12 +57,21 @@ export class MapSerializer {
       lastModified: config.lastModified,
       quickSetup: config.quickSetup,
       isValid: config.isValid,
-      validationErrors: [...config.validationErrors]
+      validationErrors: Array.isArray(config.validationErrors) ? [...config.validationErrors] : []
     }
 
-    // Serialize parameterOverrides Map
+    // Serialize parameterOverrides Map (handle both Map and plain object)
     if (config.parameterOverrides) {
-      serialized.parameterOverrides = Array.from(config.parameterOverrides.entries())
+      if (config.parameterOverrides instanceof Map) {
+        // It's a Map object
+        serialized.parameterOverrides = Array.from(config.parameterOverrides.entries())
+      } else if (typeof config.parameterOverrides === 'object') {
+        // It's a plain object (from JSON.parse/stringify)
+        serialized.parameterOverrides = Object.entries(config.parameterOverrides)
+      } else {
+        // It's already an array
+        serialized.parameterOverrides = config.parameterOverrides
+      }
     }
 
     return serialized

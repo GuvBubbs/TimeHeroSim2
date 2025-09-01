@@ -43,7 +43,7 @@ function handleMessage(event: MessageEvent<WorkerInputMessage>) {
     
     switch (message.type) {
       case 'initialize':
-        handleInitialize(message.data.config, message.data.serializedParameters)
+        handleInitialize(message.data.config, message.data.serializedParameters, message.data.gameData)
         break
         
       case 'start':
@@ -77,33 +77,121 @@ function handleMessage(event: MessageEvent<WorkerInputMessage>) {
 /**
  * Initializes the simulation engine with configuration
  */
-function handleInitialize(serializedConfig: any, serializedParameters?: any) {
+function handleInitialize(serializedConfig: any, serializedParameters?: any, gameData?: any) {
   try {
     console.log('🔧 Worker: Initializing simulation engine...')
     
     // Deserialize the configuration
     const config = MapSerializer.deserialize(serializedConfig)
-    console.log('✅ Worker: Configuration deserialized', config)
+    console.log('✅ Worker: Configuration deserialized', {
+      hasQuickSetup: !!config.quickSetup,
+      personaId: config.quickSetup?.personaId,
+      parameterOverrides: config.parameterOverrides?.size || 0
+    })
     
-    // Create simulation engine
-    workerState.engine = new SimulationEngine(config)
+    // Detailed CSV data validation
+    console.log('🔍 Worker: Validating CSV data...', {
+      hasGameData: !!gameData,
+      hasAllItems: !!(gameData?.allItems),
+      itemCount: gameData?.allItems?.length || 0,
+      hasItemsById: !!(gameData?.itemsById),
+      itemsByIdCount: gameData?.itemsById ? Object.keys(gameData.itemsById).length : 0,
+      hasItemsByGameFeature: !!(gameData?.itemsByGameFeature),
+      gameFeatureCount: gameData?.itemsByGameFeature ? Object.keys(gameData.itemsByGameFeature).length : 0,
+      hasItemsByCategory: !!(gameData?.itemsByCategory),
+      categoryCount: gameData?.itemsByCategory ? Object.keys(gameData.itemsByCategory).length : 0
+    })
+    
+    // Create game data store from passed data
+    if (!gameData) {
+      throw new Error('Worker initialization failed: No gameData object provided')
+    }
+    
+    if (!gameData.allItems || gameData.allItems.length === 0) {
+      throw new Error('Worker initialization failed: No CSV items in allItems array. CSV data must be loaded before initializing simulation.')
+    }
+    
+    if (!gameData.itemsById || Object.keys(gameData.itemsById).length === 0) {
+      throw new Error('Worker initialization failed: itemsById lookup is empty. CSV data structure is invalid.')
+    }
+    
+    // Sample some items for validation
+    const sampleItems = gameData.allItems.slice(0, 3)
+    console.log('📋 Worker: Sample CSV items:', sampleItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      sourceFile: item.sourceFile
+    })))
+    
+    // Validate CSV data structure
+    const requiredProperties = ['id', 'name', 'category']
+    const invalidItems = gameData.allItems.filter(item => {
+      return !requiredProperties.every(prop => item[prop])
+    })
+    
+    if (invalidItems.length > 0) {
+      console.warn('⚠️ Worker: Found items with missing required properties:', 
+        invalidItems.slice(0, 3).map(item => ({ id: item.id, missing: requiredProperties.filter(prop => !item[prop]) }))
+      )
+    }
+    
+    const gameDataStore = {
+      itemsByGameFeature: gameData.itemsByGameFeature || {},
+      itemsByCategory: gameData.itemsByCategory || {},
+      allItems: gameData.allItems || [],
+      getItemById: (id: string) => {
+        const item = gameData.itemsById?.[id] || null
+        if (!item) {
+          console.warn(`⚠️ Worker: Item not found: ${id}`)
+        }
+        return item
+      },
+      getSpecializedDataByFile: (filename: string) => gameData.specializedData?.[filename] || []
+    }
+    
+    console.log('✅ Worker: Game data store created successfully', {
+      totalItems: gameData.allItems.length,
+      gameFeatures: Object.keys(gameDataStore.itemsByGameFeature),
+      categories: Object.keys(gameDataStore.itemsByCategory)
+    })
+    
+    // Create simulation engine with game data
+    console.log('🔧 Worker: Creating SimulationEngine with validated CSV data...')
+    workerState.engine = new SimulationEngine(config, gameDataStore)
     workerState.initialized = true
     workerState.errorCount = 0
     
-    console.log('✅ Worker: Simulation engine initialized')
+    console.log('✅ Worker: Simulation engine initialized successfully')
     
     // Notify main thread we're ready
     postMessage({
       type: 'ready',
       data: {
         initialized: true,
-        engineVersion: '6B.1.0'
+        engineVersion: '6B.2.0',
+        csvItemCount: gameData.allItems.length,
+        gameFeatures: Object.keys(gameDataStore.itemsByGameFeature).length,
+        categories: Object.keys(gameDataStore.itemsByCategory).length
       }
     })
     
   } catch (error) {
     console.error('❌ Worker: Initialization failed:', error)
-    handleError(error, true)
+    
+    // Send detailed error information
+    postMessage({
+      type: 'error',
+      data: {
+        message: `Initialization failed: ${error}`,
+        details: {
+          hasGameData: !!gameData,
+          itemCount: gameData?.allItems?.length || 0,
+          configDeserialized: !!serializedConfig
+        },
+        fatal: true
+      }
+    })
   }
 }
 
@@ -201,6 +289,41 @@ function handleGetState() {
 }
 
 /**
+ * Calculates the correct tick delay for different simulation speeds
+ * Phase 8L: Fixed speed calibration - 1 tick = 0.5 minutes of game time
+ * Game day = 1440 minutes = 2880 ticks total
+ */
+function calculateTickDelay(speed: number): number {
+  // Speed configurations as per Phase 8L requirements
+  const SPEED_CONFIGURATIONS: { [key: string]: number } = {
+    '0.5': 200,   // 5 ticks/second = 2880 ticks / 5 = 576 seconds = 9.6 minutes per day
+    '1': 100,     // 10 ticks/second = 2880 ticks / 10 = 288 seconds = 4.8 minutes per day  
+    '2': 50,      // 20 ticks/second = 2880 ticks / 20 = 144 seconds = 2.4 minutes per day
+    '5': 20,      // 50 ticks/second = 2880 ticks / 50 = 57.6 seconds = ~1 minute per day
+    '10': 10,     // 100 ticks/second
+    '50': 2,      // 500 ticks/second  
+    '100': 1,     // 1000 ticks/second
+    'max': 4.17   // 240 ticks/second = 2880 ticks / 240 = 12 seconds per day
+  }
+  
+  // Find exact match first
+  const speedKey = speed.toString()
+  if (SPEED_CONFIGURATIONS[speedKey]) {
+    return Math.max(1, Math.floor(SPEED_CONFIGURATIONS[speedKey]))
+  }
+  
+  // Handle 'max' speed specially
+  if (speed >= 1000) {
+    return Math.max(1, Math.floor(SPEED_CONFIGURATIONS['max']))
+  }
+  
+  // For other speeds, interpolate based on base formula
+  // Base: 0.5x = 200ms, so delay = 100ms / speed
+  const baseDelay = 100 / speed
+  return Math.max(1, Math.floor(baseDelay))
+}
+
+/**
  * Starts the main simulation loop
  */
 function startSimulationLoop() {
@@ -227,20 +350,42 @@ function startSimulationLoop() {
         workerState.tickTimes.shift() // Keep only last 100 tick times
       }
       
+      // Log tick execution (throttled to avoid spam)
+      const stats = workerState.engine.getStats()
+      if (stats.tickCount % 10 === 0) { // Log every 10th tick
+        console.log(`🔄 Worker: Tick ${stats.tickCount}`, {
+          day: tickResult.gameState.time?.day,
+          energy: tickResult.gameState.resources?.energy?.current,
+          gold: tickResult.gameState.resources?.gold,
+          actions: tickResult.executedActions.length,
+          events: tickResult.events.length,
+          tickTime: `${tickTime}ms`
+        })
+      }
+      
       // Serialize game state for transmission
       const serializedState = serializeGameState(tickResult.gameState)
+      
+      // Validate serialization
+      if (!serializedState.time || !serializedState.resources) {
+        console.error('❌ Worker: Invalid serialized state structure', {
+          hasTime: !!serializedState.time,
+          hasResources: !!serializedState.resources,
+          hasProgression: !!serializedState.progression
+        })
+      }
       
       // Send tick update to main thread
       postMessage({
         type: 'tick',
         data: {
           gameState: serializedState,
-          executedActions: tickResult.executedActions,
-          events: tickResult.events,
-          deltaTime: tickResult.deltaTime,
-          tickCount: workerState.engine.getStats().tickCount,
-          isComplete: tickResult.isComplete,
-          isStuck: tickResult.isStuck
+          executedActions: tickResult.executedActions || [],
+          events: tickResult.events || [],
+          deltaTime: tickResult.deltaTime || 1,
+          tickCount: stats.tickCount,
+          isComplete: tickResult.isComplete || false,
+          isStuck: tickResult.isStuck || false
         }
       })
       
@@ -255,9 +400,9 @@ function startSimulationLoop() {
         return
       }
       
-      // Schedule next tick
+      // Schedule next tick with corrected timing system
       const speed = tickResult.gameState.time.speed
-      const nextTickDelay = Math.max(1, Math.floor(16 / speed)) // Minimum 1ms, scaled by speed
+      const nextTickDelay = calculateTickDelay(speed)
       
       setTimeout(tick, nextTickDelay)
       

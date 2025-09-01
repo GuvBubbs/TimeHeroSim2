@@ -9,7 +9,12 @@
             <i class="fas fa-home text-yellow-400 mr-2"></i>
             Housing
           </span>
-          <span class="font-mono">3/5 housed</span>
+          <span class="font-mono" v-if="props.widgetHelpers">
+            {{ props.widgetHelpers.currentHoused || 0 }}/{{ props.widgetHelpers.housingCapacity || 0 }} housed
+          </span>
+          <span class="font-mono text-sim-text-secondary" v-else>
+            0/0 housed
+          </span>
         </div>
         <div class="text-xs text-sim-text-secondary">
           Buildings: Hut, House will display here
@@ -25,20 +30,16 @@
           </span>
         </div>
         
-        <!-- Mock Gnomes -->
-        <div class="space-y-2 text-xs">
-          <div class="flex justify-between items-center">
-            <span>Gnomey (Lvl 2)</span>
-            <span class="text-green-400">Waterer</span>
+        <!-- Real Gnome Data -->
+        <div class="space-y-2 text-xs" v-if="props.widgetHelpers?.gnomes?.length">
+          <div class="flex justify-between items-center" v-for="gnome in props.widgetHelpers.gnomes" :key="gnome.id">
+            <span>{{ gnome.name }} (Lvl {{ gnome.level }})</span>
+            <span :class="getRoleColor(gnome.role)">{{ gnome.role }}</span>
           </div>
-          <div class="flex justify-between items-center">
-            <span>Helper (Lvl 1)</span>
-            <span class="text-blue-400">Sower</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span>Worker (Lvl 3)</span>
-            <span class="text-purple-400">Dual-Role*</span>
-          </div>
+        </div>
+        <!-- Fallback when no helpers -->
+        <div class="space-y-2 text-xs text-sim-text-secondary" v-else>
+          <div>No helpers assigned</div>
         </div>
       </div>
 
@@ -64,7 +65,20 @@ import type { GameState } from '@/types'
 
 interface Props {
   gameState: GameState | null
+  widgetHelpers?: any
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+
+// Helper function for role colors
+function getRoleColor(role: string): string {
+  switch (role.toLowerCase()) {
+    case 'waterer': return 'text-blue-400'
+    case 'sower': return 'text-green-400'
+    case 'harvester': return 'text-yellow-400'
+    case 'dual-role': return 'text-purple-400'
+    case 'general': return 'text-gray-400'
+    default: return 'text-gray-300'
+  }
+}
 </script>

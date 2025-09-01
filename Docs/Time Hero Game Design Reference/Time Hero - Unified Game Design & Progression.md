@@ -471,14 +471,14 @@ Ticks cost **energy** and require the right **tool**. This section lists on-farm
 
 #### **5.4.2 Energy Storage**
 
-| Upgrade | Prerequisites | Gold | Build Energy | Materials | Effect |
-| ----- | ----- | ----- | ----- | ----- | ----- |
-| Storage Shed I | – | 20 | 10 | – | Energy cap 50→150 |
-| Storage Shed II | Shed I | 100 | 50 | 5 Stone | Energy cap 150→500 |
-| Storage Shed III | Shed II \+ **Homestead** 🏡 | 500 | 200 | 10 Iron | Energy cap 500→1,500 |
-| Storage Barn I | Shed III \+ **Homestead** 🏡 | 3,000 | 1,000 | 5 Silver | Energy cap 1,500→6,000 |
-| Storage Barn II | Barn I \+ **Manor Grounds** 🏡 | 20,000 | 5,000 | 2 Crystal | Energy cap 6,000→20,000 |
-| Storage Silo | Barn II \+ **Great Estate** 🏡 | 100,000 | 25,000 | 1 Mythril | Energy cap 20,000→100,000 |
+| Upgrade          | Prerequisites                  | Gold    | Build Energy | Materials | Effect                    |
+| ---------------- | ------------------------------ | ------- | ------------ | --------- | ------------------------- |
+| Storage Shed I   | –                              | 20      | 10           | –         | Energy cap 50→150         |
+| Storage Shed II  | Shed I                         | 100     | 50           | 5 Stone   | Energy cap 150→500        |
+| Storage Shed III | Shed II \+ **Homestead** 🏡    | 500     | 200          | 10 Iron   | Energy cap 500→1,500      |
+| Storage Barn I   | Shed III \+ **Homestead** 🏡   | 3,000   | 1,000        | 5 Silver  | Energy cap 1,500→6,000    |
+| Storage Barn II  | Barn I \+ **Manor Grounds** 🏡 | 20,000  | 5,000        | 2 Crystal | Energy cap 6,000→20,000   |
+| Storage Silo     | Barn II \+ **Great Estate** 🏡 | 100,000 | 25,000       | 1 Mythril | Energy cap 20,000→100,000 |
 
 #### **5.4.3 Pump Speed**
 
@@ -492,13 +492,13 @@ Ticks cost **energy** and require the right **tool**. This section lists on-farm
 
 #### **5.4.4 Water Capacity & Auto-Pump**
 
-| Upgrade | Prerequisites | Gold | Build Energy | Materials | Effect |
-| ----- | ----- | ----- | ----- | ----- | ----- |
-| Water Tank I | – | 25 | 15 | 5 Stone | 20→60 water cap |
-| Water Tank II | Tank I | 125 | 75 | 8 Copper | 60→200 water cap |
-| Water Tank III | Tank II \+ **Homestead** 🏡 | 600 | 400 | 12 Iron | 200→600 water cap |
-| Reservoir | Tank III \+ **Homestead** 🏡 | 3,500 | 2,000 | 5 Silver | 600→2,000 water cap |
-| Crystal Reservoir | Reservoir \+ **Manor Grounds** 🏡 | 22,000 | 10,000 | 5 Crystal | 2,000→10,000 water cap |
+| Upgrade           | Prerequisites                     | Gold   | Build Energy | Materials | Effect                 |
+| ----------------- | --------------------------------- | ------ | ------------ | --------- | ---------------------- |
+| Water Tank I      | –                                 | 25     | 15           | 5 Stone   | 20→60 water cap        |
+| Water Tank II     | Tank I                            | 125    | 75           | 8 Copper  | 60→200 water cap       |
+| Water Tank III    | Tank II \+ **Homestead** 🏡       | 600    | 400          | 12 Iron   | 200→600 water cap      |
+| Reservoir         | Tank III \+ **Homestead** 🏡      | 3,500  | 2,000        | 5 Silver  | 600→2,000 water cap    |
+| Crystal Reservoir | Reservoir \+ **Manor Grounds** 🏡 | 22,000 | 10,000       | 5 Crystal | 2,000→10,000 water cap |
 
 **Water Retention Systems (Plot Efficiency)**
 

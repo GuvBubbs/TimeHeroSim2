@@ -59,9 +59,9 @@
       <!-- No Action State -->
       <div v-else class="bg-sim-background rounded p-4 text-center">
         <i class="fas fa-pause-circle text-3xl text-sim-text-secondary mb-3 block"></i>
-        <div class="text-sim-text-secondary">No active action</div>
+        <div class="text-sim-text-secondary">⏸️ Waiting for next check-in</div>
         <div class="text-xs text-sim-text-secondary mt-1">
-          Waiting for next decision or player input
+          Hero will make next decision based on persona and priorities
         </div>
       </div>
 
@@ -207,11 +207,20 @@ const getActionIcon = (type: string): string => {
     harvest: 'fas fa-cut text-yellow-400',
     craft: 'fas fa-hammer text-orange-400',
     buy: 'fas fa-shopping-cart text-purple-400',
+    purchase: 'fas fa-shopping-cart text-purple-400',
     sell: 'fas fa-coins text-yellow-500',
     travel: 'fas fa-route text-gray-400',
+    move: 'fas fa-route text-gray-400',
     combat: 'fas fa-sword text-red-400',
+    adventure: 'fas fa-sword text-red-400',
     mine: 'fas fa-mountain text-gray-500',
-    upgrade: 'fas fa-arrow-up text-blue-500'
+    mining: 'fas fa-mountain text-gray-500',
+    upgrade: 'fas fa-arrow-up text-blue-500',
+    cleanup: 'fas fa-broom text-brown-400',
+    rescue: 'fas fa-heart text-pink-400',
+    assign: 'fas fa-user-check text-cyan-400',
+    train: 'fas fa-graduation-cap text-indigo-400',
+    stoke: 'fas fa-fire text-red-500'
   }
   return icons[type] || 'fas fa-question text-gray-400'
 }
@@ -223,11 +232,20 @@ const getProgressColor = (type: string): string => {
     harvest: 'bg-yellow-500',
     craft: 'bg-orange-500',
     buy: 'bg-purple-500',
+    purchase: 'bg-purple-500',
     sell: 'bg-yellow-600',
     travel: 'bg-gray-500',
+    move: 'bg-gray-500',
     combat: 'bg-red-500',
+    adventure: 'bg-red-500',
     mine: 'bg-gray-600',
-    upgrade: 'bg-blue-600'
+    mining: 'bg-gray-600',
+    upgrade: 'bg-blue-600',
+    cleanup: 'bg-amber-500',
+    rescue: 'bg-pink-500',
+    assign: 'bg-cyan-500',
+    train: 'bg-indigo-500',
+    stoke: 'bg-red-600'
   }
   return colors[type] || 'bg-gray-500'
 }

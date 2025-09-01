@@ -29,7 +29,7 @@ export class SimulationBridgeTest {
       lastModified: new Date().toISOString(),
       quickSetup: {
         name: 'Worker Test Simulation',
-        personaId: 'casual',
+        personaId: 'speedrunner',
         duration: { mode: 'fixed', maxDays: 3 },
         dataSource: 'current',
         enableParameterOverrides: true,

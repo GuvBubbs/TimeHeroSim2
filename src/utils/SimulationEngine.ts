@@ -11,6 +11,10 @@ import { MiningSystem } from './systems/MiningSystem'
 import { CombatSystem, type WeaponData, type ArmorData, type RouteConfig, type WeaponType, type ArmorEffect } from './systems/CombatSystem'
 import { WaterSystem } from './systems/WaterSystem'
 import { SeedSystem, MANUAL_CATCHING, AUTO_CATCHERS } from './systems/SeedSystem'
+import { TowerSystem } from './systems/TowerSystem'
+import { TownSystem } from './systems/TownSystem'
+import { AdventureSystem } from './systems/AdventureSystem'
+import { ForgeSystem } from './systems/ForgeSystem'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -904,13 +908,13 @@ export class SimulationEngine {
       case 'farm':
         return this.evaluateFarmActions()
       case 'tower':
-        return this.evaluateTowerActions()
+        return TowerSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
       case 'town':
-        return this.evaluateTownActions()
+        return TownSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
       case 'adventure':
-        return this.evaluateAdventureActions()
+        return AdventureSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
       case 'forge':
-        return this.evaluateForgeActions()
+        return ForgeSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
       case 'mine':
         return this.evaluateMineActions()
       default:
@@ -2892,7 +2896,7 @@ export class SimulationEngine {
       case 'adventure':
         // Execute real combat simulation
         if (action.target) {
-          const combatResult = this.executeAdventureAction(action)
+          const combatResult = AdventureSystem.executeAdventureAction(action, this.gameState, this.parameters, this.gameDataStore)
           if (combatResult.success) {
             // Apply rewards immediately
             this.gameState.resources.gold += combatResult.totalGold

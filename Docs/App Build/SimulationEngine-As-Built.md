@@ -4,7 +4,7 @@
 
 The SimulationEngine is the core intelligence system that powers the TimeHero Simulator. It provides realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships.
 
-**Status**: ✅ Production-Ready with Real-Time Data Flow & Intelligent Seed Management (Phase 8N Complete)
+**Status**: ✅ Production-Ready with Real-Time Data Flow & Modular System Architecture (Phase 9C Complete)
 
 ## Architecture Overview
 
@@ -12,19 +12,25 @@ The SimulationEngine is the core intelligence system that powers the TimeHero Si
 SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge ──► LiveMonitor ──► Widgets
 ├── CSV Data Processing           ├── Real-time Ticks      ├── Event Handling      ├── Data Flow         ├── Live Updates
 ├── AI Decision Making           ├── MapSerializer        ├── Error Management    ├── State Updates     ├── Resource Display  
-├── Game Systems Integration     ├── Performance Stats    ├── Data Validation     ├── Event Processing  ├── Action Tracking
+├── Modular Systems Integration  ├── Performance Stats    ├── Data Validation     ├── Event Processing  ├── Action Tracking
 └── Persona-Driven Behavior     └── Background Processing└── Real-time Events    └── Widget Updates    └── Progress Monitoring
 ```
 
 ### Core Components
 
 **Main Files**:
-- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making
+- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making (~4100 lines, reduced from ~5700 lines)
 - `src/workers/simulation.worker.ts` - Web Worker for background processing  
 - `src/utils/SimulationBridge.ts` - Main thread communication bridge
 - `src/utils/WidgetDataAdapter.ts` - Transforms GameState to widget-friendly formats
 
-**Game Systems**:
+**Phase 9C: Extracted Game Systems**:
+- `src/utils/systems/TowerSystem.ts` - Tower navigation, seed catching, and reach upgrades (NEW)
+- `src/utils/systems/TownSystem.ts` - Vendor interactions, blueprint purchases, and material trading (NEW)
+- `src/utils/systems/AdventureSystem.ts` - Route selection, combat execution, and reward processing (NEW)
+- `src/utils/systems/ForgeSystem.ts` - Crafting actions, heat management, and material processing (NEW)
+
+**Existing Game Systems**:
 - `src/utils/systems/CropSystem.ts` - Crop growth and water management
 - `src/utils/systems/SeedSystem.ts` - Intelligent seed collection and tower navigation (Phase 8N)
 - `src/utils/systems/WaterSystem.ts` - Water retention and auto-pump systems (Phase 8N)
@@ -33,6 +39,79 @@ SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge �
 - `src/utils/systems/CraftingSystem.ts` - Forge crafting with heat management
 - `src/utils/systems/MiningSystem.ts` - Depth-based mining with material drops
 - `src/utils/systems/PrerequisiteSystem.ts` - CSV dependency validation
+
+## Phase 9C: System Extraction Summary
+
+### Extracted Methods (~1500 lines total)
+
+**From SimulationEngine to TowerSystem**:
+- `evaluateTowerActions()` - Tower-specific action evaluation including seed catching and reach upgrades
+- `processSeedCatching()` - Handles ongoing seed catching completion and rewards
+- `getCurrentTowerReach()` - Calculates current tower reach level
+- `needsTowerAccess()` - Determines if hero needs tower access for seed collection
+- Helper methods for net selection, auto-catcher management, and wind level calculations
+
+**From SimulationEngine to TownSystem**:
+- `evaluateTownActions()` - Town vendor interactions and purchase decisions
+- `evaluateBlueprintPurchases()` - Blueprint purchase logic and prerequisites
+- `evaluateReturnToFarmForBuilding()` - Navigation logic after blueprint purchases
+- `evaluateTowerBlueprintPurchase()` - Specific tower blueprint purchase handling
+- `evaluateMaterialSales()` and `evaluateEmergencyWood()` - Material trading logic
+
+**From SimulationEngine to AdventureSystem**:
+- `evaluateAdventureActions()` - Adventure route selection and risk assessment
+- `executeAdventureAction()` - Complete combat execution with weapon/armor conversion
+- `parseRouteConfig()` - Route configuration parsing from CSV data
+- `getWaveCountForRoute()` - Wave count calculation for different adventure lengths
+- `convertWeaponsForCombat()` and `convertArmorForCombat()` - Equipment conversion for combat system
+- `getAvailableAdventureRoutes()` - Available route calculation based on unlocked content
+
+**From SimulationEngine to ForgeSystem**:
+- `evaluateForgeActions()` - Crafting priority evaluation and heat management
+- `processCrafting()` - Ongoing crafting process management
+- `getCraftableItems()` - Available recipe evaluation based on materials and blueprints
+- `checkMaterialRequirements()` - Material availability checking
+- Heat management methods: `getForgeHeat()`, `updateHeat()`, `stokeForge()`
+- Material refinement logic and crafting success calculation
+
+### Integration Changes
+
+**SimulationEngine Updated**:
+```typescript
+// Before Phase 9C
+private evaluateTowerActions(): GameAction[] { ... }
+private evaluateTownActions(): GameAction[] { ... }
+private evaluateAdventureActions(): GameAction[] { ... }
+private evaluateForgeActions(): GameAction[] { ... }
+
+// After Phase 9C - uses new systems
+case 'tower':
+  return TowerSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
+case 'town':
+  return TownSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
+case 'adventure':
+  return AdventureSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
+case 'forge':
+  return ForgeSystem.evaluateActions(this.gameState, this.parameters, this.gameDataStore)
+```
+
+**Adventure Action Execution**:
+```typescript
+// Before Phase 9C
+const combatResult = this.executeAdventureAction(action)
+
+// After Phase 9C
+const combatResult = AdventureSystem.executeAdventureAction(action, this.gameState, this.parameters, this.gameDataStore)
+```
+
+### Benefits of Phase 9C Extraction
+
+1. **Reduced Complexity**: SimulationEngine reduced from ~5700 to ~4100 lines (28% reduction)
+2. **Improved Maintainability**: System-specific logic now encapsulated in dedicated files
+3. **Better Testability**: Each system can be tested independently with mock data
+4. **Enhanced Modularity**: Clear separation of concerns between game systems
+5. **Easier Feature Development**: New features can be added to specific systems without touching core engine
+6. **Consistent Architecture**: All systems follow the same static class pattern established by existing systems
 
 ## Core Simulation Loop
 

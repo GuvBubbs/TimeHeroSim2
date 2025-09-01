@@ -136,13 +136,18 @@ const resources = computed(() => {
       energy: props.widgetResources.energy.current,
       gold: props.widgetResources.gold,
       seedTypes: Object.keys(props.widgetResources.seeds).length,
-      materialTypes: Object.keys(props.widgetResources.materials).length
+      materialTypes: Object.keys(props.widgetResources.materials).length,
+      materialsDetail: props.widgetResources.materials
     })
     return props.widgetResources
   }
   
   // Fallback to old format for backward compatibility
-  console.log('⚠️ ResourcesWidget: Using fallback gameState resources')
+  console.log('⚠️ ResourcesWidget: Using fallback gameState resources', {
+    hasMaterials: !!props.gameState?.resources?.materials,
+    materialsType: typeof props.gameState?.resources?.materials,
+    materialsDetail: props.gameState?.resources?.materials
+  })
   return props.gameState?.resources || {
     energy: { current: 0, max: 100, regenerationRate: 1 },
     gold: 0,

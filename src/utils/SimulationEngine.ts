@@ -386,12 +386,12 @@ export class SimulationEngine {
       'frozen_heart', 'molten_core', 'enchanted_wood'
     ]
     
-    // Initialize standard materials with starting amounts
-    materials.set('wood', 25)
-    materials.set('stone', 23) // PHASE 9A: Increased stone (18+5) for sword crafting
-    materials.set('copper', 3)
-    materials.set('iron', 7)
-    materials.set('silver', 2)
+    // Initialize all materials to 0 - players must earn them through gameplay
+    materials.set('wood', 0)
+    materials.set('stone', 5)
+    materials.set('copper', 0)
+    materials.set('iron', 0)
+    materials.set('silver', 0)
     materials.set('crystal', 0)
     materials.set('mythril', 0)
     materials.set('obsidian', 0)
@@ -506,7 +506,12 @@ export class SimulationEngine {
    * Main simulation tick - advances game by one time unit
    */
   tick(): TickResult {
-    console.log('⏰ SimulationEngine: tick() called, tickCount:', this.tickCount, 'isRunning:', this.isRunning)
+    console.log('⏰ SimulationEngine: tick() called, tickCount:', this.tickCount, 'totalMinutes:', this.gameState.time.totalMinutes, 'isRunning:', this.isRunning)
+    
+    // Debug materials to see if they're changing
+    const currentWood = this.gameState.resources.materials.get('wood') || 0
+    const currentStone = this.gameState.resources.materials.get('stone') || 0
+    console.log(`🪨 MATERIALS DEBUG: wood=${currentWood}, stone=${currentStone}`)
     
     const startTime = this.gameState.time.totalMinutes
     const deltaTime = this.calculateDeltaTime()
@@ -715,6 +720,11 @@ export class SimulationEngine {
   private processOngoingActivities(deltaTime: number): GameEvent[] {
     const events: GameEvent[] = []
     
+    // Debug logging for seed catching state
+    if (this.gameState.processes.seedCatching) {
+      console.log(`🔍 ONGOING ACTIVITIES: Seed catching exists - isComplete=${this.gameState.processes.seedCatching.isComplete}, startedAt=${this.gameState.processes.seedCatching.startedAt}, currentTime=${this.gameState.time.totalMinutes}`)
+    }
+    
     // Process crop growth
     for (const crop of this.gameState.processes.crops) {
       crop.waterLevel = Math.max(0, crop.waterLevel - deltaTime * 0.1) // Water evaporation
@@ -745,38 +755,50 @@ export class SimulationEngine {
     }
     
     // Process active seed catching sessions
-    if (this.gameState.processes.seedCatching && !this.gameState.processes.seedCatching.isComplete) {
+    if (this.gameState.processes.seedCatching) {
       const seedCatch = this.gameState.processes.seedCatching
-      const elapsedTime = this.gameState.time.totalMinutes - seedCatch.startedAt
       
-      // Update progress based on elapsed time
-      seedCatch.progress = Math.min(1.0, elapsedTime / seedCatch.duration)
-      
-      if (seedCatch.progress >= 1.0) {
-        // Seed catching complete - award seeds
-        seedCatch.isComplete = true
+      if (!seedCatch.isComplete) {
+        const elapsedTime = this.gameState.time.totalMinutes - seedCatch.startedAt
         
-        // Calculate seeds caught based on wind level and net type
-        const seedsAwarded = seedCatch.expectedSeeds
+        // Update progress based on elapsed time
+        seedCatch.progress = Math.min(1.0, elapsedTime / seedCatch.duration)
         
-        // Add seeds to inventory (mix of available seed types based on tower reach)
-        const currentCarrotSeeds = this.gameState.resources.seeds.get('carrot') || 0
-        this.gameState.resources.seeds.set('carrot', currentCarrotSeeds + Math.floor(seedsAwarded * 0.6))
+        // Debug logging for seed catching timing
+        console.log(`🔍 SEED CATCH DEBUG: totalMinutes=${this.gameState.time.totalMinutes}, startedAt=${seedCatch.startedAt}, elapsedTime=${elapsedTime}, duration=${seedCatch.duration}, progress=${seedCatch.progress.toFixed(3)}`)
         
-        const currentRadishSeeds = this.gameState.resources.seeds.get('radish') || 0
-        this.gameState.resources.seeds.set('radish', currentRadishSeeds + Math.floor(seedsAwarded * 0.4))
-        
-        events.push({
-          timestamp: this.gameState.time.totalMinutes,
-          type: 'seed_catching_complete',
-          description: `Seed catching session complete! Caught ${seedsAwarded} seeds using ${seedCatch.netType} net`,
-          importance: 'high'
-        })
-        
-        // Clear the active seed catching session
-        this.gameState.processes.seedCatching = null
-        
-        console.log(`🌰 SEED CATCHING COMPLETE: +${seedsAwarded} seeds (${Math.floor(seedsAwarded * 0.6)} carrot, ${Math.floor(seedsAwarded * 0.4)} radish)`)
+        if (seedCatch.progress >= 1.0) {
+          console.log(`🎯 SEED CATCH COMPLETION CONDITIONS MET: About to complete seed catching!`)
+          
+          // Seed catching complete - award seeds
+          seedCatch.isComplete = true
+          
+          // Calculate seeds caught based on wind level and net type
+          const seedsAwarded = seedCatch.expectedSeeds
+          
+          // Add seeds to inventory (mix of available seed types based on tower reach)
+          const currentCarrotSeeds = this.gameState.resources.seeds.get('carrot') || 0
+          this.gameState.resources.seeds.set('carrot', currentCarrotSeeds + Math.floor(seedsAwarded * 0.6))
+          
+          const currentRadishSeeds = this.gameState.resources.seeds.get('radish') || 0
+          this.gameState.resources.seeds.set('radish', currentRadishSeeds + Math.floor(seedsAwarded * 0.4))
+          
+          events.push({
+            timestamp: this.gameState.time.totalMinutes,
+            type: 'seed_catching_complete',
+            description: `Seed catching session complete! Caught ${seedsAwarded} seeds using ${seedCatch.netType} net`,
+            importance: 'high'
+          })
+          
+          // Clear the active seed catching session
+          this.gameState.processes.seedCatching = null
+          
+          console.log(`🌰 SEED CATCHING COMPLETE: +${seedsAwarded} seeds (${Math.floor(seedsAwarded * 0.6)} carrot, ${Math.floor(seedsAwarded * 0.4)} radish)`)
+        } else {
+          console.log(`⏳ SEED CATCH PROGRESS: ${(seedCatch.progress * 100).toFixed(1)}% complete (${elapsedTime.toFixed(1)}/${seedCatch.duration} min)`)
+        }
+      } else {
+        console.log(`✅ SEED CATCH ALREADY COMPLETE: Session finished`)
       }
     }
     

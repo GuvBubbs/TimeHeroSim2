@@ -172,6 +172,10 @@
   },
   "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
+    "Archive/Phase6D-Implementation-Summary.md",
+    "Sim Design/Playable Sim/phase-9b-plan.md",
+    "App Build/Phase6D-Implementation-Summary.md",
+    "Sim Design/Playable Sim/Phase 9 Logs.rtf",
     "Sim Design/Playable Sim/phase-9a-seed-catching-fixes.md",
     "Sim Design/Playable Sim",
     "Sim Design/untitled folder",
@@ -198,15 +202,11 @@
     "Sim Design/Sim Refactor/8B - Core Actions - Farm Cleanup & Plot Expansion.md",
     "Sim Design/Sim Refactor/8A - Foundation - CSV Parsing & Resource Management.md",
     "Sim Design/Sim Refactor/sim-refactor-phased-plan.md",
-    "Time Hero Game Design Reference/Time Hero - Unified Game Design & Progression.md",
     "farm_actions.csv",
-    " .md",
     "farm_actionsUPDATE.csv",
     "farm_cleanups.csv",
-    "Time Hero - Unified Game Design & Progression.md",
     "Sim Design/End to end Build",
     "Sim Design/Sim Refactor",
-    "Archive",
-    "untitled folder"
+    "Archive"
   ]
 }

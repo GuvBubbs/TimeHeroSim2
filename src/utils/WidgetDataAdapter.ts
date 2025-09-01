@@ -208,8 +208,10 @@ export class WidgetDataAdapter {
       resources.materials.forEach((count, type) => {
         materials[type] = count
       })
+      console.log(`🔄 WidgetDataAdapter: Converted materials Map to object`, materials)
     } else if (resources.materials && typeof resources.materials === 'object') {
       Object.assign(materials, resources.materials)
+      console.log(`🔄 WidgetDataAdapter: Used materials object directly`, materials)
     }
 
     return {
@@ -479,6 +481,23 @@ export class WidgetDataAdapter {
       }
       progress = 0 // Continuous activity
       timeRemaining = 0
+    }
+    // Check for active seed catching
+    else if (processes.seedCatching && !processes.seedCatching.isComplete) {
+      const seedCatch = processes.seedCatching
+      currentAction = {
+        id: 'catch_seeds',
+        type: 'catch_seeds',
+        screen: 'tower',
+        target: `${seedCatch.netType} net at wind level ${seedCatch.windLevel}`,
+        duration: seedCatch.duration || 5,
+        energyCost: 0,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: { items: [`${seedCatch.expectedSeeds} seeds`] }
+      }
+      progress = (seedCatch.progress || 0) * 100
+      timeRemaining = Math.max(0, (seedCatch.duration || 5) * (1 - (seedCatch.progress || 0)))
     }
     // Check for farm actions in progress
     else if (processes.crops && processes.crops.length > 0) {

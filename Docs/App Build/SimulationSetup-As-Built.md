@@ -548,6 +548,7 @@ function launchSimulation(): SimulationConfig | null {
 **Phase 8L Simulation Engine Fixes Applied**:
 - ✅ **Speed Calibration**: Fixed timing system with proper speed calculations (0.5x-max speeds)
 - ✅ **Bootstrap Economy**: Starting gold changed from 0g → 50g to enable progression
+- ✅ **Materials Initialization**: Starting materials reset to 0 (eliminated false "earned" resource display)
 - ✅ **Navigation Logic**: Fixed critical off-by-one bug preventing town visits
 - ✅ **Logging System**: Speed-based log level auto-adjustment (verbose → errors)
 - ✅ **Material Trading**: Gold generation system for late-game progression
@@ -738,6 +739,7 @@ const housingValidation = 'activeGnomes = min(rescuedGnomes, totalCapacity)'
 - **Logging System**: Auto-adjustment works across all speed levels
 - **Material Trading**: Late-game gold generation system functional
 - **Energy Management**: Harvest-only energy economy properly implemented
+- **Materials Reset**: Starting materials corrected to 0 (eliminated false "earned" resource display)
 
 ### Phase 8M Combat & Helper System Validation ✅
 - **Boss Challenge System**: All 7 boss types apply appropriate penalties based on equipment

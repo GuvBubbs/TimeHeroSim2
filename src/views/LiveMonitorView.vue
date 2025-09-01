@@ -173,7 +173,7 @@
         <!-- Left Column: Main Content (3/4 width) -->
         <div class="col-span-9 space-y-4">
           <!-- Farm Visualizer -->
-          <div class="h-80">
+          <div class="min-h-80">
             <FarmVisualizerWidget 
               :gameState="currentState"
               :widgetFarmGrid="widgetData.farmGrid"
@@ -369,6 +369,13 @@ const updateWidgets = (gameState: GameState | null) => {
     widgetData.upgrades = allTransforms.upgrades
     widgetData.phaseProgress = allTransforms.phaseProgress
     
+    // Debug log materials specifically
+    console.log('🪨 LiveMonitor: Materials update debug', {
+      materialsFromTransform: allTransforms.resources.materials,
+      materialsInWidgetData: widgetData.resources.materials,
+      woodValue: allTransforms.resources.materials.wood || 'undefined'
+    })
+    
     // Update the raw state for compatibility
     currentState.value = gameState
     
@@ -418,8 +425,26 @@ const initializeSimulation = async () => {
         tickCount: tickData.tickCount,
         hasGameState: !!tickData.gameState,
         executedActions: tickData.executedActions.length,
-        events: tickData.events.length
+        events: tickData.events.length,
+        materialsFromWorker: tickData.gameState?.resources?.materials instanceof Map ? 
+          `Map(${tickData.gameState.resources.materials.size})` : 
+          typeof tickData.gameState?.resources?.materials
       })
+      
+      // Debug materials directly from worker
+      if (tickData.gameState?.resources?.materials) {
+        const materials = tickData.gameState.resources.materials
+        if (materials instanceof Map) {
+          console.log('🪨 MAIN THREAD: Materials from worker (Map)', {
+            wood: materials.get('wood'),
+            stone: materials.get('stone'),
+            iron: materials.get('iron'),
+            mapSize: materials.size
+          })
+        } else {
+          console.log('🪨 MAIN THREAD: Materials from worker (Object)', materials)
+        }
+      }
       
       // Update widgets with real-time game state
       updateWidgets(tickData.gameState)

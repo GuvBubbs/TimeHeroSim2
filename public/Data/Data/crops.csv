@@ -1,6 +1,6 @@
 id,name,prerequisite,type,categories,gold_cost,gold_gain,energy_cost,time,materials_cost,materials_gain,level,effect,activities,ratio,sell_price_per_unit,min_quantity,exchange_rate,windLevel,seedLevel,seedPool,damage,attackSpeed,advantageVs,length,boss,boss_drop,common_drop,enemy_rolls,depth_range,effectPerLevel,plots_added,total_plots,tool_required,repeatable,notes
-carrot,Carrot,,,,,,,6,,,,1,,,,,,,0,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
-radish,Radish,,,,,,,5,,,,1,,,,,,,0,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+carrot,Carrot,tower_reach_1,,,,,,6,,,,1,,,,,,,0,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
+radish,Radish,tower_reach_1,,,,,,5,,,,1,,,,,,,0,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
 potato,Potato,tower_reach_2,,,,,,8,,,,2,,,,,,,1,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest
 cabbage,Cabbage,tower_reach_2,,,,,,10,,,,3,,,,,,,1,,,,,,,,,,,,,,,,Growth Stages 4 + Gain Energy On Harvest
 turnip,Turnip,tower_reach_2,,,,,,7,,,,2,,,,,,,1,,,,,,,,,,,,,,,,Growth Stages 3 + Gain Energy On Harvest

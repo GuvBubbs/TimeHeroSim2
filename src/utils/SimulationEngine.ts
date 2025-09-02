@@ -19,6 +19,7 @@ import { DecisionEngine } from './ai/DecisionEngine'
 import { ActionExecutor } from './execution/ActionExecutor'
 import { StateManager } from './state'
 import { ProcessManager } from './processes'
+import { validationService } from './validation'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -78,6 +79,9 @@ export class SimulationEngine {
     this.stateManager = new StateManager(this.gameState)
     this.processManager = new ProcessManager()
     this.actionExecutor.setStateManager(this.stateManager)
+    
+    // Phase 9H: Initialize centralized validation service
+    validationService.initialize(gameDataStore)
   }
 
 
@@ -4844,7 +4848,9 @@ export class SimulationEngine {
     // 4. CSV-based prerequisite validation
     if (action.prerequisites && action.prerequisites.length > 0) {
       for (const prereqId of action.prerequisites) {
-        if (!this.hasPrerequisite(prereqId)) {
+        // Phase 9H: Use centralized validation service for prerequisite checking
+        const prereqResult = validationService.validateItemPrerequisites({ prerequisites: [prereqId] }, this.gameState, this.gameDataStore)
+        if (!prereqResult.satisfied) {
           console.log(`❌ PREREQ FAILED: Missing prerequisite ${prereqId}`)
           return false
         }
@@ -4915,58 +4921,6 @@ export class SimulationEngine {
   }
 
   /**
-   * Checks if a specific prerequisite is met using CSV data and game state
-   */
-  private hasPrerequisite(prereqId: string): boolean {
-    // Check unlocked upgrades
-    if (this.gameState.progression.unlockedUpgrades.includes(prereqId)) {
-      return true
-    }
-    
-    // Check completed cleanups
-    if (this.gameState.progression.completedCleanups.has(prereqId)) {
-      return true
-    }
-    
-    // CRITICAL FIX: Check purchased blueprints
-    if (this.gameState.inventory.blueprints.has(prereqId)) {
-      const blueprint = this.gameState.inventory.blueprints.get(prereqId)
-      console.log(`🔍 PREREQUISITE CHECK: ${prereqId} blueprint found, purchased: ${blueprint?.purchased}`)
-      if (blueprint && blueprint.purchased) {
-        return true
-      }
-    }
-    
-    // Check owned tools/weapons
-    if (this.gameState.inventory.tools.has(prereqId) || 
-        this.gameState.inventory.weapons.has(prereqId)) {
-      return true
-    }
-    
-    // Check progression milestones
-    switch (prereqId) {
-      case 'tutorial_complete':
-        return this.gameState.progression.currentPhase !== 'Tutorial'
-      case 'farm_stage_2':
-        return this.gameState.progression.farmStage >= 2
-      case 'farm_stage_3':
-        return this.gameState.progression.farmStage >= 3
-      case 'hero_level_5':
-        return this.gameState.progression.heroLevel >= 5
-      case 'hero_level_10':
-        return this.gameState.progression.heroLevel >= 10
-      default:
-        // Try to find in CSV data
-        try {
-          const item = this.gameDataStore.getItemById(prereqId)
-          return item ? this.gameState.progression.unlockedUpgrades.includes(item.id) : false
-        } catch {
-          return false
-        }
-    }
-  }
-
-  /**
    * Checks adventure-specific prerequisites
    */
   private checkAdventurePrerequisites(action: GameAction): boolean {
@@ -4982,12 +4936,9 @@ export class SimulationEngine {
         item.id === action.routeId || item.id === `${action.routeId}_short`
       )
       
-      if (routeItem && routeItem.prerequisites) {
-        for (const prereq of routeItem.prerequisites) {
-          if (!this.hasPrerequisite(prereq)) {
-            return false
-          }
-        }
+      if (routeItem) {
+        // Phase 9H: Use centralized validation service
+        return validationService.validateItemPrerequisites(routeItem, this.gameState, this.gameDataStore).satisfied
       }
     } catch (error) {
       console.warn('Failed to check adventure prerequisites:', error)
@@ -5099,12 +5050,12 @@ export class SimulationEngine {
     
     // Check helper-specific prerequisites from CSV
     try {
-      const helperItem = this.gameDataStore.getItemById(action.helperId)
-      if (helperItem && helperItem.prerequisites) {
-        for (const prereq of helperItem.prerequisites) {
-          if (!this.hasPrerequisite(prereq)) {
-            return false
-          }
+      const helperItem = this.gameDataStore.getItemById((action as any).helperId)
+      if (helperItem) {
+        // Phase 9H: Use centralized validation service
+        const prereqResult = validationService.validateItemPrerequisites(helperItem, this.gameState, this.gameDataStore)
+        if (!prereqResult.satisfied) {
+          return false
         }
       }
     } catch (error) {

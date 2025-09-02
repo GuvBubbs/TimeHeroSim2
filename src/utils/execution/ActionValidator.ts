@@ -1,9 +1,10 @@
 // ActionValidator - Pre-execution validation system
-// Phase 9E Implementation
+// Phase 9E Implementation + Phase 9H: Enhanced with centralized validation
 
 import type { GameAction, GameState } from '../../types'
 import type { ValidationResult, ExecutionContext } from './types/ActionResult'
 import { PrerequisiteSystem } from '../systems/PrerequisiteSystem'
+import { validationService } from '../validation'
 import { CSVDataParser } from '../CSVDataParser'
 
 /**

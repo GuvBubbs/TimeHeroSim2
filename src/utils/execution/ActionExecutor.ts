@@ -4,6 +4,7 @@
 import type { GameAction, GameState, GameEvent, AllParameters } from '../../types'
 import type { ActionResult, ExecutionContext } from './types/ActionResult'
 import { ActionValidator } from './ActionValidator'
+import { StateManager } from '../state'
 import { CSVDataParser } from '../CSVDataParser'
 import { PrerequisiteSystem } from '../systems/PrerequisiteSystem'
 import { CropSystem } from '../systems/CropSystem'
@@ -15,9 +16,17 @@ import { AdventureSystem } from '../systems/AdventureSystem'
  */
 export class ActionExecutor {
   private validator: ActionValidator
+  private stateManager: StateManager | null = null
 
   constructor() {
     this.validator = new ActionValidator()
+  }
+
+  /**
+   * Set state manager for centralized state management
+   */
+  setStateManager(stateManager: StateManager): void {
+    this.stateManager = stateManager
   }
 
   /**
@@ -29,6 +38,11 @@ export class ActionExecutor {
       parameters,
       gameDataStore,
       timestamp: gameState.time.totalMinutes
+    }
+
+    // Initialize StateManager if not set
+    if (!this.stateManager) {
+      this.stateManager = new StateManager(gameState)
     }
 
     // Validate action
@@ -161,10 +175,18 @@ export class ActionExecutor {
       return { success: false, events: [], error: `No ready crop at ${action.target}` }
     }
 
-    // Consume energy
-    context.gameState.resources.energy.current -= action.energyCost
+    // Consume energy using StateManager
+    const energyResult = this.stateManager!.updateResource({
+      type: 'energy',
+      operation: 'subtract',
+      amount: action.energyCost
+    }, `Harvest energy cost`, 'ActionExecutor')
 
-    // Remove crop from processes
+    if (!energyResult.success) {
+      return { success: false, events: [], error: energyResult.error || 'Insufficient energy' }
+    }
+
+    // Remove crop from processes - this is a direct state mutation that's acceptable for now
     context.gameState.processes.crops = context.gameState.processes.crops.filter(
       (c: any) => c.plotId !== action.target
     )
@@ -173,11 +195,17 @@ export class ActionExecutor {
     const cropData = context.gameDataStore.getItemById(harvestCrop.cropId)
     const energyValue = cropData ? (parseInt(cropData.effect) || 1) : 1
 
-    // Add energy (capped at max)
-    context.gameState.resources.energy.current = Math.min(
-      context.gameState.resources.energy.max,
-      context.gameState.resources.energy.current + energyValue
-    )
+    // Add energy using StateManager
+    const addEnergyResult = this.stateManager!.updateResource({
+      type: 'energy',
+      operation: 'add',
+      amount: energyValue,
+      enforceLimit: true
+    }, `Harvest energy gain from ${harvestCrop.cropId}`, 'ActionExecutor')
+
+    if (!addEnergyResult.success) {
+      console.warn('Failed to add energy from harvest:', addEnergyResult.error)
+    }
 
     events.push({
       timestamp: context.gameState.time.totalMinutes,
@@ -324,18 +352,40 @@ export class ActionExecutor {
 
     const fromScreen = context.gameState.location.currentScreen
 
-    // Update location
-    context.gameState.location.currentScreen = targetScreen as any
-    context.gameState.location.timeOnScreen = 0
-    context.gameState.location.screenHistory.push(targetScreen as any)
-    context.gameState.location.navigationReason = action.description || `AI decision: ${action.id}`
+    // Use StateManager for location change if available
+    if (this.stateManager) {
+      const canChange = this.stateManager.canChangeLocation(targetScreen)
+      if (!canChange.allowed) {
+        return { success: false, events: [], error: canChange.reason || 'Cannot change location' }
+      }
 
-    events.push({
-      timestamp: context.gameState.time.totalMinutes,
-      type: 'action_move',
-      description: `Moved from ${fromScreen} to ${targetScreen}`,
-      importance: 'low'
-    })
+      const locationResult = this.stateManager.changeLocation(
+        targetScreen, 
+        action.description || `AI decision: ${action.id}`
+      )
+
+      if (!locationResult.success) {
+        return { success: false, events: [], error: locationResult.error || 'Location change failed' }
+      }
+
+      console.log(`🎯 LOCATION UPDATE: StateManager successfully changed location from ${fromScreen} to ${targetScreen}`)
+      console.log(`🎯 LOCATION UPDATE: gameState.location.currentScreen is now: ${context.gameState.location.currentScreen}`)
+
+      events.push(...locationResult.events)
+    } else {
+      // Fallback to direct state modification (legacy mode)
+      context.gameState.location.currentScreen = targetScreen as any
+      context.gameState.location.timeOnScreen = 0
+      context.gameState.location.screenHistory.push(targetScreen as any)
+      context.gameState.location.navigationReason = action.description || `AI decision: ${action.id}`
+
+      events.push({
+        timestamp: context.gameState.time.totalMinutes,
+        type: 'action_move',
+        description: `Moved from ${fromScreen} to ${targetScreen}`,
+        importance: 'low'
+      })
+    }
 
     return { success: true, events }
   }

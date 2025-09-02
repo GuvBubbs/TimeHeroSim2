@@ -17,6 +17,7 @@ import { AdventureSystem } from './systems/AdventureSystem'
 import { ForgeSystem } from './systems/ForgeSystem'
 import { DecisionEngine } from './ai/DecisionEngine'
 import { ActionExecutor } from './execution/ActionExecutor'
+import { StateManager } from './state'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -48,6 +49,7 @@ export class SimulationEngine {
   private persona: any // Persona from config
   private decisionEngine: DecisionEngine
   private actionExecutor: ActionExecutor
+  private stateManager: StateManager
   private isRunning: boolean = false
   private tickCount: number = 0
   private lastProgressCheck?: {
@@ -71,6 +73,8 @@ export class SimulationEngine {
     this.gameState = this.initializeGameState()
     this.decisionEngine = new DecisionEngine()
     this.actionExecutor = new ActionExecutor()
+    this.stateManager = new StateManager(this.gameState)
+    this.actionExecutor.setStateManager(this.stateManager)
   }
 
 
@@ -602,6 +606,12 @@ export class SimulationEngine {
         } catch (error) {
           console.error(`Error executing action ${action.type}:`, error)
         }
+      }
+      
+      // FIXED: Update DecisionEngine lastCheckinTime after successful actions
+      if (executedActions.length > 0) {
+        this.decisionEngine.updateLastCheckin(this.gameState)
+        console.log(`🎯 DECISION ENGINE: Updated lastCheckinTime to ${this.gameState.time.totalMinutes} after ${executedActions.length} actions`)
       }
       
       // Update automation systems
@@ -4270,64 +4280,80 @@ export class SimulationEngine {
   }
 
   /**
-   * Adds material with storage limits and normalization
+   * Adds material using StateManager with storage limits and normalization
    */
   private addMaterial(materialName: string, amount: number): boolean {
-    // Normalize material name using CSVDataParser
-    const normalizedName = CSVDataParser.normalizeMaterialName(materialName)
-    
-    if (!normalizedName || amount <= 0) {
+    if (amount <= 0) {
       return false
     }
-    
-    const current = this.gameState.resources.materials.get(normalizedName) || 0
-    const storageLimit = this.getStorageLimit(normalizedName)
-    
-    const newAmount = Math.min(current + amount, storageLimit)
-    const actualAdded = newAmount - current
-    
-    this.gameState.resources.materials.set(normalizedName, newAmount)
-    
-    // Return true if hit storage cap (warning condition)
-    const hitStorageCap = actualAdded < amount
-    
-    if (hitStorageCap) {
-      console.warn(`⚠️ Storage limit reached for ${normalizedName}: ${newAmount}/${storageLimit}`)
-      
-      // Add warning event
-      this.addGameEvent({
-        timestamp: this.gameState.time.totalMinutes,
-        type: 'storage_warning',
-        description: `Storage full for ${materialName} (${newAmount}/${storageLimit})`,
-        importance: 'medium'
-      })
+
+    const result = this.stateManager.updateResource({
+      type: 'materials',
+      operation: 'add',
+      amount,
+      itemId: materialName,
+      enforceLimit: true
+    }, `Add ${amount} ${materialName}`, 'SimulationEngine')
+
+    if (!result.success) {
+      console.warn(`⚠️ Failed to add material: ${result.error}`)
+      return false
     }
-    
-    return hitStorageCap
+
+    // Check if storage limit was hit
+    const resourceManager = this.stateManager.getResourceManager()
+    const limitResult = resourceManager.processResourceChange({
+      type: 'materials',
+      operation: 'add',
+      amount: 0, // Just check current state
+      itemId: materialName
+    })
+
+    return limitResult.hitLimit
   }
 
   /**
-   * Consumes materials for crafting/actions
+   * Consumes materials using StateManager for crafting/actions
    */
   private consumeMaterials(materials: Map<string, number>): boolean {
+    const resourceManager = this.stateManager.getResourceManager()
+    
     // First check if we have enough of all materials
+    const requirements: { [key: string]: number } = {}
     for (const [materialName, amount] of materials.entries()) {
-      const normalizedName = CSVDataParser.normalizeMaterialName(materialName)
-      const available = this.gameState.resources.materials.get(normalizedName) || 0
-      
-      if (available < amount) {
-        return false // Not enough materials
+      requirements[materialName] = amount
+    }
+    
+    if (!resourceManager.canAfford(requirements)) {
+      return false
+    }
+
+    // Use transaction to ensure all-or-nothing consumption
+    const transactionId = this.stateManager.beginTransaction()
+    
+    try {
+      // Consume each material
+      for (const [materialName, amount] of materials.entries()) {
+        const result = this.stateManager.updateResource({
+          type: 'materials',
+          operation: 'subtract',
+          amount,
+          itemId: materialName
+        }, `Consume ${amount} ${materialName}`, 'SimulationEngine')
+
+        if (!result.success) {
+          this.stateManager.rollbackTransaction(transactionId)
+          return false
+        }
       }
+
+      // Commit the transaction
+      const commitResult = this.stateManager.commitTransaction(transactionId)
+      return commitResult.success
+    } catch (error) {
+      this.stateManager.rollbackTransaction(transactionId)
+      return false
     }
-    
-    // Consume the materials
-    for (const [materialName, amount] of materials.entries()) {
-      const normalizedName = CSVDataParser.normalizeMaterialName(materialName)
-      const current = this.gameState.resources.materials.get(normalizedName) || 0
-      this.gameState.resources.materials.set(normalizedName, current - amount)
-    }
-    
-    return true
   }
 
   /**

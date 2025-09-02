@@ -59,9 +59,9 @@ export abstract class BasePersonaStrategy implements IPersonaStrategy {
     // Don't act at night (10 PM to 6 AM)
     if (currentHour < 6 || currentHour >= 22) return false
     
-    // Always act in first few minutes of simulation
+    // FIXED: Always allow multiple actions in first 10 hours for active gameplay
     if (currentTime < 600) { // First 10 hours
-      return lastCheckIn === 0
+      return true // Allow multiple check-ins during initial gameplay
     }
 
     return true
@@ -174,9 +174,9 @@ export class CasualPlayerStrategy extends BasePersonaStrategy {
       return true
     }
 
-    // Casual players check in less frequently - every 25-35 minutes
-    const baseInterval = this.getMinCheckinInterval(gameState)
-    return timeSinceLastCheckin >= baseInterval
+    // FIXED: Casual players check in much more frequently for active gameplay - every 2-5 minutes
+    const activeGameplayInterval = 2.0 // 2 minutes for active sessions
+    return timeSinceLastCheckin >= activeGameplayInterval
   }
 
   getMinCheckinInterval(gameState: GameState): number {

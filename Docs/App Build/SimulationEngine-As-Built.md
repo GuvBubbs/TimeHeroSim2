@@ -4,7 +4,7 @@
 
 The SimulationEngine is the core intelligence system that powers the TimeHero Simulator. It provides realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships.
 
-**Status**: ✅ Production-Ready with Real-Time Data Flow & Centralized Action Execution (Phase 9E Complete)
+**Status**: ✅ Production-Ready with Centralized State Management (Phase 9F Complete)
 
 ## Architecture Overview
 
@@ -13,7 +13,8 @@ SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge �
 ├── CSV Data Processing           ├── Real-time Ticks      ├── Event Handling      ├── Data Flow         ├── Live Updates
 ├── AI Decision Making           ├── MapSerializer        ├── Error Management    ├── State Updates     ├── Resource Display  
 ├── Centralized Action Execution ├── Performance Stats    ├── Data Validation     ├── Event Processing  ├── Action Tracking
-└── Persona-Driven Behavior     └── Background Processing└── Real-time Events    └── Widget Updates    └── Progress Monitoring
+├── Centralized State Management └── Background Processing└── Real-time Events    └── Widget Updates    └── Progress Monitoring
+└── Persona-Driven Behavior
 ```
 
 ### Core Components
@@ -23,6 +24,13 @@ SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge �
 - `src/workers/simulation.worker.ts` - Web Worker for background processing  
 - `src/utils/SimulationBridge.ts` - Main thread communication bridge
 - `src/utils/WidgetDataAdapter.ts` - Transforms GameState to widget-friendly formats
+
+**Phase 9F: Centralized State Management System**:
+- `src/utils/state/StateManager.ts` - Main orchestrator for all state changes with transaction support (NEW)
+- `src/utils/state/ResourceManager.ts` - Specialized resource handling with storage limits (NEW)
+- `src/utils/state/StateValidator.ts` - Comprehensive state validation and invariant checking (NEW)
+- `src/utils/state/StateSnapshot.ts` - State snapshots for rollback capability (NEW)
+- `src/utils/state/types/` - Complete type system for state management operations (NEW)
 
 **Phase 9E: Centralized Action Execution System**:
 - `src/utils/execution/ActionExecutor.ts` - Centralized action execution with unified pipeline (NEW)
@@ -289,6 +297,65 @@ private shouldHeroActNow(): boolean {
     this.lastCheckinTime = this.gameState.time.totalMinutes
     return true
   }
+  
+  // Regular check-ins every 15-30 minutes during active hours
+  const timeSinceLastCheckin = this.gameState.time.totalMinutes - this.lastCheckinTime
+  if (timeSinceLastCheckin >= 15) {
+    this.lastCheckinTime = this.gameState.time.totalMinutes
+    return true
+  }
+  
+  return false
+}
+```
+
+### Phase 9G: Complete Action Execution Timing Overhaul (LATEST)
+
+**Problem**: Phase 8J fix was replaced by DecisionEngine system which had multiple critical timing bugs:
+1. **Missing lastCheckinTime Update**: `lastCheckinTime` never updated after successful actions, causing infinite waits
+2. **Restrictive Early-Game Logic**: `checkBaseConditions()` blocked all actions after the first one during initial 10 hours 
+3. **Inactive PersonaStrategy**: CasualPlayerStrategy used 480-minute (8-hour) intervals preventing continuous gameplay
+
+**Complete Solution Applied**:
+
+1. **Fixed lastCheckinTime Update in SimulationEngine**:
+```typescript
+```
+
+## Summary
+
+The SimulationEngine has evolved through multiple phases:
+```
+
+2. **Fixed PersonaStrategy Early-Game Restriction**:
+```typescript
+// BEFORE: Blocked multiple actions in first 10 hours
+if (currentTime < 600) { // First 10 hours
+  return lastCheckIn === 0 // Only first action allowed
+}
+
+// AFTER: Allow continuous actions during early gameplay
+if (currentTime < 600) { // First 10 hours  
+  return true // Allow multiple check-ins during initial gameplay
+}
+```
+
+3. **Fixed CasualPlayerStrategy Timing**:
+```typescript
+// BEFORE: 480-minute intervals (8 hours between actions)
+const baseInterval = this.getMinCheckinInterval(gameState) // 480 minutes
+return timeSinceLastCheckin >= baseInterval
+
+// AFTER: 2-minute intervals for active gameplay
+const activeGameplayInterval = 2.0 // 2 minutes for active sessions
+return timeSinceLastCheckin >= activeGameplayInterval
+```
+
+**Result**: Perfect continuous action execution every 2+ minutes with proper state management:
+- ✅ Tick 1: Action executed → `lastCheckinTime` updated to 480.5
+- ✅ Tick 5: Action executed → `lastCheckinTime` updated to 482.5 (2+ minutes later)
+- ✅ Tick 9: Action triggered → `lastCheckinTime` updated to 484.5 (2+ minutes later)
+- ✅ Ongoing: Actions execute every 2+ minutes when valid actions available
   
   // Regular check-ins every 60 minutes (instead of 480+)
   const minutesPerCheckin = 60

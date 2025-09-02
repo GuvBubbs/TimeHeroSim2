@@ -41,6 +41,8 @@ export class DecisionEngine implements IDecisionEngine {
     
     // Check if hero should act now
     const shouldAct = this.shouldHeroActNow(gameState, this.lastCheckinTime)
+    console.log(`🎯 DECISION ENGINE: shouldHeroActNow = ${shouldAct} (lastCheckinTime: ${this.lastCheckinTime}, currentTime: ${gameState.time.totalMinutes})`)
+    
     if (!shouldAct) {
       return {
         actions: [],
@@ -55,6 +57,7 @@ export class DecisionEngine implements IDecisionEngine {
     this.lastCheckinTime = gameState.time.totalMinutes
 
     console.log(`🎯 DECISION ENGINE: Starting evaluation for ${persona.name} persona`)
+    console.log(`🎯 DECISION ENGINE: Current location in gameState: ${gameState.location.currentScreen}`)
 
     // 1. Evaluate emergency actions first
     const emergencyActions = this.evaluateEmergencyActions(gameState, parameters, gameDataStore)
@@ -65,8 +68,9 @@ export class DecisionEngine implements IDecisionEngine {
     // 3. Evaluate helper actions
     const helperActions = this.evaluateHelperActions(gameState, parameters, gameDataStore)
     
-    // 4. Evaluate navigation actions
-    const navigationActions = this.evaluateNavigationActions(gameState, parameters, gameDataStore)
+    // 4. Evaluate navigation actions (only if no emergency navigation exists)
+    const hasEmergencyNav = emergencyActions.some(action => action.type === 'move')
+    const navigationActions = hasEmergencyNav ? [] : this.evaluateNavigationActions(gameState, parameters, gameDataStore)
     
     // Combine all actions
     const allActions = [
@@ -184,7 +188,7 @@ export class DecisionEngine implements IDecisionEngine {
         actions.push({
           id: `emergency_pump_${Date.now()}`,
           type: 'pump',
-          screen: 'farm',
+          screen: gameState.location.currentScreen,
           duration: 2,
           energyCost: 5,
           goldCost: 0,
@@ -198,17 +202,35 @@ export class DecisionEngine implements IDecisionEngine {
         const readyToHarvest = gameState.processes.crops.filter(crop => crop.readyToHarvest)
         if (readyToHarvest.length > 0) {
           console.log(`🚨 EMERGENCY: Critical energy shortage, harvesting ready crops`)
-          actions.push({
-            id: `emergency_harvest_${Date.now()}`,
-            type: 'harvest',
-            screen: 'farm',
-            target: readyToHarvest[0].plotId,
-            duration: 2,
-            energyCost: 0,
-            goldCost: 0,
-            prerequisites: [],
-            expectedRewards: { energy: 5, items: [readyToHarvest[0].cropId] }
-          })
+          
+          // Only add harvest action if currently on farm, otherwise add navigation to farm
+          if (gameState.location.currentScreen === 'farm') {
+            actions.push({
+              id: `emergency_harvest_${Date.now()}`,
+              type: 'harvest',
+              screen: 'farm',
+              target: readyToHarvest[0].plotId,
+              duration: 2,
+              energyCost: 0,
+              goldCost: 0,
+              prerequisites: [],
+              expectedRewards: { energy: 5, items: [readyToHarvest[0].cropId] }
+            })
+          } else {
+            actions.push({
+              id: `emergency_farm_nav_${Date.now()}`,
+              type: 'move',
+              screen: gameState.location.currentScreen,
+              target: 'farm',
+              toScreen: 'farm',
+              description: 'Emergency navigation to farm for harvest',
+              duration: 1,
+              energyCost: 0,
+              goldCost: 0,
+              prerequisites: [],
+              expectedRewards: {}
+            })
+          }
         }
       }
     }
@@ -225,6 +247,7 @@ export class DecisionEngine implements IDecisionEngine {
 
   private evaluateScreenActions(gameState: GameState, parameters: AllParameters, gameDataStore: any): GameAction[] {
     const screen = gameState.location.currentScreen
+    console.log(`🎯 SCREEN ACTIONS: Evaluating actions for screen: ${screen}`)
     
     switch (screen) {
       case 'farm':
@@ -292,6 +315,7 @@ export class DecisionEngine implements IDecisionEngine {
 
   private evaluateFarmActions(gameState: GameState, parameters: AllParameters, gameDataStore: any): GameAction[] {
     const actions: GameAction[] = []
+    const currentScreen = gameState.location.currentScreen
     
     // Harvest ready crops (highest priority)
     const readyToHarvest = gameState.processes.crops.filter(crop => crop.readyToHarvest)
@@ -299,7 +323,7 @@ export class DecisionEngine implements IDecisionEngine {
       actions.push({
         id: `harvest_${Date.now()}`,
         type: 'harvest',
-        screen: 'farm',
+        screen: currentScreen,
         target: readyToHarvest[0].plotId,
         duration: 2,
         energyCost: 0, // Harvesting is FREE
@@ -319,7 +343,7 @@ export class DecisionEngine implements IDecisionEngine {
       actions.push({
         id: `water_${Date.now()}`,
         type: 'water',
-        screen: 'farm',
+        screen: currentScreen,
         target: needsWatering[0].plotId,
         duration: 1,
         energyCost: 2,
@@ -340,7 +364,7 @@ export class DecisionEngine implements IDecisionEngine {
         actions.push({
           id: `plant_${Date.now()}`,
           type: 'plant',
-          screen: 'farm',
+          screen: currentScreen,
           target: bestSeed,
           duration: 2,
           energyCost: 8,
@@ -356,7 +380,7 @@ export class DecisionEngine implements IDecisionEngine {
       actions.push({
         id: `pump_${Date.now()}`,
         type: 'pump',
-        screen: 'farm',
+        screen: currentScreen,
         duration: 2,
         energyCost: 5,
         goldCost: 0,

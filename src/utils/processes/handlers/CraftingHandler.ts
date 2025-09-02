@@ -1,5 +1,5 @@
 // CraftingHandler - Phase 9G Implementation
-// Handles crafting processes using existing CraftingSystem
+// Handles crafting processes using ForgeSystem (CraftingSystem merged)
 
 import type { GameState } from '../../../types'
 import type { 
@@ -14,7 +14,7 @@ import type {
   ProcessEvent,
   CraftingProcessData
 } from '../types/ProcessTypes'
-import { CraftingSystem } from '../../systems/CraftingSystem'
+import { ForgeSystem } from '../../systems/ForgeSystem'
 
 export class CraftingHandler implements IProcessHandler {
   
@@ -103,9 +103,9 @@ export class CraftingHandler implements IProcessHandler {
       }
     }
     
-    // Use existing CraftingSystem to process
+    // Use ForgeSystem to process crafting (CraftingSystem merged)
     const previousProgress = craftingItem.progress
-    CraftingSystem.processCrafting(gameState, deltaTime, gameDataStore)
+    ForgeSystem.processCrafting(gameState, deltaTime, gameDataStore)
     
     // Update handle progress
     handle.progress = craftingItem.progress
@@ -147,7 +147,7 @@ export class CraftingHandler implements IProcessHandler {
       gameState.processes.crafting.splice(itemIndex, 1)
     }
     
-    // Crafted item should already be added to inventory by CraftingSystem
+    // Crafted item should already be added to inventory by ForgeSystem
     return {
       handle,
       stateChanges: {},

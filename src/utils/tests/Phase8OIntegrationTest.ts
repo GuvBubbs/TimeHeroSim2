@@ -5,14 +5,14 @@
  * 1. PrerequisiteValidator with CSV data validation
  * 2. Enhanced MiningSystem with material bonuses and Abyss Seeker effects
  * 3. OfflineProgressionSystem calculations
- * 4. RouteEnemyRollSystem persistence
+ * 4. AdventureSystem enemy roll persistence
  * 5. Enhanced AI decision-making with bottleneck detection
  */
 
 import { PrerequisiteValidator } from '../validators/PrerequisiteValidator'
 import { MineSystem } from '../systems/MineSystem'
 import { OfflineProgressionSystem } from '../systems/OfflineProgressionSystem'
-import { RouteEnemyRollSystem } from '../systems/RouteEnemyRollSystem'
+import { AdventureSystem } from '../systems/AdventureSystem'
 import { SimulationEngine } from '../SimulationEngine'
 import type { GameState, GameDataItem, SimulationConfig } from '@/types'
 
@@ -206,15 +206,15 @@ export class Phase8OIntegrationTest {
   }
 
   /**
-   * Test RouteEnemyRollSystem persistence
+   * Test AdventureSystem enemy roll persistence
    */
   private async testRouteEnemyRolls(): Promise<void> {
     const startTime = Date.now()
     
     try {
       // Test roll generation and persistence
-      const roll1 = RouteEnemyRollSystem.getRoll('meadow_path', 'Short')
-      const roll2 = RouteEnemyRollSystem.getRoll('meadow_path', 'Short') // Should be same
+      const roll1 = AdventureSystem.getEnemyRoll('meadow_path', 'Short')
+      const roll2 = AdventureSystem.getEnemyRoll('meadow_path', 'Short') // Should be same
       
       if (roll1.rollSeed === roll2.rollSeed && roll1.totalEnemies === roll2.totalEnemies) {
         this.addResult('RouteEnemyRolls - Persistence', true,
@@ -227,15 +227,15 @@ export class Phase8OIntegrationTest {
       }
       
       // Test roll clearing
-      RouteEnemyRollSystem.clearRoll('meadow_path', 'Short', 'complete')
-      const hasActiveRoll = RouteEnemyRollSystem.hasActiveRoll('meadow_path', 'Short')
+      AdventureSystem.clearEnemyRoll('meadow_path', 'Short', 'complete')
+      const hasActiveRoll = AdventureSystem.hasActiveEnemyRoll('meadow_path', 'Short')
       
       this.addResult('RouteEnemyRolls - Clearing', !hasActiveRoll,
         hasActiveRoll ? 'Roll was not cleared properly' : 'Roll clearing successful',
         Date.now() - startTime)
         
       // Test statistics
-      const stats = RouteEnemyRollSystem.getStatistics()
+      const stats = AdventureSystem.getEnemyRollStatistics()
       this.addResult('RouteEnemyRolls - Statistics', true,
         `Statistics functional: ${stats.totalActiveRolls} active rolls`,
         Date.now() - startTime)

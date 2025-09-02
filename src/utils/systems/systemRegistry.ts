@@ -11,7 +11,6 @@ import { HelperSystem } from './HelperSystem'
 import { OfflineProgressionSystem } from './OfflineProgressionSystem'
 import { PrerequisiteSystem } from './PrerequisiteSystem'
 import { SeedSystem } from './SeedSystem'
-import { CraftingSystem } from './CraftingSystem'
 
 /**
  * Core game systems - main gameplay mechanics
@@ -32,8 +31,7 @@ export const CORE_SYSTEMS = {
 export const SUPPORT_SYSTEMS = {
   offline: OfflineProgressionSystem,
   prerequisites: PrerequisiteSystem,
-  seeds: SeedSystem,
-  crafting: CraftingSystem
+  seeds: SeedSystem
 } as const
 
 /**

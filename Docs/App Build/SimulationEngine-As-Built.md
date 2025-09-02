@@ -1,4 +1,77 @@
-# SimulationEngine As-Built Documentation - Phase 10B Complete
+# SimulationEngine As-Built Documentation - Phase 10C Complete
+
+## Overview
+
+The SimulationEngine has completed Phase 10C (Extract Activity Systems), consolidating all adventure, mining, and forge functionality into comprehensive activity systems while maintaining its pure orchestration layer architecture.
+
+**Status**: ✅ Phase 10C Complete - Activity Systems Consolidated
+
+## Current State After Phase 10C (September 3, 2025)
+
+### Files Status
+- **SimulationEngine.ts**: 606 lines (pure orchestration layer - unchanged)
+- **GameSystem.ts**: 173 lines (standardized interface definitions)
+- **Activity systems**: 2,392 lines total (with Phase 10C consolidations)
+
+### Phase 10C Achievements
+1. **Activity System Consolidation**: 1,485 lines of functionality merged
+   - **RouteEnemyRollSystem** (415 lines) → AdventureSystem ✅ DELETED
+   - **CombatSystem** (710 lines) → AdventureSystem ✅ DELETED  
+   - **CraftingSystem** (360 lines) → ForgeSystem ✅ DELETED
+
+2. **Enhanced Activity Systems**:
+   - **AdventureSystem.ts**: 290 → 1,415 lines (+1,125) - Complete adventure handling
+   - **ForgeSystem.ts**: 289 → 640 lines (+351) - Complete forge operations
+   - **MineSystem.ts**: 337 lines (unchanged) - Already consolidated
+
+3. **Import Resolution**: 
+   - Updated systemRegistry.ts - Removed CraftingSystem references
+   - Updated OfflineProgressionSystem.ts - Removed CraftingSystem imports
+   - All references to deleted systems resolved ✅
+
+4. **Architectural Consolidation**:
+   - **3 systems eliminated** through strategic merging
+   - **Activity systems self-contained** with all related functionality
+   - **No SimulationEngine extraction needed** - already pure orchestration
+
+### Activity Systems Architecture (Post-Phase 10C)
+
+```
+AdventureSystem (1,415 lines) - Complete Adventure Handling ✅
+├── Adventure Action Evaluation (~100 lines)
+├── Route Enemy Rolling (merged from RouteEnemyRollSystem)
+│   ├── Persistent enemy compositions (~300 lines)
+│   ├── Difficulty-based scaling
+│   └── Roll cleanup and persistence
+├── Combat Simulation (merged from CombatSystem)  
+│   ├── Pentagon advantage system (~700 lines)
+│   ├── Wave-based enemy generation
+│   ├── Boss fight mechanics
+│   └── Armor effect handling
+└── Loot Generation & Rewards (~100 lines)
+
+ForgeSystem (640 lines) - Complete Forge Operations ✅
+├── Forge Action Evaluation (~100 lines)
+├── Heat Management (0-5000° range) (~150 lines)
+├── Advanced Crafting (merged from CraftingSystem)
+│   ├── Prerequisites and resource checking (~350 lines)
+│   ├── Furnace speed modifiers  
+│   ├── Master craft bonuses
+│   └── Tool/weapon creation
+└── Material Refinement (~40 lines)
+
+MineSystem (337 lines) - Mining Operations ✅
+├── Exponential energy drain by depth
+├── Material collection by tier
+├── Pickaxe efficiency bonuses
+└── Tool sharpening mechanics
+```
+
+---
+
+# Previous Phase Documentation
+
+## Phase 10B Complete - Core Game Loop Systems Extracted
 
 ## Overview
 

@@ -7,8 +7,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SimulationEngine } from '../src/utils/SimulationEngine'
 import { FarmSystem } from '../src/utils/systems/FarmSystem'
 import { HelperSystem } from '../src/utils/systems/HelperSystem'
-import { CombatSystem } from '../src/utils/systems/CombatSystem'
-import { CraftingSystem } from '../src/utils/systems/CraftingSystem'
+import { AdventureSystem } from '../src/utils/systems/AdventureSystem'
+import { ForgeSystem } from '../src/utils/systems/ForgeSystem'
 import { MineSystem } from '../src/utils/systems/MineSystem'
 import { CSVDataParser } from '../src/utils/CSVDataParser'
 import type { SimulationConfig, GameState } from '../src/types'
@@ -213,7 +213,7 @@ describe('SimulationEngine Integration Tests', () => {
 
       const armor = { defense: 10, effect: 'none' }
 
-      const result = CombatSystem.simulateAdventure(
+      const result = AdventureSystem.simulateAdventure(
         route,
         weapons,
         armor,
@@ -242,7 +242,7 @@ describe('SimulationEngine Integration Tests', () => {
       })
 
       // Process crafting
-      CraftingSystem.processCrafting(gameState, 3, mockGameDataStore) // 3 minutes
+      ForgeSystem.processCrafting(gameState, 3, mockGameDataStore) // 3 minutes
 
       const craft = gameState.processes.crafting[0]
       expect(craft.progress).toBe(0.6) // 3/5 = 0.6

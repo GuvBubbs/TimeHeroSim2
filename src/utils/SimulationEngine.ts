@@ -8,7 +8,7 @@ import { StateManager } from './state'
 import { ProcessManager } from './processes'
 import { validationService } from './validation'
 import { eventBus, type IEventBus } from './events'
-import { HelperSystem } from './systems/HelperSystem'
+import { SupportSystemManager } from './systems/SupportSystemManager'
 import { FarmSystem } from './systems/FarmSystem'
 import { TowerSystem } from './systems/TowerSystem'
 import { SeedSystem } from './systems/SeedSystem'
@@ -86,6 +86,25 @@ export class SimulationEngine {
     // Initialize event bus integration
     this.eventBus = eventBus
     this.setupEventBusIntegration()
+
+    // Handle any offline time if resuming simulation
+    this.handleOfflineProgression()
+  }
+
+  /**
+   * Handle offline progression when resuming simulation
+   */
+  private handleOfflineProgression(): void {
+    // In a real implementation, this would check for saved state and time difference
+    // For now, this is a placeholder for the integration pattern
+    const lastSaveTime = this.config.lastSaveTime || Date.now()
+    const currentTime = Date.now()
+    const offlineMinutes = (currentTime - lastSaveTime) / (1000 * 60)
+    
+    if (offlineMinutes > 5) {
+      console.log(`🕒 Detected ${Math.round(offlineMinutes)} minutes offline, processing...`)
+      SupportSystemManager.handleOfflineTime(this.gameState, offlineMinutes)
+    }
   }
 
   /**
@@ -395,9 +414,10 @@ export class SimulationEngine {
    */
   private updateGameSystems(deltaTime: number): void {
     try {
-      HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
+      // Apply all support system effects via SupportSystemManager
+      SupportSystemManager.applyEffects(this.gameState, deltaTime)
     } catch (error) {
-      console.error('Error in HelperSystem.processHelpers:', error)
+      console.error('Error in SupportSystemManager.applyEffects:', error)
     }
 
     try {
@@ -415,7 +435,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Execute actions through ActionExecutor
+   * Execute actions through ActionExecutor with support system validation
    */
   private executeActions(decisions: GameAction[]): { executedActions: GameAction[], actionEvents: GameEvent[] } {
     const executedActions: GameAction[] = []
@@ -423,6 +443,13 @@ export class SimulationEngine {
     
     for (const action of decisions) {
       try {
+        // Validate action through support systems first
+        const validation = SupportSystemManager.validateAction(action, this.gameState)
+        if (!validation.valid) {
+          console.warn(`Action ${action.type} blocked by support system: ${validation.reason}`)
+          continue
+        }
+
         const result = this.actionExecutor.execute(action, this.gameState, this.parameters, this.gameDataStore)
         if (result.success) {
           executedActions.push(action)

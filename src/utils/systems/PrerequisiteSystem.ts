@@ -1,15 +1,102 @@
 /**
- * PrerequisiteSystem - Phase 8B Implementation
+ * PrerequisiteSystem - Phase 10D Support System Integration
  * 
  * Handles checking prerequisites for actions, upgrades, and other game items.
- * Supports multiple prerequisite types including completed cleanups, unlocked upgrades,
- * tool ownership, farm stages, and hero levels.
+ * Implements SupportSystem interface for proper integration.
  */
 
-import type { GameState } from '@/types/game-state'
+import type { 
+  GameState, 
+  GameAction,
+  SupportSystem, 
+  ValidationResult, 
+  SystemEffects, 
+  SystemModifier 
+} from '@/types'
 import { CSVDataParser } from '../CSVDataParser'
 
 export class PrerequisiteSystem {
+  // =============================================================================
+  // SUPPORT SYSTEM INTERFACE IMPLEMENTATION
+  // =============================================================================
+
+  /**
+   * Validate action prerequisites - This is the core function of this system
+   */
+  static validate(action: GameAction, state: GameState): ValidationResult {
+    // Check basic action prerequisites
+    if (action.prerequisites && action.prerequisites.length > 0) {
+      for (const prereq of action.prerequisites) {
+        if (!this.hasPrerequisite(prereq, state, null)) {
+          return { 
+            valid: false, 
+            reason: `Missing prerequisite: ${prereq}`,
+            requirements: [prereq]
+          }
+        }
+      }
+    }
+
+    // Check energy requirements
+    if (action.energyCost > state.resources.energy.current) {
+      return { 
+        valid: false, 
+        reason: `Insufficient energy (need ${action.energyCost})`,
+        requirements: [`${action.energyCost} energy`]
+      }
+    }
+
+    // Check gold requirements
+    if (action.goldCost > state.resources.gold) {
+      return { 
+        valid: false, 
+        reason: `Insufficient gold (need ${action.goldCost})`,
+        requirements: [`${action.goldCost} gold`]
+      }
+    }
+
+    // Check material requirements
+    if (action.materialCosts) {
+      for (const [material, amount] of Object.entries(action.materialCosts)) {
+        const available = state.resources.materials.get(material) || 0
+        if (available < amount) {
+          return { 
+            valid: false, 
+            reason: `Insufficient ${material} (need ${amount}, have ${available})`,
+            requirements: [`${amount} ${material}`]
+          }
+        }
+      }
+    }
+
+    return { valid: true }
+  }
+
+  /**
+   * Apply prerequisite system effects (none - this is a validation system)
+   */
+  static apply(state: GameState, deltaTime?: number): void {
+    // Prerequisite system doesn't modify state directly
+    // It only validates actions
+  }
+
+  /**
+   * Get prerequisite system effects (provides no ongoing modifiers)
+   */
+  static getEffects(state: GameState): SystemEffects {
+    return { 
+      modifiers: [], // Prerequisite system doesn't provide modifiers
+      metadata: {
+        validationEnabled: true,
+        currentPhase: this.getCurrentPhase(state),
+        farmStage: this.getFarmStageFromPlots(state.progression.farmPlots)
+      }
+    }
+  }
+
+  // =============================================================================
+  // EXISTING PREREQUISITE CHECKING METHODS
+  // =============================================================================
   /**
    * Checks if all prerequisites for an item are met
    * 

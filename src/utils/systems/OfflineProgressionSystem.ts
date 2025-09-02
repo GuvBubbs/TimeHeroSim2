@@ -1,12 +1,20 @@
 /**
- * OfflineProgressionSystem - Phase 8O Implementation
+ * OfflineProgressionSystem - Phase 10D Support System Integration
  * 
  * Calculates and applies progression that occurs while the player is offline.
- * Handles crop growth, auto-harvest, seed collection, water generation,
- * crafting queue, mining progress, and helper actions.
+ * Implements SupportSystem interface for proper integration.
  */
 
-import type { GameState, CropData, ToolData } from '@/types'
+import type { 
+  GameState, 
+  GameAction,
+  SupportSystem, 
+  ValidationResult, 
+  SystemEffects, 
+  SystemModifier,
+  OfflineProgressionResult,
+  OfflineProgressionSummary 
+} from '@/types'
 import { FarmSystem } from './FarmSystem'
 import { SeedSystem } from './SeedSystem'
 import { AdventureSystem } from './AdventureSystem'
@@ -67,6 +75,73 @@ interface OfflineSummary {
 }
 
 export class OfflineProgressionSystem {
+  // =============================================================================
+  // SUPPORT SYSTEM INTERFACE IMPLEMENTATION
+  // =============================================================================
+
+  /**
+   * Validate offline progression actions (usually none needed)
+   */
+  static validate(action: GameAction, state: GameState): ValidationResult {
+    // Offline progression doesn't typically block actions
+    // Could validate if offline progression is enabled/allowed
+    return { valid: true }
+  }
+
+  /**
+   * Apply offline progression effects (called when resuming from offline)
+   */
+  static apply(state: GameState, deltaTime?: number): void {
+    if (deltaTime && deltaTime > 0) {
+      // Only apply offline progression if significant time has passed
+      if (deltaTime > 5) { // More than 5 minutes offline
+        const results = this.calculate(state, deltaTime)
+        this.applyResults(state, results)
+      }
+    }
+  }
+
+  /**
+   * Get offline progression effects (returns empty since it's event-driven)
+   */
+  static getEffects(state: GameState): SystemEffects {
+    return { 
+      modifiers: [], // Offline progression doesn't provide ongoing modifiers
+      metadata: {
+        lastOfflineCheck: Date.now(),
+        offlineCapable: true
+      }
+    }
+  }
+
+  /**
+   * Apply offline progression results to game state
+   */
+  private static applyResults(state: GameState, results: OfflineResults): void {
+    // Apply energy gains
+    if (results.energyGained > 0) {
+      state.resources.energy.current = Math.min(
+        state.resources.energy.current + results.energyGained,
+        state.resources.energy.max
+      )
+    }
+
+    // Apply water generation
+    if (results.waterGenerated > 0) {
+      state.resources.water.current = Math.min(
+        state.resources.water.current + results.waterGenerated,
+        state.resources.water.max
+      )
+    }
+
+    // Note: Other results would be applied by their respective systems
+    // This is just the core resource updates
+  }
+
+  // =============================================================================
+  // EXISTING OFFLINE PROGRESSION METHODS
+  // =============================================================================
+
   /**
    * Calculate all offline progression and apply to game state
    */

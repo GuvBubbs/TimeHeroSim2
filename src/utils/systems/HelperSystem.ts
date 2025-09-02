@@ -1,7 +1,16 @@
-// HelperSystem - Phase 10A Consolidation
-// Complete helper management system including gnome housing and automation
+// HelperSystem - Phase 10D Support System Integration
+// Complete helper management system with SupportSystem interface
 
-import type { GameState, GnomeState } from '@/types'
+import type { 
+  GameState, 
+  GnomeState, 
+  SupportSystem, 
+  ValidationResult, 
+  SystemEffects, 
+  SystemModifier,
+  GameAction,
+  HelperEfficiency 
+} from '@/types'
 import { SeedSystem } from './SeedSystem'
 import { FarmSystem } from './FarmSystem'
 
@@ -104,6 +113,272 @@ export const HELPER_SCALING: Record<string, HelperScaling> = {
 }
 
 export class HelperSystem {
+  // =============================================================================
+  // SUPPORT SYSTEM INTERFACE IMPLEMENTATION
+  // =============================================================================
+
+  /**
+   * Validate helper-related actions
+   */
+  static validate(action: GameAction, state: GameState): ValidationResult {
+    switch (action.type) {
+      case 'assign_role':
+        return this.validateHelperAssignment(action, state)
+      
+      case 'build':
+        if (action.target && action.target.includes('gnome_')) {
+          return this.validateHousingConstruction(action, state)
+        }
+        return { valid: true }
+      
+      case 'rescue':
+        return this.validateGnomeRescue(action, state)
+      
+      default:
+        return { valid: true }
+    }
+  }
+
+  /**
+   * Apply helper system effects (called every tick)
+   */
+  static apply(state: GameState, deltaTime: number = 1): void {
+    this.processHelpers(state, deltaTime, null)
+  }
+
+  /**
+   * Get current helper system effects and modifiers
+   */
+  static getEffects(state: GameState): SystemEffects {
+    const modifiers: SystemModifier[] = []
+    
+    if (!state.helpers?.gnomes) {
+      return { modifiers }
+    }
+
+    // Generate modifiers for each assigned helper
+    for (const gnome of state.helpers.gnomes) {
+      if (gnome.isAssigned && gnome.role) {
+        const efficiency = this.calculateHelperEffectiveness(gnome.role, 1) // Use level 1 as default for now
+        const roleModifiers = this.getHelperModifiers(gnome, efficiency, state)
+        modifiers.push(...roleModifiers)
+      }
+    }
+
+    return { 
+      modifiers,
+      metadata: {
+        activeHelpers: state.helpers.gnomes.filter(g => g.isAssigned).length,
+        totalHelpers: state.helpers.gnomes.length,
+        housingCapacity: this.calculateHousingCapacity(state)
+      }
+    }
+  }
+
+  // =============================================================================
+  // VALIDATION METHODS
+  // =============================================================================
+
+  /**
+   * Validate helper assignment action
+   */
+  private static validateHelperAssignment(action: GameAction, state: GameState): ValidationResult {
+    if (!action.target) {
+      return { valid: false, reason: 'Missing target helper role' }
+    }
+
+    if (!this.getAvailableRoles().includes(action.target)) {
+      return { valid: false, reason: 'Invalid role' }
+    }
+
+    const housingValidation = this.validateGnomeHousing(state)
+    if (housingValidation.needsMoreHousing) {
+      return { 
+        valid: false, 
+        reason: 'Insufficient housing for active gnomes',
+        requirements: ['Build more gnome housing'] 
+      }
+    }
+
+    return { valid: true }
+  }
+
+  /**
+   * Validate housing construction
+   */
+  private static validateHousingConstruction(action: GameAction, state: GameState): ValidationResult {
+    if (!action.target) {
+      return { valid: false, reason: 'Missing structure type' }
+    }
+
+    const structure = GNOME_HOUSING.find(h => h.name === action.target)
+    if (!structure) {
+      return { valid: false, reason: 'Invalid housing structure' }
+    }
+
+    if (state.resources.gold < structure.cost) {
+      return { 
+        valid: false, 
+        reason: `Insufficient gold (need ${structure.cost})`,
+        requirements: [`${structure.cost} gold`] 
+      }
+    }
+
+    // Check prerequisites using PrerequisiteSystem would go here
+    // For now, simplified check
+    if (structure.prerequisite && !state.progression.unlockedUpgrades.includes(structure.prerequisite)) {
+      return { 
+        valid: false, 
+        reason: `Missing prerequisite: ${structure.prerequisite}`,
+        requirements: [structure.prerequisite] 
+      }
+    }
+
+    return { valid: true }
+  }
+
+  /**
+   * Validate gnome rescue action
+   */
+  private static validateGnomeRescue(action: GameAction, state: GameState): ValidationResult {
+    if (state.helpers.rescueQueue.length === 0) {
+      return { valid: false, reason: 'No gnomes available for rescue' }
+    }
+
+    // Check if there's housing capacity
+    const maxActive = this.calculateHousingCapacity(state)
+    const currentActive = state.helpers.gnomes.filter(g => g.isAssigned).length
+    
+    if (currentActive >= maxActive) {
+      return { 
+        valid: false, 
+        reason: 'No housing capacity for rescued gnome',
+        requirements: ['Build more gnome housing'] 
+      }
+    }
+
+    return { valid: true }
+  }
+
+  // =============================================================================
+  // MODIFIER GENERATION
+  // =============================================================================
+
+  /**
+   * Get modifiers for a specific helper
+   */
+  private static getHelperModifiers(gnome: GnomeState, efficiency: number, state: GameState): SystemModifier[] {
+    const modifiers: SystemModifier[] = []
+    
+    switch (gnome.role) {
+      case 'waterer':
+        modifiers.push({
+          source: 'helper',
+          type: 'multiply',
+          value: 1 + (efficiency * 0.1), // 10% per efficiency point
+          target: 'farm.wateringSpeed',
+          description: `${gnome.name} watering assistance`
+        })
+        break
+
+      case 'pump_operator':
+        modifiers.push({
+          source: 'helper',
+          type: 'add',
+          value: efficiency,
+          target: 'farm.waterGeneration',
+          description: `${gnome.name} water pumping`
+        })
+        break
+
+      case 'sower':
+        modifiers.push({
+          source: 'helper',
+          type: 'multiply',
+          value: 1 + (efficiency * 0.15), // 15% per efficiency point
+          target: 'farm.plantingSpeed',
+          description: `${gnome.name} planting assistance`
+        })
+        break
+
+      case 'harvester':
+        modifiers.push({
+          source: 'helper',
+          type: 'multiply',
+          value: 1 + (efficiency * 0.12), // 12% per efficiency point
+          target: 'farm.harvestSpeed',
+          description: `${gnome.name} harvest assistance`
+        })
+        break
+
+      case 'miners_friend':
+        modifiers.push({
+          source: 'helper',
+          type: 'multiply',
+          value: 1 - (efficiency * 0.03), // 3% energy reduction per efficiency point
+          target: 'mine.energyCost',
+          description: `${gnome.name} mining efficiency`
+        })
+        break
+
+      case 'seed_catcher':
+        modifiers.push({
+          source: 'helper',
+          type: 'multiply',
+          value: 1 + (efficiency * 0.02), // 2% catch bonus per efficiency point
+          target: 'tower.catchRate',
+          description: `${gnome.name} seed catching`
+        })
+        break
+
+      case 'forager':
+        modifiers.push({
+          source: 'helper',
+          type: 'add',
+          value: efficiency,
+          target: 'farm.woodGeneration',
+          description: `${gnome.name} wood foraging`
+        })
+        break
+
+      case 'refiner':
+        modifiers.push({
+          source: 'helper',
+          type: 'multiply',
+          value: 1 + (efficiency * 0.01), // 1% speed bonus per efficiency point
+          target: 'forge.refinementSpeed',
+          description: `${gnome.name} refining assistance`
+        })
+        break
+
+      case 'adventure_fighter':
+        modifiers.push({
+          source: 'helper',
+          type: 'add',
+          value: efficiency,
+          target: 'adventure.damage',
+          description: `${gnome.name} combat assistance`
+        })
+        break
+
+      case 'adventure_support':
+        modifiers.push({
+          source: 'helper',
+          type: 'add',
+          value: efficiency * 0.2,
+          target: 'adventure.healing',
+          description: `${gnome.name} healing support`
+        })
+        break
+    }
+
+    return modifiers
+  }
+
+  // =============================================================================
+  // EXISTING HELPER PROCESSING METHODS
+  // =============================================================================
+
   /**
    * Main helper processing method - called every tick
    * Processes all active helpers and their assigned roles with housing validation

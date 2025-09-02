@@ -16,6 +16,7 @@ import { TownSystem } from './systems/TownSystem'
 import { AdventureSystem } from './systems/AdventureSystem'
 import { ForgeSystem } from './systems/ForgeSystem'
 import { DecisionEngine } from './ai/DecisionEngine'
+import { ActionExecutor } from './execution/ActionExecutor'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -46,6 +47,7 @@ export class SimulationEngine {
   private gameDataStore: any
   private persona: any // Persona from config
   private decisionEngine: DecisionEngine
+  private actionExecutor: ActionExecutor
   private isRunning: boolean = false
   private tickCount: number = 0
   private lastProgressCheck?: {
@@ -68,6 +70,7 @@ export class SimulationEngine {
     this.persona = this.extractPersonaFromConfig(config)
     this.gameState = this.initializeGameState()
     this.decisionEngine = new DecisionEngine()
+    this.actionExecutor = new ActionExecutor()
   }
 
 
@@ -209,7 +212,7 @@ export class SimulationEngine {
         },
         unlockProgression: {
           reachLevelCosts: [100, 250, 500, 1000],
-          reachLevelEnergy: [20, 30, 50, 80]
+          reachLevelEnergy: [5, 50, 200, 1000] // Match CSV: tower_reach_1=5, tower_reach_2=50, etc.
         }
       },
       // Town system parameters
@@ -429,7 +432,7 @@ export class SimulationEngine {
       },
       resources: {
         energy: {
-          current: 0, // Start with 0 energy - gain through harvesting
+          current: 3, // Start with 3 energy - plant, harvest for 2 more to reach 5 for tower_reach_1
           max: 50, // Energy max capacity is 50
           regenerationRate: 0 // No energy regen - energy only from crop harvests
         },
@@ -583,16 +586,18 @@ export class SimulationEngine {
       const decisionResult = this.decisionEngine.getNextActions(this.gameState, this.parameters, this.gameDataStore)
       const decisions = decisionResult.actions
       
-      // Execute actions
+      // Execute actions using ActionExecutor
       const executedActions: GameAction[] = []
       const actionEvents: GameEvent[] = []
       
       for (const action of decisions) {
         try {
-          const result = this.executeAction(action)
+          const result = this.actionExecutor.execute(action, this.gameState, this.parameters, this.gameDataStore)
           if (result.success) {
             executedActions.push(action)
             actionEvents.push(...result.events)
+          } else if (result.error) {
+            console.warn(`Action ${action.type} failed: ${result.error}`)
           }
         } catch (error) {
           console.error(`Error executing action ${action.type}:`, error)
@@ -703,13 +708,7 @@ export class SimulationEngine {
    * Processes resource regeneration (energy and water)
    */
   private processResourceRegeneration(deltaTime: number): void {
-    // FIXED: No energy regeneration - energy only comes from crop harvests
-    // Energy should always be whole numbers
-    // const energyRegen = 0.5 * deltaTime
-    // this.gameState.resources.energy.current = Math.min(
-    //   this.gameState.resources.energy.max,
-    //   this.gameState.resources.energy.current + energyRegen
-    // )
+    // Energy is only gained from crop harvests, not passive regeneration
 
     // Water auto-pump generation if unlocked
     if (this.gameState.resources.water.autoGenRate > 0) {
@@ -865,7 +864,7 @@ export class SimulationEngine {
         screen: 'farm',
         target: readyToHarvest[0].plotId,
         duration: 2,
-        energyCost: 0, // FIXED: Harvesting is FREE, only planting costs energy
+        energyCost: 0, // FIXED: Harvesting is FREE - only infrastructure costs energy
         goldCost: 0,
         prerequisites: [],
         expectedRewards: { energy: 2, items: [readyToHarvest[0].cropId] } // Crops give energy, not gold!
@@ -886,7 +885,7 @@ export class SimulationEngine {
         screen: 'farm',
         target: needsWatering[0].plotId,
         duration: 1,
-        energyCost: 1,
+        energyCost: 0, // FIXED: Basic watering is FREE - only pump infrastructure costs energy
         goldCost: 0,
         prerequisites: [],
         expectedRewards: {}
@@ -2603,408 +2602,6 @@ export class SimulationEngine {
     
     return true
   }
-
-  /**
-   * Executes a game action
-   */
-  private executeAction(action: GameAction): { success: boolean; events: GameEvent[] } {
-    const events: GameEvent[] = []
-    
-    // Check if we have enough energy
-    if (this.gameState.resources.energy.current < action.energyCost) {
-      return { success: false, events: [] }
-    }
-    
-    // Consume energy
-    this.gameState.resources.energy.current -= action.energyCost
-    
-    // Execute action based on type
-    switch (action.type) {
-      case 'plant':
-        if (action.target) {
-          const currentSeeds = this.gameState.resources.seeds.get(action.target) || 0
-          if (currentSeeds > 0) {
-            // Get crop data from CSV for accurate growth time and stages
-            const cropData = this.gameDataStore.getItemById(action.target)
-            const growthTime = cropData ? parseInt(cropData.time) || 10 : 10
-            const stages = cropData ? this.parseGrowthStages(cropData.notes) : 3
-            
-            // Find next available plot ID
-            const plotId = `plot_${this.gameState.processes.crops.length + 1}`
-            
-            this.gameState.resources.seeds.set(action.target, currentSeeds - 1)
-            this.gameState.processes.crops.push({
-              plotId: plotId,
-              cropId: action.target,
-              // cropType not needed - using cropId only
-              plantedAt: this.gameState.time.totalMinutes,
-              growthTimeRequired: growthTime,
-              waterLevel: 1.0, // Start fully watered (0-1 scale)
-              isWithered: false,
-              readyToHarvest: false,
-              
-              // Enhanced growth tracking
-              growthProgress: 0,
-              growthStage: 0,
-              maxStages: stages,
-              droughtTime: 0
-            })
-            
-            const totalPlots = this.gameState.progression.farmPlots || 3
-            const activeCrops = this.gameState.processes.crops.length
-            
-            events.push({
-              timestamp: this.gameState.time.totalMinutes,
-              type: 'action_plant',
-              description: `Planted ${action.target} in ${plotId} (${growthTime}min growth) - ${activeCrops}/${totalPlots} plots active`,
-              importance: 'medium'
-            })
-            
-            console.log(`🌱 PLANTED: ${action.target} in ${plotId} (${activeCrops}/${totalPlots} plots active, ${currentSeeds - 1} seeds remaining)`)
-          } else {
-            console.log(`❌ PLANTING FAILED: No ${action.target} seeds available`)
-          }
-        }
-        break
-        
-      case 'water':
-        return this.executeWaterAction(action, events)
-        
-      case 'pump':
-        return { success: this.executePumpAction(action, events), events }
-        
-      case 'harvest':
-        const harvestCrop = this.gameState.processes.crops.find(c => c.plotId === action.target)
-        if (harvestCrop && harvestCrop.readyToHarvest) {
-          // Remove crop from processes
-          this.gameState.processes.crops = this.gameState.processes.crops.filter(
-            c => c.plotId !== action.target
-          )
-          
-          // CRITICAL FIX: Crops produce ENERGY, not gold!
-          // Get energy value from CSV crop data
-          const cropData = this.gameDataStore.getItemById(harvestCrop.cropId)
-          const energyValue = cropData ? (parseInt(cropData.effect) || 1) : 1 // effect = energy value (35 for beetroot)
-          
-          // Add energy (capped at max energy)
-          this.gameState.resources.energy.current = Math.min(
-            this.gameState.resources.energy.max,
-            this.gameState.resources.energy.current + energyValue
-          )
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_harvest',
-            description: `Harvested ${harvestCrop.cropId} for +${energyValue} energy`,
-            importance: 'medium'
-          })
-        }
-        break
-        
-
-        
-      case 'train':
-        // Award experience for training
-        const xpGain = action.expectedRewards.experience || 0
-        this.gameState.progression.experience += xpGain
-        this.gameState.resources.gold -= action.goldCost
-        
-        events.push({
-          timestamp: this.gameState.time.totalMinutes,
-          type: 'action_train',
-          description: `Trained ${action.target} skill for ${xpGain} XP`,
-          importance: 'medium'
-        })
-        break
-        
-      case 'craft':
-        // Start crafting process
-        if (action.target) {
-          this.gameState.processes.crafting.push({
-            itemId: action.target,
-            startedAt: this.gameState.time.totalMinutes,
-            duration: action.duration,
-            progress: 0,
-            heat: this.getForgeHeat(),
-            isComplete: false
-          })
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_craft',
-            description: `Started crafting ${action.target}`,
-            importance: 'medium'
-          })
-        }
-        break
-        
-      case 'stoke':
-        // Increase forge heat (placeholder)
-        events.push({
-          timestamp: this.gameState.time.totalMinutes,
-          type: 'action_stoke',
-          description: 'Stoked the forge fire',
-          importance: 'low'
-        })
-        break
-        
-      case 'mine':
-        // Start mining process
-        this.gameState.processes.mining = {
-          depth: 1, // Would extract from action.target
-          energyDrain: 3,
-          isActive: true,
-          timeAtDepth: 0
-        }
-        
-        events.push({
-          timestamp: this.gameState.time.totalMinutes,
-          type: 'action_mine',
-          description: `Started mining at depth ${this.gameState.processes.mining.depth}`,
-          importance: 'medium'
-        })
-        break
-        
-      case 'purchase':
-        // Handle purchases
-        this.gameState.resources.gold -= action.goldCost
-        
-        // CRITICAL: Handle blueprint purchases
-        if (action.target && action.target.startsWith('blueprint_')) {
-          const blueprintId = action.target
-          
-          // Add blueprint to inventory
-          this.gameState.inventory.blueprints.set(blueprintId, {
-            id: blueprintId,
-            purchased: true,
-            isBuilt: false,
-            buildCost: this.getBlueprintBuildCost(blueprintId)
-          })
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'blueprint_purchase',
-            description: `Purchased ${blueprintId} blueprint for ${action.goldCost} gold`,
-            importance: 'high'
-          })
-          
-          console.log(`📜 BLUEPRINT PURCHASED: ${blueprintId} for ${action.goldCost} gold`)
-          console.log(`📜 BLUEPRINT INVENTORY: ${Array.from(this.gameState.inventory.blueprints.keys()).join(', ')}`)
-        }
-        // Phase 8L: Handle emergency wood bundles
-        else if (action.target && action.target.startsWith('emergency_wood_')) {
-          const woodAmount = action.expectedRewards?.materials?.wood || 0
-          if (woodAmount > 0) {
-            const currentWood = this.gameState.resources.materials.get('wood') || 0
-            this.gameState.resources.materials.set('wood', currentWood + woodAmount)
-            
-            events.push({
-              timestamp: this.gameState.time.totalMinutes,
-              type: 'emergency_purchase',
-              description: `Purchased emergency wood bundle: +${woodAmount} wood for ${action.goldCost} gold`,
-              importance: 'medium'
-            })
-          }
-        }
-        // Add other purchased items to inventory (simplified)
-        else if (action.expectedRewards.items) {
-          for (const item of action.expectedRewards.items) {
-            // Would add to appropriate inventory section
-            events.push({
-              timestamp: this.gameState.time.totalMinutes,
-              type: 'action_purchase',
-              description: `Purchased ${item} for ${action.goldCost} gold`,
-              importance: 'medium'
-            })
-          }
-        }
-        break
-        
-      case 'adventure':
-        // Execute real combat simulation
-        if (action.target) {
-          const combatResult = AdventureSystem.executeAdventureAction(action, this.gameState, this.parameters, this.gameDataStore)
-          if (combatResult.success) {
-            // Apply rewards immediately
-            this.gameState.resources.gold += combatResult.totalGold
-            this.gameState.progression.experience += combatResult.totalXP
-            
-            // Apply HP loss to hero
-            const maxHP = 100 + (this.gameState.progression.heroLevel * 20)
-            const hpLoss = maxHP - combatResult.finalHP
-            
-            events.push({
-              timestamp: this.gameState.time.totalMinutes,
-              type: 'adventure_complete',
-              description: `Completed ${action.target} - Gold: +${combatResult.totalGold}, XP: +${combatResult.totalXP}, HP: ${combatResult.finalHP}/${maxHP}`,
-              data: { 
-                gold: combatResult.totalGold, 
-                xp: combatResult.totalXP, 
-                hp: combatResult.finalHP,
-                loot: combatResult.loot,
-                combatLog: combatResult.combatLog
-              },
-              importance: 'high'
-            })
-            
-            // Add completed adventure to progression
-            if (!this.gameState.progression.completedAdventures.includes(action.target)) {
-              this.gameState.progression.completedAdventures.push(action.target)
-            }
-          } else {
-            events.push({
-              timestamp: this.gameState.time.totalMinutes,
-              type: 'adventure_failed',
-              description: `Failed ${action.target} - Hero defeated!`,
-              data: { combatLog: combatResult.combatLog },
-              importance: 'high'
-            })
-          }
-        }
-        break
-        
-      case 'move':
-        // Change screens
-        console.log(`🚪 MOVE EXECUTION: action.target='${action.target}', action.toScreen='${action.toScreen}', current='${this.gameState.location.currentScreen}'`)
-        
-        const targetScreen = action.target || action.toScreen
-        if (targetScreen && targetScreen !== this.gameState.location.currentScreen) {
-          const fromScreen = this.gameState.location.currentScreen
-          this.gameState.location.currentScreen = targetScreen as GameScreen
-          this.gameState.location.timeOnScreen = 0
-          this.gameState.location.screenHistory.push(targetScreen as GameScreen)
-          this.gameState.location.navigationReason = `AI decision: ${action.id}`
-          
-          console.log(`🚪 MOVED: ${fromScreen} → ${targetScreen}`)
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_move',
-            description: `Moved to ${targetScreen}`,
-            importance: 'low'
-          })
-        }
-        break
-
-      case 'catch_seeds':
-        // Handle seed catching at tower - FIXED: Now timed process, no energy cost
-        if (this.gameState.location.currentScreen === 'tower') {
-          const towerReach = this.getTowerReachLevel()
-          const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
-          const netType = this.getBestNet()
-          const duration = action.duration || 5
-          
-          // Calculate expected seeds to catch  
-          const catchRate = MANUAL_CATCHING.calculateCatchRate(windLevel.level, netType, this.getPersonaCatchingSkill())
-          const expectedSeeds = Math.floor(catchRate.seedsPerMinute * duration)
-          
-          // Start timed seed catching process
-          this.gameState.processes.seedCatching = {
-            startedAt: this.gameState.time.totalMinutes,
-            duration: duration,
-            progress: 0,
-            windLevel: windLevel.level,
-            netType: netType,
-            expectedSeeds: expectedSeeds,
-            isComplete: false
-          }
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'seed_catching_started',
-            description: `Started seed catching session with ${netType} net at ${windLevel.name} level (${duration} min, expecting ~${expectedSeeds} seeds)`,
-            importance: 'medium'
-          })
-          
-          console.log(`🌰 SEED CATCHING STARTED: ${duration}min session with ${netType} net at ${windLevel.name} level (expecting ~${expectedSeeds} seeds)`)
-        } else {
-          console.log(`❌ SEED CATCH FAILED: Not at tower (currently at ${this.gameState.location.currentScreen})`)
-        }
-        break
-
-      case 'rescue':
-        // Rescue a helper (gnome)
-        if (action.target) {
-          const newGnome = {
-            id: action.target,
-            name: action.target.replace('_gnome', '').replace('_', ' '),
-            role: '',
-            efficiency: 1.0,
-            isAssigned: false,
-            currentTask: null,
-            experience: 0
-          }
-          
-          this.gameState.helpers.gnomes.push(newGnome)
-          this.gameState.resources.gold -= action.goldCost
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'action_rescue',
-            description: `Rescued ${newGnome.name} gnome`,
-            importance: 'high'
-          })
-        }
-        break
-        
-      case 'assign_role':
-      case 'assign_helper':
-        // Delegate to helper assignment handler
-        return this.executeAssignHelperAction(action)
-        
-      case 'train_helper':
-        // Delegate to helper training handler
-        return this.executeTrainHelperAction(action)
-        
-      case 'move':
-        // Handle screen navigation (PHASE 8N)
-        if (action.toScreen) {
-          const fromScreen = this.gameState.location.currentScreen
-          
-          // Update screen history
-          if (this.gameState.location.screenHistory) {
-            this.gameState.location.screenHistory.push({
-              from: fromScreen,
-              to: action.toScreen,
-              timestamp: this.gameState.time.totalMinutes,
-              reason: action.description || 'No reason given'
-            })
-          }
-          
-          // Update current screen
-          this.gameState.location.currentScreen = action.toScreen
-          this.gameState.location.lastVisited[action.toScreen] = this.gameState.time.totalMinutes
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'navigation',
-            description: `Moved from ${fromScreen} to ${action.toScreen}`,
-            importance: 'low'
-          })
-          
-          console.log(`🚪 NAVIGATION: ${fromScreen} → ${action.toScreen} (${action.description || 'No reason given'})`)
-        }
-        break
-        
-      case 'cleanup':
-        // Delegate to cleanup action handler
-        return this.executeCleanupAction(action)
-        
-      case 'build':
-        // Handle building structures from blueprints
-        return this.executeBuildAction(action)
-        
-      case 'sell_material':
-        // Phase 8L: Handle material selling for gold
-        return this.executeSellMaterialAction(action)
-    }
-    
-    return { success: true, events }
-  }
-
-  /**
-   * Gets build cost for a blueprint from CSV data
-   */
   private getBlueprintBuildCost(blueprintId: string): { energy?: number; materials?: Map<string, number>; time?: number } {
     // Map blueprint ID to build action ID (remove blueprint_ prefix)
     const buildActionId = blueprintId.replace('blueprint_', '')

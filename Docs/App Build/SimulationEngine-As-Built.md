@@ -4,7 +4,7 @@
 
 The SimulationEngine is the core intelligence system that powers the TimeHero Simulator. It provides realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships.
 
-**Status**: ✅ Production-Ready with Real-Time Data Flow & Modular System Architecture (Phase 9C Complete)
+**Status**: ✅ Production-Ready with Real-Time Data Flow & Centralized Action Execution (Phase 9E Complete)
 
 ## Architecture Overview
 
@@ -12,17 +12,24 @@ The SimulationEngine is the core intelligence system that powers the TimeHero Si
 SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge ──► LiveMonitor ──► Widgets
 ├── CSV Data Processing           ├── Real-time Ticks      ├── Event Handling      ├── Data Flow         ├── Live Updates
 ├── AI Decision Making           ├── MapSerializer        ├── Error Management    ├── State Updates     ├── Resource Display  
-├── Modular Systems Integration  ├── Performance Stats    ├── Data Validation     ├── Event Processing  ├── Action Tracking
+├── Centralized Action Execution ├── Performance Stats    ├── Data Validation     ├── Event Processing  ├── Action Tracking
 └── Persona-Driven Behavior     └── Background Processing└── Real-time Events    └── Widget Updates    └── Progress Monitoring
 ```
 
 ### Core Components
 
 **Main Files**:
-- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making (~4100 lines, reduced from ~5700 lines)
+- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making (~3500 lines, reduced from ~5700 lines)
 - `src/workers/simulation.worker.ts` - Web Worker for background processing  
 - `src/utils/SimulationBridge.ts` - Main thread communication bridge
 - `src/utils/WidgetDataAdapter.ts` - Transforms GameState to widget-friendly formats
+
+**Phase 9E: Centralized Action Execution System**:
+- `src/utils/execution/ActionExecutor.ts` - Centralized action execution with unified pipeline (NEW)
+- `src/utils/execution/ActionValidator.ts` - Pre-execution validation for all action types (NEW)
+- `src/utils/execution/types/ActionResult.ts` - Result types and state change interfaces (NEW)
+- `src/utils/execution/ExecutionContext.ts` - Execution context management (NEW)
+- `src/utils/execution/StateUpdater.ts` - Centralized state mutation logic (NEW)
 
 **Phase 9C: Extracted Game Systems**:
 - `src/utils/systems/TowerSystem.ts` - Tower navigation, seed catching, and reach upgrades (NEW)
@@ -39,6 +46,83 @@ SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge �
 - `src/utils/systems/CraftingSystem.ts` - Forge crafting with heat management
 - `src/utils/systems/MiningSystem.ts` - Depth-based mining with material drops
 - `src/utils/systems/PrerequisiteSystem.ts` - CSV dependency validation
+
+## Phase 9E: Action Execution Extraction Summary
+
+### Extracted Action Execution System (~600 lines total)
+
+**From SimulationEngine to ActionExecutor**:
+- `executeAction()` - Complete action execution pipeline with 20+ action types (plant, harvest, water, pump, cleanup, move, catch_seeds, purchase, adventure, build, craft, mine, assign_role, train_helper, train, stoke, rescue, sell_material, wait)
+- `executePlantAction()`, `executeHarvestAction()`, `executeWaterAction()`, `executePumpAction()` - Core farming action implementations
+- `executeCleanupAction()`, `executeMoveAction()`, `executeAdventureAction()` - Progression and navigation actions
+- `executePurchaseAction()`, `executeBuildAction()`, `executeCraftAction()` - Economic and crafting actions
+- `executeCatchSeedsAction()`, `executeTrainAction()`, `executeRescueAction()` - Specialized activity implementations
+
+**New ActionValidator System**:
+- Pre-execution validation for all action types with comprehensive resource checking
+- Energy, water, seeds, gold, and material requirement validation
+- Location-based constraints and prerequisite validation
+- Tool and equipment requirement checking for specialized actions
+
+**ActionResult Type System**:
+- Unified result interface for success/failure reporting with detailed error messages
+- State change tracking for resources, location, progression, and inventory updates
+- Event generation system for simulation logging and UI updates
+- Rollback support for state management and error recovery
+
+### Integration Changes
+
+**SimulationEngine Updated**:
+```typescript
+// Before Phase 9E
+private executeAction(action: GameAction): { success: boolean; events: GameEvent[] } {
+  // 600+ lines of execution logic with switch statement
+  switch (action.type) {
+    case 'plant': /* plant logic */ break
+    case 'harvest': /* harvest logic */ break
+    // ... 18+ more action types
+  }
+}
+
+// After Phase 9E - uses centralized ActionExecutor
+constructor(config: SimulationConfig) {
+  this.actionExecutor = new ActionExecutor()
+  // ... other initialization
+}
+
+// Execute actions using ActionExecutor
+for (const action of decisions) {
+  const result = this.actionExecutor.execute(action, this.gameState, this.parameters, this.gameDataStore)
+  if (result.success) {
+    executedActions.push(action)
+    actionEvents.push(...result.events)
+  }
+}
+```
+
+**Unified Execution Interface**:
+```typescript
+// Single point of action execution
+const result = actionExecutor.execute(action, gameState, parameters, gameDataStore)
+
+// Consistent result format
+interface ActionResult {
+  success: boolean
+  events: GameEvent[]
+  error?: string
+  stateChanges?: StateChanges
+}
+```
+
+### Benefits of Phase 9E Extraction
+
+1. **Dramatic Code Reduction**: SimulationEngine reduced from ~4100 to ~3500 lines (15% reduction)
+2. **Single Point of Execution**: All actions flow through unified `ActionExecutor.execute()` interface
+3. **Comprehensive Validation**: Pre-execution validation prevents invalid actions from corrupting game state
+4. **Consistent Error Handling**: Unified error reporting and graceful failure handling across all action types
+5. **Improved Maintainability**: Action execution logic centralized and easily extensible
+6. **Enhanced Testability**: ActionExecutor can be tested independently with mock game states
+7. **State Management**: Centralized state updates with proper resource tracking and validation
 
 ## Phase 9C: System Extraction Summary
 
@@ -113,6 +197,8 @@ const combatResult = AdventureSystem.executeAdventureAction(action, this.gameSta
 5. **Easier Feature Development**: New features can be added to specific systems without touching core engine
 6. **Consistent Architecture**: All systems follow the same static class pattern established by existing systems
 
+**Combined Phase 9C + 9E Impact**: SimulationEngine reduced from ~5700 to ~3500 lines (39% total reduction)
+
 ## Core Simulation Loop
 
 ### Tick Processing
@@ -139,8 +225,17 @@ tick(): TickResult {
   // 5. Make AI decisions based on persona schedule
   const decisions = this.makeDecisions()
   
-  // 6. Execute valid actions
-  const executedActions = this.executeActions(decisions)
+  // 6. Execute actions using centralized ActionExecutor
+  const executedActions: GameAction[] = []
+  const actionEvents: GameEvent[] = []
+  
+  for (const action of decisions) {
+    const result = this.actionExecutor.execute(action, this.gameState, this.parameters, this.gameDataStore)
+    if (result.success) {
+      executedActions.push(action)
+      actionEvents.push(...result.events)
+    }
+  }
   
   // 7. Check victory/bottleneck conditions
   const isComplete = this.checkVictoryConditions()
@@ -167,10 +262,10 @@ const personas = {
 ### Decision Process
 
 1. **Schedule Check**: `shouldHeroActNow()` determines if the persona should act based on check-in schedule
-2. **Action Generation**: Evaluates available actions across all game screens
+2. **Action Generation**: Evaluates available actions across all game screens using modular systems
 3. **Prerequisite Validation**: Checks CSV data dependencies and resource requirements
 4. **Action Scoring**: Scores actions based on persona characteristics and game state
-5. **Execution**: Executes top-priority actions
+5. **Centralized Execution**: All actions executed through `ActionExecutor.execute()` with unified validation and state management
 
 ### Recent Fix: Hero Check-in Logic (Phase 8J Critical Fix)
 
@@ -518,10 +613,15 @@ inventory: {
 - CSV data integration with validation
 - Bottleneck detection and victory conditions
 - Comprehensive error handling and logging
+- **Centralized action execution system** (Phase 9E)
 - **Blueprint → Build → Unlock progression system** (Phase 9A)
 - **Structure building with prerequisite validation** (Phase 9A)
 
 ✅ **Recent Fixes Applied**:
+- **Phase 9E Action Execution**: Centralized action execution system with unified validation and state management
+- **Phase 9E Code Reduction**: SimulationEngine reduced by additional 600 lines (39% total reduction from ~5700 to ~3500 lines)
+- **Phase 9E Execution Pipeline**: All 20+ action types now use single `ActionExecutor.execute()` interface with comprehensive validation
+- **Phase 9E Error Handling**: Unified error reporting and graceful failure handling across all action execution
 - **Phase 9A Blueprint System**: Complete blueprint → build → unlock progression system implemented
 - **Phase 9A Build Action Priority**: Fixed critical scoring issue - build actions now score 900 vs ~9.5, ensuring immediate execution
 - **Phase 9A Structure Building**: Hero can purchase blueprints, return to farm, build structures, and unlock new areas
@@ -551,6 +651,11 @@ inventory: {
 - Validated CSV data flow from store to worker
 
 ✅ **Testing Verified**:
+- **Phase 9E**: Centralized action execution system handling all 20+ action types with unified validation ✅
+- **Phase 9E**: ActionExecutor properly integrated with SimulationEngine main execution loop ✅
+- **Phase 9E**: ActionValidator preventing invalid actions from corrupting game state ✅
+- **Phase 9E**: Unified error handling and state management across all action types ✅
+- **Phase 9E**: Complete action execution pipeline: validation → execution → state updates → event generation ✅
 - **Phase 9A**: Complete blueprint → build → unlock flow working (farm → town → buy blueprint → farm → build tower → tower accessible) ✅
 - **Phase 9A**: Build action scoring fixed - ultra-high priority (900) ensures immediate execution ✅ 
 - **Phase 9A**: Hero reaches tower and initiates seed catching sessions ✅

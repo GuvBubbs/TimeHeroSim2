@@ -15,6 +15,7 @@ import { TowerSystem } from './systems/TowerSystem'
 import { TownSystem } from './systems/TownSystem'
 import { AdventureSystem } from './systems/AdventureSystem'
 import { ForgeSystem } from './systems/ForgeSystem'
+import { DecisionEngine } from './ai/DecisionEngine'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -44,7 +45,7 @@ export class SimulationEngine {
   private parameters: AllParameters
   private gameDataStore: any
   private persona: any // Persona from config
-  private lastCheckinTime: number = 0
+  private decisionEngine: DecisionEngine
   private isRunning: boolean = false
   private tickCount: number = 0
   private lastProgressCheck?: {
@@ -66,6 +67,7 @@ export class SimulationEngine {
     this.gameDataStore = gameDataStore
     this.persona = this.extractPersonaFromConfig(config)
     this.gameState = this.initializeGameState()
+    this.decisionEngine = new DecisionEngine()
   }
 
 
@@ -577,8 +579,9 @@ export class SimulationEngine {
       // FIXED: Disabled resource regeneration - energy should only come from crop harvests
       // this.processResourceRegeneration(deltaTime)
       
-      // Make AI decisions
-      const decisions = this.makeDecisions()
+      // Make AI decisions using DecisionEngine
+      const decisionResult = this.decisionEngine.getNextActions(this.gameState, this.parameters, this.gameDataStore)
+      const decisions = decisionResult.actions
       
       // Execute actions
       const executedActions: GameAction[] = []
@@ -817,87 +820,11 @@ export class SimulationEngine {
     return events
   }
 
-  /**
-   * Makes AI decisions based on current state and parameters
-   */
-  private makeDecisions(): GameAction[] {
-    const actions: GameAction[] = []
-    
-    // Check if hero should act based on persona schedule (Phase 6E Enhancement)
-    if (!this.shouldHeroActNow()) {
-      return actions // No actions if not in check-in window
-    }
-    
-    // Comprehensive decision making using parameter system
-    
-    // 1. Emergency actions first (PHASE 8N: Always enabled for seed emergencies)
-    if (this.parameters.decisions?.interrupts?.enabled || true) { // Always check for emergencies
-      const emergencyActions = this.evaluateEmergencyActions()
-      if (emergencyActions.length > 0) {
-        console.log(`🚨 EMERGENCY ACTIONS GENERATED: ${emergencyActions.length} actions`)
-        for (const action of emergencyActions) {
-          console.log(`   - ${action.type}: ${action.target || action.id}`)
-        }
-      }
-      actions.push(...emergencyActions)
-    }
-    
-    // 2. Screen-specific actions based on current location
-    const screenActions = this.evaluateScreenActions()
-    actions.push(...screenActions)
-    
-    // 3. Helper management decisions  
-    const helperActions = this.evaluateHelperActions()
-    actions.push(...helperActions)
-    
-    // 4. Screen navigation decisions
-    const navigationActions = this.evaluateNavigationActions()
-    actions.push(...navigationActions)
-    
-    // 5. Filter actions by prerequisites (Phase 6E Enhancement) 
-    console.log(`🔍 FILTERING: ${actions.length} total actions before prerequisite check:`)
-    for (const action of actions) {
-      console.log(`   - ${action.type} (${action.target || action.id}) at ${action.screen || 'no screen'}`)
-    }
-    
-    const validActions = actions.filter(action => {
-      try {
-        const isValid = this.checkActionPrerequisites(action)
-        console.log(`🔍 FILTER RESULT: ${action.type} (${action.target || action.id}) -> ${isValid ? 'VALID' : 'INVALID'}`)
-        return isValid
-      } catch (error) {
-        console.log(`❌ FILTER ERROR: ${action.type} (${action.target || action.id}) -> ERROR: ${error instanceof Error ? error.message : String(error)}`)
-        return false
-      }
-    })
-    
-    console.log(`🔍 FILTERED: ${validActions.length} valid actions after prerequisite check`)
-    
-    // 6. Score and prioritize valid actions
-    const scoredActions = validActions.map(action => ({
-      action,
-      score: this.scoreAction(action)
-    }))
-    
-    // Sort by score and return top actions
-    scoredActions.sort((a, b) => b.score - a.score)
-    
-    // Return top 3 actions (don't overwhelm the system)
-    const topActions = scoredActions.slice(0, 3).map(item => {
-      item.action.score = item.score
-      return item.action
-    })
-    
-    // Debug log all actions being considered
-    console.log(`🎯 DECISION RESULTS: ${validActions.length} valid actions, top 3:`)
-    for (let i = 0; i < Math.min(3, scoredActions.length); i++) {
-      const item = scoredActions[i]
-      console.log(`   ${i + 1}. ${item.action.type} (${item.action.target || item.action.id}) - Score: ${item.score}`)
-    }
-    
-    return topActions
-  }
-
+  // REMOVED: makeDecisions() method - now handled by DecisionEngine
+  // REMOVED: shouldHeroActNow() method - now handled by DecisionEngine  
+  // REMOVED: scoreAction() method - now handled by ActionScorer
+  // REMOVED: checkActionPrerequisites() method - now handled by ActionFilter
+  
   /**
    * Evaluates actions for the current screen
    */

@@ -2,7 +2,7 @@
 ## Phase 9A Update
 
 ### Starting Resources
-- **Energy**: 0 (gain through harvesting crops)
+- **Energy**: 3 (gain through harvesting crops)
 - **Gold**: 75 (enough to buy Sword I & Tower Reach 1 blueprints)
 - **Water**: 0 (pump to fill tank)
 - **Seeds**: 2 total

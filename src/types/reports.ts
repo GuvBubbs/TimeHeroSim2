@@ -1,8 +1,8 @@
 // Reports System Type Definitions
 // Comprehensive interfaces for simulation analysis and reporting
 
-import type { GameState, GameEvent, ExecutedAction } from './simulation'
-import type { PlayerPersona } from './personas'
+import type { GameState, GameAction, GameEvent } from './game-state'
+import type { SimplePersona } from './personas'
 import type { SimulationConfig } from './simulation'
 
 // ===== CORE REPORT STRUCTURES =====
@@ -21,7 +21,7 @@ export interface SimulationResult {
   
   // Raw simulation data
   gameStateHistory: GameState[]          // Snapshots at key moments
-  actionHistory: ExecutedAction[]        // Every action taken
+  actionHistory: GameAction[]        // Every action taken
   eventHistory: GameEvent[]              // Major milestones
   performanceMetrics: PerformanceData    // Speed, memory, efficiency metrics
   
@@ -200,7 +200,7 @@ export interface Bottleneck {
   
   // Supporting data
   gameStateSnapshot: GameState
-  relevantActions: ExecutedAction[]
+  relevantActions: GameAction[]
   parameterSettings: any
 }
 
@@ -259,16 +259,16 @@ export interface DecisionAnalysis {
 }
 
 export interface ActionSequence {
-  actions: ExecutedAction[]
+  actions: GameAction[]
   frequency: number
   efficiency: number
   context: string
 }
 
 export interface IneffcientAction {
-  action: ExecutedAction
+  action: GameAction
   reason: string
-  betterAlternative: ExecutedAction
+  betterAlternative: GameAction
   efficiencyLoss: number
 }
 

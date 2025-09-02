@@ -529,30 +529,8 @@ export class WidgetDataAdapter {
       }
     }
 
-    // If no ongoing process, show the most recently executed action
-    if (!currentAction && gameState.events && gameState.events.length > 0) {
-      // Find the most recent action event
-      const recentActionEvent = gameState.events
-        .filter(event => event.type === 'action_executed' || event.type === 'action')
-        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0]
-      
-      if (recentActionEvent && recentActionEvent.data) {
-        const actionData = recentActionEvent.data
-        currentAction = {
-          id: actionData.id || actionData.action || 'unknown',
-          type: actionData.type || actionData.action || 'unknown',
-          screen: actionData.screen || gameState.location?.currentScreen || 'farm',
-          target: actionData.target || '',
-          duration: 0, // Completed action
-          energyCost: actionData.energyCost || 0,
-          goldCost: actionData.goldCost || 0,
-          prerequisites: [],
-          expectedRewards: actionData.rewards || {}
-        }
-        progress = 100 // Completed
-        timeRemaining = 0
-      }
-    }
+    // Note: Events are now handled through EventBus system
+    // Old event-based action tracking has been removed
 
     // Get next action from automation or decision system
     let nextAction: GameAction | null = null

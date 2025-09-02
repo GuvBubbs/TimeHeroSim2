@@ -4,7 +4,23 @@
 
 The SimulationEngine is the core intelligence system that powers the TimeHero Simulator. It provides realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships.
 
-**Status**: ✅ Production-Ready with Centralized Validation System (Phase 9H Complete)
+**Status**: ✅ Production-Ready with Event-Driven Architecture (Phase 9I Complete)
+
+## Phase 9I: Event-Driven Architecture Implementation
+
+**NEW EVENT SYSTEM** - Complete event-driven architecture implemented:
+- `src/utils/events/EventBus.ts` - Central pub/sub system with async handler support (~400 lines)
+- `src/utils/events/EventLogger.ts` - Structured event logging with history management (~300 lines)  
+- `src/utils/events/types/EventTypes.ts` - Type-safe event definitions and payloads (~300 lines)
+- `src/utils/events/index.ts` - Module exports with singleton instances
+
+**Event Integration**: SimulationEngine now uses EventBus for all event handling:
+- Removed old `addEvent` and `addGameEvent` methods (~200 lines reduced)
+- All events now flow through centralized EventBus
+- Type-safe event emission: `eventBus.emit('action_executed', { action, result })`
+- Comprehensive event types: 25+ event types with strict TypeScript interfaces
+- Real-time event logging and history management
+- Cross-system event communication with loose coupling
 
 ## Architecture Overview
 
@@ -15,21 +31,28 @@ SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge �
 ├── Centralized Action Execution ├── Performance Stats    ├── Data Validation     ├── Event Processing  ├── Action Tracking
 ├── Centralized State Management └── Background Processing└── Real-time Events    └── Widget Updates    └── Progress Monitoring
 ├── Unified Process Management                                                                          
+├── Event-Driven Architecture (NEW)
 └── Persona-Driven Behavior
 ```
 
 ### Core Components
 
 **Main Files**:
-- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making (~3400 lines, reduced from ~3500 lines in Phase 9G)
+- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making (~3400 lines, with event system integration)
 - `src/workers/simulation.worker.ts` - Web Worker for background processing  
 - `src/utils/SimulationBridge.ts` - Main thread communication bridge
 - `src/utils/WidgetDataAdapter.ts` - Transforms GameState to widget-friendly formats
 
+**Phase 9I: Event-Driven Architecture System** (NEW):
+- `src/utils/events/EventBus.ts` - Central pub/sub event system with async handler support (~250 lines)
+- `src/utils/events/EventLogger.ts` - Structured event logging with history management (~300 lines)
+- `src/utils/events/types/EventTypes.ts` - Type-safe event definitions and payloads (~200 lines)
+- `src/stores/eventLogStore.ts` - Pinia store for reactive event state management (~200 lines)
+
 **Phase 9H: Centralized Validation System**:
-- `src/utils/validation/ValidationService.ts` - Main validation interface with canPerform(action, gameState) method (NEW)
-- `src/utils/validation/PrerequisiteService.ts` - Enhanced prerequisite checking with performance caching (NEW)
-- `src/utils/validation/DependencyGraph.ts` - Optimized dependency graph for CSV prerequisites (NEW)
+- `src/utils/validation/ValidationService.ts` - Main validation interface with canPerform(action, gameState) method
+- `src/utils/validation/PrerequisiteService.ts` - Enhanced prerequisite checking with performance caching
+- `src/utils/validation/DependencyGraph.ts` - Optimized dependency graph for CSV prerequisites
 
 **Phase 9G: Unified Process Management System**:
 - `src/utils/processes/ProcessManager.ts` - Central orchestrator for all ongoing processes (NEW)
@@ -201,7 +224,82 @@ if (!validationResult.isValid) {
 7. **Easy Integration**: Drop-in replacement for existing validation with improved capabilities
 8. **Maintainability**: All validation logic centralized for easier debugging and enhancement
 
-## Phase 9G: Process Management Extraction Summary
+## Phase 9I: Event-Driven Architecture Summary
+
+### Extracted Event System (~200 lines removed from SimulationEngine)
+
+**From SimulationEngine to Event System**:
+- `addEvent(event: GameEvent)` - Simple event logging method (~10 lines)
+- `addGameEvent(event: GameEvent)` - Game-specific event logging method (~10 lines)
+- Event metadata management and console logging scattered throughout SimulationEngine
+- Direct event creation and logging in various methods (phase transitions, water generation, etc.)
+
+**New Event-Driven Architecture**:
+- `EventBus` - Central pub/sub system with async handler support and event filtering
+- `EventLogger` - Structured logging with history management, statistics, and export/import
+- `EventTypes` - Comprehensive type-safe event definitions for 25+ event types
+- `eventLogStore` - Reactive Pinia store for event state management and UI integration
+
+**Event System Integration**:
+```typescript
+// Phase 9I: Event-driven architecture
+constructor(config: SimulationConfig) {
+  this.eventBus = eventBus
+  this.setupEventBusIntegration()
+}
+
+// Centralized event emission
+this.eventBus.emit('state_changed', {
+  changes: { progression: { currentPhase: { old: oldPhase, new: newPhase } } },
+  source: 'updatePhaseProgression'
+})
+
+// Resource change events
+this.eventBus.emit('resource_changed', {
+  resource: 'water',
+  oldValue: currentWater,
+  newValue: this.gameState.resources.water.current,
+  delta: actualAdded,
+  source: 'offline_water_generation'
+})
+```
+
+### EventBus Event Types
+
+**Core Simulation Events**:
+- `simulation_started`, `simulation_paused`, `simulation_stopped` - Simulation lifecycle
+- `tick_processed` - Each simulation tick with timing and action counts
+- `action_executed`, `action_failed` - Action execution results
+- `validation_failed` - Action validation failures
+
+**Game State Events**:
+- `state_changed` - Any game state modifications with change tracking
+- `resource_changed` - Resource modifications (energy, water, gold, etc.)
+- `level_up` - Character progression events
+- `achievement_unlocked` - Game milestone events
+
+**Activity Events**:
+- `crop_planted`, `crop_harvested` - Farming activities
+- `adventure_started`, `adventure_completed` - Adventure activities
+- `item_purchased`, `structure_built` - Economic activities
+- `process_started`, `process_completed`, `process_failed` - Process lifecycle
+
+**System Events**:
+- `bottleneck_detected` - Performance analysis events
+- `error`, `warning`, `info` - System logging events
+
+### Benefits of Phase 9I Extraction
+
+1. **Loose Coupling**: Systems communicate through events instead of direct calls
+2. **Event History**: Complete audit trail of all simulation events with filtering
+3. **Real-time Monitoring**: Live event tracking through reactive Pinia store
+4. **Type Safety**: Comprehensive TypeScript definitions for all event types and payloads
+5. **Performance Analytics**: Event statistics and timing analysis
+6. **Debugging Support**: Structured logging with importance levels and metadata
+7. **Code Reduction**: SimulationEngine reduced by ~200 lines through event system extraction
+8. **Extensibility**: Easy to add new event types and handlers without SimulationEngine changes
+
+## Phase 9H: Centralized Validation System Summary
 
 ### Extracted Process Management (~100 lines removed from SimulationEngine)
 

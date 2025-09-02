@@ -1,5 +1,5 @@
-// SimulationEngine - Phase 6A Core + 8O Polish Implementation
-// Main simulation engine with enhanced AI decision-making and bottleneck detection
+// SimulationEngine - Phase 6A Core + 8O Polish Implementation + Phase 9I Event System
+// Main simulation engine with enhanced AI decision-making, bottleneck detection, and event-driven architecture
 
 import { MapSerializer } from './MapSerializer'
 import { CSVDataParser } from './CSVDataParser'
@@ -20,6 +20,7 @@ import { ActionExecutor } from './execution/ActionExecutor'
 import { StateManager } from './state'
 import { ProcessManager } from './processes'
 import { validationService } from './validation'
+import { eventBus, type IEventBus } from './events'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -53,6 +54,7 @@ export class SimulationEngine {
   private actionExecutor: ActionExecutor
   private stateManager: StateManager
   private processManager: ProcessManager
+  private eventBus: IEventBus
   private isRunning: boolean = false
   private tickCount: number = 0
   private lastProgressCheck?: {
@@ -82,6 +84,10 @@ export class SimulationEngine {
     
     // Phase 9H: Initialize centralized validation service
     validationService.initialize(gameDataStore)
+    
+    // Phase 9I: Initialize event bus
+    this.eventBus = eventBus
+    this.setupEventBusIntegration()
   }
 
 
@@ -2684,11 +2690,13 @@ export class SimulationEngine {
     
     // Log phase transitions
     if (oldPhase !== this.gameState.progression.currentPhase) {
-      this.addEvent({
-        timestamp: this.gameState.time.totalMinutes,
-        type: 'phase_transition',
-        description: `Progressed from ${oldPhase} to ${this.gameState.progression.currentPhase} phase`,
-        importance: 'high'
+      this.eventBus.emit('state_changed', {
+        changes: {
+          progression: {
+            currentPhase: { old: oldPhase, new: this.gameState.progression.currentPhase }
+          }
+        },
+        source: 'updatePhaseProgression'
       })
     }
     
@@ -2696,13 +2704,61 @@ export class SimulationEngine {
       const stageNames = ['', 'Tutorial', 'Small Hold', 'Homestead', 'Manor Grounds', 'Great Estate']
       const stageName = stageNames[this.gameState.progression.farmStage] || 'Unknown'
       
-      this.addEvent({
-        timestamp: this.gameState.time.totalMinutes,
-        type: 'farm_stage_transition',
-        description: `Farm expanded to ${stageName} (Stage ${this.gameState.progression.farmStage})`,
-        importance: 'high'
+      this.eventBus.emit('state_changed', {
+        changes: {
+          progression: {
+            farmStage: { old: oldStage, new: this.gameState.progression.farmStage }
+          }
+        },
+        source: 'updatePhaseProgression'
       })
     }
+  }
+
+  /**
+   * Phase 9I: Setup event bus integration and game metadata
+   */
+  private setupEventBusIntegration(): void {
+    console.log('🌐 SimulationEngine: Setting up event bus integration...')
+    
+    // Update event bus with initial game metadata
+    this.updateEventBusMetadata()
+    
+    // Set up event handlers for various game events
+    this.eventBus.on('tick_processed', (event) => {
+      // Update metadata after each tick
+      this.updateEventBusMetadata()
+    })
+    
+    // Emit simulation started event
+    this.eventBus.emit('simulation_started', {
+      config: {
+        personaId: this.persona?.id || 'unknown',
+        parameters: this.config.parameterOverrides?.size || 0
+      },
+      personaId: this.persona?.id || 'unknown',
+      startTime: Date.now()
+    })
+    
+    console.log('✅ SimulationEngine: Event bus integration setup complete')
+  }
+
+  /**
+   * Phase 9I: Update event bus with current game metadata
+   */
+  private updateEventBusMetadata(): void {
+    this.eventBus.updateGameMetadata({
+      tickCount: this.tickCount,
+      gameDay: this.gameState.time.day,
+      gameTime: `Day ${this.gameState.time.day}, ${this.gameState.time.hour}:${this.gameState.time.minute.toString().padStart(2, '0')}`
+    })
+  }
+
+  /**
+   * Phase 9I: Expose event bus for external access
+   */
+  getEventBus(): IEventBus {
+    return this.eventBus
   }
 
   /**
@@ -2713,16 +2769,6 @@ export class SimulationEngine {
     
     const match = notes.match(/Growth Stages (\d+)/i)
     return match ? parseInt(match[1]) : 3
-  }
-
-  /**
-   * Adds a game event to the current tick's events
-   */
-  private addEvent(event: GameEvent): void {
-    // Add event to current tick's events
-    // This would be collected and returned in the tick result
-    // For now, just log it
-    console.log(`📝 Event: ${event.description}`)
   }
 
   /**
@@ -3106,11 +3152,12 @@ export class SimulationEngine {
       this.gameState.resources.water.current += actualAdded
       
       // Create event log
-      this.addGameEvent({
-        timestamp: this.gameState.time.totalMinutes,
-        type: 'offline_water_generation',
-        description: `${result.message} (${actualAdded} added, ${result.generated - actualAdded} overflow)`,
-        importance: 'medium'
+      this.eventBus.emit('resource_changed', {
+        resource: 'water',
+        oldValue: currentWater,
+        newValue: this.gameState.resources.water.current,
+        delta: actualAdded,
+        source: 'offline_water_generation'
       })
       
       console.log(`💧 Offline Water Generation: ${result.message}`)
@@ -4267,12 +4314,6 @@ export class SimulationEngine {
   /**
    * Adds a game event to the current tick's events
    */
-  private addGameEvent(event: GameEvent): void {
-    // Store events for the current tick - in a real implementation this would
-    // be added to the current tick's event list
-    console.log(`📅 Game Event: ${event.description}`)
-  }
-
   /**
    * Phase 8O: Get bottleneck priorities for enhanced decision making
    */

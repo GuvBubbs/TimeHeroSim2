@@ -5,11 +5,11 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SimulationEngine } from '../src/utils/SimulationEngine'
-import { CropSystem } from '../src/utils/systems/CropSystem'
+import { FarmSystem } from '../src/utils/systems/FarmSystem'
 import { HelperSystem } from '../src/utils/systems/HelperSystem'
 import { CombatSystem } from '../src/utils/systems/CombatSystem'
 import { CraftingSystem } from '../src/utils/systems/CraftingSystem'
-import { MiningSystem } from '../src/utils/systems/MiningSystem'
+import { MineSystem } from '../src/utils/systems/MineSystem'
 import { CSVDataParser } from '../src/utils/CSVDataParser'
 import type { SimulationConfig, GameState } from '../src/types'
 
@@ -152,7 +152,7 @@ describe('SimulationEngine Integration Tests', () => {
       })
 
       // Process crop growth
-      CropSystem.processCropGrowth(gameState, 3, mockGameDataStore) // 3 minutes
+      FarmSystem.processCropGrowth(gameState, 3, mockGameDataStore) // 3 minutes
 
       const crop = gameState.processes.crops[0]
       expect(crop.growthStage).toBeGreaterThan(1)
@@ -260,7 +260,7 @@ describe('SimulationEngine Integration Tests', () => {
       gameState.resources.energy.current = 100
 
       // Process mining
-      MiningSystem.processMining(gameState, 1) // 1 minute
+      MineSystem.processMining(gameState, 1) // 1 minute
 
       expect(gameState.processes.mining.depth).toBe(10) // 10 meters per minute
       expect(gameState.resources.energy.current).toBe(98) // 2 energy drained
@@ -401,8 +401,8 @@ describe('SimulationEngine Integration Tests', () => {
   describe('Error Handling', () => {
     it('should handle system errors gracefully', () => {
       // Mock a system to throw an error
-      const originalProcessCropGrowth = CropSystem.processCropGrowth
-      CropSystem.processCropGrowth = vi.fn(() => {
+      const originalProcessCropGrowth = FarmSystem.processCropGrowth
+      FarmSystem.processCropGrowth = vi.fn(() => {
         throw new Error('Test error')
       })
 
@@ -412,7 +412,7 @@ describe('SimulationEngine Integration Tests', () => {
       expect(result.gameState).toBeDefined()
 
       // Restore original function
-      CropSystem.processCropGrowth = originalProcessCropGrowth
+      FarmSystem.processCropGrowth = originalProcessCropGrowth
     })
 
     it('should return safe fallback on critical errors', () => {

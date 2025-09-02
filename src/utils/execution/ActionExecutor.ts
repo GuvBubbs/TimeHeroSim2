@@ -7,7 +7,7 @@ import { ActionValidator } from './ActionValidator'
 import { StateManager } from '../state'
 import { CSVDataParser } from '../CSVDataParser'
 import { PrerequisiteSystem } from '../systems/PrerequisiteSystem'
-import { CropSystem } from '../systems/CropSystem'
+import { FarmSystem } from '../systems/FarmSystem'
 import { SeedSystem, MANUAL_CATCHING } from '../systems/SeedSystem'
 import { AdventureSystem } from '../systems/AdventureSystem'
 
@@ -232,7 +232,7 @@ export class ActionExecutor {
     }
 
     // Use CropSystem to distribute water efficiently
-    const waterUsed = CropSystem.distributeWater(context.gameState, waterAmount)
+    const waterUsed = FarmSystem.distributeWater(context.gameState, waterAmount)
 
     if (waterUsed > 0) {
       // Consume water and energy

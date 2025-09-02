@@ -1,52 +1,184 @@
-# SimulationEngine As-Built Documentation - Phase 9J Complete
+# SimulationEngine As-Built Documentation - Phase 10A Complete
 
 ## Overview
 
-The SimulationEngine has been transformed from a 5000+ line monolith into a clean ~500-line orchestrator that coordinates specialized modules. It now serves as a pure orchestration layer with all implementation details moved to dedicated modules.
+The SimulationEngine has completed Phase 10A (Audit & Cleanup), establishing a clean foundation by consolidating duplicate systems, removing failed refactor attempts, and fixing critical startup issues discovered during testing.
 
-**Status**: ✅ Phase 9J Complete - Pure Orchestration Layer
+**Status**: ✅ Phase 10A Complete - Foundation Established, Critical Fixes Applied
 
-## Final Architecture Summary
+## Current State After Phase 10A (September 3, 2025)
+
+### Files Status
+- **SimulationEngine.ts**: 610 lines (orchestration layer - ready for Phase 10B extraction)
+- **SimulationOrchestrator.ts**: DELETED (was 631-line failed refactor attempt)
+- **System files**: 5,970 lines total (consolidated and organized)
+
+### Phase 10A Achievements
+1. **Eliminated Duplication**: Removed failed SimulationOrchestrator.ts copy (631 lines)
+2. **System Consolidation**: 
+   - FarmSystem.ts (521 lines) - merged CropSystem + WaterSystem
+   - HelperSystem.ts (932 lines) - integrated GnomeHousing
+   - MineSystem.ts (337 lines) - renamed from MiningSystem for consistency
+3. **System Registry**: Created typed registry with CORE/SUPPORT categorization
+4. **Critical Fixes**: 
+   - Starting resources corrected to match starting-conditions.md
+   - Location time tracking functionality restored
+   - All import errors resolved
+5. **Clean Foundation**: Ready for Phase 10B extraction (targeting ~1,700 line reduction)
+
+### Architecture After Phase 10A Cleanup
 
 ```
-SimulationEngine (~500 lines) - PURE ORCHESTRATOR
-├── Initialization & Configuration (~150 lines)
-├── Main Tick Loop (~150 lines)  
-├── Module Coordination (~100 lines)
-└── Basic Condition Checking (~100 lines)
+SimulationEngine (610 lines) - READY FOR PHASE 10B EXTRACTION
+├── Orchestration Logic (~200 lines) ← KEEP
+├── Implementation Details (~400 lines) ← EXTRACT TO SYSTEMS
+└── Core Modules Integration ← STREAMLINE
 
-Coordinates These Modules:
-├── DecisionEngine (AI decisions) - ~524 lines
-├── ActionExecutor (action execution) - ~725 lines  
-├── StateManager (state management) - ~500 lines
-├── ProcessManager (ongoing processes) - ~400 lines
-├── ValidationService (rule validation) - ~300 lines
-├── EventBus (event system) - ~200 lines
-└── Game Systems (domain logic) - ~2000 lines
-    ├── TowerSystem, TownSystem, AdventureSystem
-    ├── ForgeSystem, FarmSystem, MineSystem
-    ├── CropSystem, HelperSystem, CombatSystem
-    └── WaterSystem, SeedSystem, CraftingSystem
+Consolidated Systems (Phase 10A):
+├── FarmSystem (521 lines) - Crops + Water unified ✅
+├── HelperSystem (932 lines) - Helpers + Housing unified ✅
+├── MineSystem (337 lines) - Renamed for consistency ✅
+├── systemRegistry.ts (151 lines) - Central system registry ✅
+└── Individual Systems (4,029 lines) - SeedSystem, TownSystem, etc.
+
+Phase 10B Targets:
+├── Extract core game loops from SimulationEngine (~1,000 lines)
+├── Move system orchestration to consolidated systems (~400 lines)
+├── Streamline decision engine integration (~300 lines)
+└── Result: SimulationEngine ~310 lines (pure orchestration)
 ```
 
-## Phase 9J Refactor Results
+## Phase 10A Cleanup Results
 
-### Before Refactor:
-- **SimulationEngine.ts**: 5659 lines (monolithic)
-- **Responsibilities**: Everything 
-- **Testability**: Difficult (tightly coupled)
-- **Maintainability**: Poor (massive file)
-- **Extensibility**: Limited (everything in one place)
+### Files Eliminated (1,396 lines removed)
+- SimulationOrchestrator.ts: 631 lines (failed refactor duplicate)
+- CropSystem.ts: 432 lines (functionality moved to FarmSystem)
+- WaterSystem.ts: 333 lines (functionality moved to FarmSystem)  
+- GnomeHousing.ts: 229 lines (merged into HelperSystem)
 
-### After Refactor:
-- **SimulationEngine.ts**: ~500 lines (orchestrator only)
-- **Total Codebase**: ~6000 lines (distributed across 20+ modules)
-- **Responsibilities**: Pure coordination
-- **Testability**: Excellent (isolated modules)
-- **Maintainability**: Excellent (single responsibility)
-- **Extensibility**: Excellent (plugin architecture)
+### Consolidated Systems
+| System | Lines | Consolidated From | Status |
+|--------|-------|------------------|---------|
+| FarmSystem | 521 | CropSystem + WaterSystem | ✅ Complete |
+| HelperSystem | 932 | GnomeHousing integration | ✅ Complete |
+| MineSystem | 337 | Renamed from MiningSystem | ✅ Complete |
 
-## What SimulationEngine Now Contains (Orchestration Only)
+### System Registry
+Created `/src/utils/systems/systemRegistry.ts` with:
+- CORE_SYSTEMS: 7 main gameplay systems
+- SUPPORT_SYSTEMS: 4 utility systems  
+- Type-safe system access and metadata
+- Consolidation tracking and documentation
+
+## Critical Fixes During Phase 10A Testing
+
+### Starting Resources Correction (Critical)
+**Issue Found**: Hardcoded starting resources in SimulationEngine didn't match `starting-conditions.md`
+
+**Incorrect Values**:
+- Energy: 100/100, Gold: 50, Water: 20/20
+- Seeds: turnip: 10, carrot: 5, potato: 3
+- Materials: wood: 20, stone: 10
+
+**Corrected Values**:
+- Energy: 3/100 ✅ (proper starting challenge)
+- Gold: 75 ✅ (enough for Sword I + Tower Reach 1)  
+- Water: 0/20 ✅ (requires pumping action)
+- Seeds: carrot: 1, radish: 1 ✅ (2 seeds for 3 plots drives tower visits)
+- Materials: (empty) ✅ (must adventure/mine for resources)
+
+### Location Time Tracking Fix (Critical)
+**Issue Found**: Current Location widget showed 0:00 time - location tracking non-functional
+
+**Root Cause**: 
+- Incomplete location state initialization (missing `timeOnScreen`, `screenHistory`, `navigationReason`)
+- No time tracking logic in simulation `updateTime()` method
+
+**Solution Applied**:
+```typescript
+// Enhanced location initialization in SimulationEngine
+location: {
+  currentScreen: 'farm',
+  timeOnScreen: 0,
+  screenHistory: ['farm'],
+  navigationReason: 'Initial spawn'
+}
+
+// Added time tracking in updateTime() method
+this.gameState.location.timeOnScreen += deltaTime
+```
+
+**Result**: Location widgets now properly track time spent on current screen
+
+### Import Resolution (Critical)
+**Issue Found**: After system consolidation, 12+ files had broken imports causing startup failures
+
+**Files Fixed**: SimulationEngine.ts, ActionExecutor.ts, OfflineProgressionSystem.ts, all test files
+**Result**: Clean application startup with no import errors
+
+## Integration Points Between Systems
+
+### Current Integration (Phase 10A)
+- **systemRegistry.ts**: Central typed registry for all systems
+- **FarmSystem**: Unified crop growth and water management
+- **HelperSystem**: Complete helper automation including housing validation
+- **Core Systems**: Still use direct imports and method calls
+- **Event Bus**: Cross-system communication (existing)
+
+### Planned Integration (Phase 10B+)
+- Extract core game loops from SimulationEngine to respective systems
+- Maintain orchestration layer for tick coordination
+- Preserve event bus for cross-system communication
+- Implement plugin-style system loading via registry
+
+## Architectural Decisions Made
+
+### Phase 10A Decisions
+1. **Keep CraftingSystem + ForgeSystem separate**: Different concerns (process vs decisions)
+2. **Keep SeedSystem + TowerSystem separate**: Different concerns (mechanics vs structure)
+3. **Consolidate related functionality**: Crops+Water, Helpers+Housing logically unified
+4. **Create typed system registry**: Enables clean orchestration and plugin architecture
+5. **Eliminate true duplicates only**: Preserve systems with genuine separation of concerns
+6. **Fix starting conditions**: Align hardcoded values with documented game design
+7. **Restore location tracking**: Essential for location widgets and player analytics
+
+### Next Phase Preview (Phase 10B)
+**Target**: Extract core farm, tower, and town logic from SimulationEngine  
+**Goal**: Reduce SimulationEngine from 610 to ~310 lines (pure orchestration)  
+**Method**: Move implementation details to consolidated systems while preserving coordination
+
+## Current Issues and Technical Debt
+
+### Resolved in Phase 10A
+- ✅ Eliminated failed refactor attempt (SimulationOrchestrator.ts)
+- ✅ Fixed inconsistent system naming
+- ✅ Consolidated fragmented related functionality
+- ✅ Created system registry for clean access patterns
+
+### Remaining for Phase 10B+
+- 🔄 SimulationEngine still contains ~400 lines of implementation details
+- 🔄 CombatSystem + RouteEnemyRollSystem need consolidation into AdventureSystem
+- 🔄 Direct system imports throughout codebase (should use registry)
+- 🔄 Some systems still have overlapping responsibilities
+
+## Performance and Maintainability Notes
+
+### Current State
+- **File Organization**: Well-structured with clear responsibilities
+- **Type Safety**: Full TypeScript coverage with proper interfaces
+- **Testing**: Individual systems can be unit tested in isolation
+- **Documentation**: Each system has clear purpose and consolidated functionality
+
+### Future Improvements
+- Plugin-based system loading via registry
+- Lazy loading of systems based on game state needs  
+- Further extraction of implementation details from SimulationEngine
+- Event-driven architecture for looser coupling
+
+---
+
+**Last Updated**: September 3, 2025 - Phase 10A Complete  
+**Next Phase**: Phase 10B - Core System Extraction from SimulationEngine
 
 ### ✅ KEPT - Essential Orchestration Logic:
 ```typescript

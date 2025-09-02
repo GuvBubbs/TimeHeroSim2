@@ -12,7 +12,7 @@
 import { CSVDataParser } from '../CSVDataParser'
 import type { GameState, MiningState } from '@/types'
 
-export class MiningSystem {
+export class MineSystem {
   /**
    * Process ongoing mining operations
    * Handles energy drain, depth progression, and material drops

@@ -14,7 +14,7 @@ import type {
   ProcessEvent,
   MiningProcessData
 } from '../types/ProcessTypes'
-import { MiningSystem } from '../../systems/MiningSystem'
+import { MineSystem } from '../../systems/MineSystem'
 
 export class MiningHandler implements IProcessHandler {
   
@@ -48,7 +48,7 @@ export class MiningHandler implements IProcessHandler {
   
   initialize(handle: ProcessHandle, data: ProcessData, gameState: GameState): InitResult {
     // Use MiningSystem to start mining
-    const success = MiningSystem.startMining(gameState)
+    const success = MineSystem.startMining(gameState)
     
     if (!success) {
       return {
@@ -80,7 +80,7 @@ export class MiningHandler implements IProcessHandler {
     
     // Use existing MiningSystem to process
     const previousDepth = miningState.depth
-    MiningSystem.processMining(gameState, deltaTime)
+    MineSystem.processMining(gameState, deltaTime)
     
     // Update handle progress (based on depth or energy remaining)
     const maxEnergy = gameState.resources.energy.max
@@ -101,8 +101,8 @@ export class MiningHandler implements IProcessHandler {
         importance: 'medium',
         data: {
           depth: miningState.depth,
-          tier: MiningSystem.getDepthTier(miningState.depth),
-          tierName: MiningSystem.getDepthTierName(miningState.depth)
+          tier: MineSystem.getDepthTier(miningState.depth),
+          tierName: MineSystem.getDepthTierName(miningState.depth)
         }
       })
     }
@@ -136,7 +136,7 @@ export class MiningHandler implements IProcessHandler {
     // Mining completion is handled by MiningSystem.stopMining
     const miningState = gameState.processes.mining
     if (miningState) {
-      MiningSystem.stopMining(gameState)
+      MineSystem.stopMining(gameState)
     }
     
     return {
@@ -152,7 +152,7 @@ export class MiningHandler implements IProcessHandler {
   
   cancel(handle: ProcessHandle, gameState: GameState): void {
     // Stop mining using MiningSystem
-    MiningSystem.stopMining(gameState)
+    MineSystem.stopMining(gameState)
     console.log(`Cancelled mining: ${handle.id}`)
   }
   

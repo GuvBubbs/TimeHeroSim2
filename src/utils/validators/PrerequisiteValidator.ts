@@ -317,7 +317,7 @@ export class PrerequisiteValidator {
   private validateBootstrapEconomy(): void {
     console.log('💰 Validating bootstrap economy...')
     
-    const startingGold = 50
+    const startingGold = 75
     
     // Check that first weapon blueprint is affordable
     const swordBlueprint = this.items.find(item => item.id === 'blueprint_sword_1')

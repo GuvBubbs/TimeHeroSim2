@@ -10,7 +10,7 @@
  */
 
 import { PrerequisiteValidator } from '../validators/PrerequisiteValidator'
-import { MiningSystem } from '../systems/MiningSystem'
+import { MineSystem } from '../systems/MineSystem'
 import { OfflineProgressionSystem } from '../systems/OfflineProgressionSystem'
 import { RouteEnemyRollSystem } from '../systems/RouteEnemyRollSystem'
 import { SimulationEngine } from '../SimulationEngine'
@@ -128,7 +128,7 @@ export class Phase8OIntegrationTest {
       const originalMaterialCount = gameState.resources.materials.get('raw_stone') || 0
       
       // Drop materials and check for no bonus
-      MiningSystem.dropMaterials(gameState, 250) // Depth 250m = stone tier
+      MineSystem.dropMaterials(gameState, 250) // Depth 250m = stone tier
       const basicPickaxeResult = gameState.resources.materials.get('raw_stone') || 0
       
       // Test with Abyss Seeker for obsidian bonus
@@ -137,7 +137,7 @@ export class Phase8OIntegrationTest {
       gameState.resources.materials.set('raw_obsidian', 0)
       
       // Drop obsidian materials (depth > 4500m for obsidian)
-      MiningSystem.dropMaterials(gameState, 4750)
+      MineSystem.dropMaterials(gameState, 4750)
       const obsidianCount = gameState.resources.materials.get('raw_obsidian') || 0
       
       // Abyss Seeker should provide material bonus + obsidian doubling
@@ -370,11 +370,11 @@ export class Phase8OIntegrationTest {
         minute: 0 
       },
       resources: {
-        energy: { current: 100, max: 200 },
-        gold: { current: 50, max: 999999 },
-        water: { current: 20, max: 100 },
-        seeds: new Map([['carrot', 5], ['radish', 3]]),
-        materials: new Map([['wood', 10], ['stone', 5]])
+        energy: { current: 3, max: 100 },
+        gold: { current: 75, max: 999999 },
+        water: { current: 0, max: 20 },
+        seeds: new Map([['carrot', 1], ['radish', 1]]),
+        materials: new Map()
       },
       progression: {
         heroLevel: 1,

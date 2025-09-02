@@ -31,5 +31,22 @@
 - Players always have a viable action (no deadlock states)
 - Starting with 2 seeds for 3 plots creates immediate need for tower
 - Free Tower Reach 1 ensures seed collection is always possible
-- 50 gold enables first combat upgrade (Sword I)
-- 0 starting energy forces immediate farming engagement
+- 75 gold enables first combat upgrade (Sword I) + Tower Reach upgrades
+- 3 starting energy forces immediate farming engagement
+
+---
+
+## Implementation Status
+
+**✅ CORRECTED** - Phase 10A (September 3, 2025)
+
+These starting conditions are now properly implemented in the codebase. During Phase 10A testing, it was discovered that SimulationEngine.ts had incorrect hardcoded starting resources that didn't match this specification. The following corrections were made:
+
+**Fixed Starting Resources**:
+- Energy: 3/100 ✅ (was incorrectly 100/100)
+- Gold: 75 ✅ (was incorrectly 50)
+- Water: 0/20 ✅ (was incorrectly 20/20)
+- Seeds: carrot: 1, radish: 1 ✅ (was incorrectly turnip: 10, carrot: 5, potato: 3)
+- Materials: (empty) ✅ (was incorrectly wood: 20, stone: 10)
+
+The application now starts with the exact conditions specified in this document, providing the intended game balance and progression flow.

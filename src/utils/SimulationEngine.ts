@@ -9,7 +9,7 @@ import { ProcessManager } from './processes'
 import { validationService } from './validation'
 import { eventBus, type IEventBus } from './events'
 import { HelperSystem } from './systems/HelperSystem'
-import { WaterSystem } from './systems/WaterSystem'
+import { FarmSystem } from './systems/FarmSystem'
 import { SeedSystem } from './systems/SeedSystem'
 import type { 
   SimulationConfig, 
@@ -189,7 +189,7 @@ export class SimulationEngine {
     return {
       farm: {
         automation: { autoPlant: true, autoWater: true, autoHarvest: true },
-        priorities: { cropPreference: ['turnip', 'carrot', 'potato'], wateringThreshold: 0.3 }
+        priorities: { cropPreference: ['carrot', 'radish'], wateringThreshold: 0.3 }
       },
       tower: {
         priorities: { upgradeOrder: ['reach', 'autocatcher', 'nets'] }
@@ -272,9 +272,9 @@ export class SimulationEngine {
         speed: 1
       },
       resources: {
-        energy: { current: 100, max: 100, regenerationRate: 0 },
-        water: { current: 20, max: 20, autoGenRate: 0 },
-        gold: 50,
+        energy: { current: 3, max: 100, regenerationRate: 0 },
+        water: { current: 0, max: 20, autoGenRate: 0 },
+        gold: 75,
         seeds: this.initializeSeeds(),
         materials: this.initializeMaterials()
       },
@@ -316,7 +316,10 @@ export class SimulationEngine {
         rescueQueue: []
       },
       location: {
-        currentScreen: 'farm'
+        currentScreen: 'farm',
+        timeOnScreen: 0,
+        screenHistory: ['farm'],
+        navigationReason: 'Initial spawn'
       },
       automation: {
         plantingEnabled: true,
@@ -324,7 +327,7 @@ export class SimulationEngine {
         wateringEnabled: true,
         harvestingEnabled: true,
         autoCleanupEnabled: false,
-        targetCrops: new Map([['turnip', 1], ['carrot', 1], ['potato', 1]]),
+        targetCrops: new Map([['carrot', 0.5], ['radish', 0.5]]),
         wateringThreshold: 0.3,
         energyReserve: 10
       },
@@ -340,9 +343,8 @@ export class SimulationEngine {
    */
   private initializeSeeds(): Map<string, number> {
     return new Map([
-      ['turnip', 10],
-      ['carrot', 5],
-      ['potato', 3]
+      ['carrot', 1],
+      ['radish', 1]
     ])
   }
 
@@ -350,10 +352,7 @@ export class SimulationEngine {
    * Initialize starting materials
    */
   private initializeMaterials(): Map<string, number> {
-    return new Map([
-      ['wood', 20],
-      ['stone', 10]
-    ])
+    return new Map()
   }
 
   // =============================================================================
@@ -385,6 +384,9 @@ export class SimulationEngine {
       this.gameState.time.hour -= 24
       this.gameState.time.day += 1
     }
+    
+    // Update location time tracking
+    this.gameState.location.timeOnScreen += deltaTime
   }
 
   /**
@@ -398,9 +400,9 @@ export class SimulationEngine {
     }
 
     try {
-      WaterSystem.processAutoPumpGeneration(this.gameState, deltaTime)
+      FarmSystem.processAutoPumpGeneration(this.gameState, deltaTime)
     } catch (error) {
-      console.error('Error in WaterSystem.processAutoPumpGeneration:', error)
+      console.error('Error in FarmSystem.processAutoPumpGeneration:', error)
     }
 
     try {

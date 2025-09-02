@@ -7,9 +7,9 @@
  */
 
 import type { GameState, CropData, ToolData } from '@/types'
-import { CropSystem } from './CropSystem'
+import { FarmSystem } from './FarmSystem'
 import { CraftingSystem } from './CraftingSystem'
-import { MiningSystem } from './MiningSystem'
+import { MineSystem } from './MineSystem'
 import { HelperSystem } from './HelperSystem'
 import { CSVDataParser } from '../CSVDataParser'
 
@@ -376,7 +376,7 @@ export class OfflineProgressionSystem {
       const initialEnergy = gameState.resources.energy.current
       
       // Process mining using existing MiningSystem
-      MiningSystem.processMining(gameState, offlineMinutes)
+      MineSystem.processMining(gameState, offlineMinutes)
       
       miningProgress.finalDepth = gameState.processes.mining.depth
       miningProgress.energyConsumed = initialEnergy - gameState.resources.energy.current

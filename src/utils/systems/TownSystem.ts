@@ -1,24 +1,42 @@
-// TownSystem - Phase 9C Implementation
-// Town vendor interactions, blueprint purchases, and material trading
+// TownSystem - Phase 10B Core Game Loop System
+// Town vendor interactions, blueprint purchases, and material trading implementing GameSystem interface
 
-import type { GameState, GameAction, AllParameters } from '@/types'
+import type { GameState, GameAction, AllParameters, SimulationConfig } from '@/types'
 import { SeedSystem } from './SeedSystem'
+import { 
+  type ActionResult, 
+  type SystemTickResult, 
+  type ValidationResult,
+  type EvaluationContext,
+  createSuccessResult,
+  createFailureResult,
+  createTickResult
+} from './GameSystem'
 
 /**
- * Town system for vendor interactions and blueprint purchases
+ * Town system for vendor interactions and blueprint purchases - implements GameSystem contract
  */
 export class TownSystem {
   /**
-   * Evaluates town-specific actions (Phase 6E Implementation)
+   * Evaluates town-specific actions (Phase 10B Implementation)
    */
-  static evaluateActions(gameState: GameState, parameters: AllParameters, gameDataStore: any): GameAction[] {
+  static evaluateActions(
+    gameState: GameState, 
+    parameters: AllParameters | SimulationConfig, 
+    gameDataStoreOrContext: any
+  ): GameAction[] {
+    // Handle both old and new signatures for compatibility
+    const actualGameDataStore = typeof gameDataStoreOrContext === 'object' && !('urgency' in gameDataStoreOrContext) 
+      ? gameDataStoreOrContext 
+      : null
+
     const actions: GameAction[] = []
-    const townParams = parameters.town
+    const townParams = 'town' in parameters ? parameters.town : parameters
     
     if (!townParams) return actions
     
     // CRITICAL: Blueprint purchase flow - check if hero needs tower access
-    const blueprintPurchases = TownSystem.evaluateBlueprintPurchases(gameState, gameDataStore)
+    const blueprintPurchases = TownSystem.evaluateBlueprintPurchases(gameState, actualGameDataStore)
     actions.push(...blueprintPurchases)
     
     // PHASE 9A: Navigate back to farm after blueprint purchases to build structures
@@ -26,16 +44,16 @@ export class TownSystem {
     actions.push(...returnToFarmActions)
     
     // Phase 8L: Material trading for gold generation
-    const materialSales = TownSystem.evaluateMaterialSales(gameState, gameDataStore)
+    const materialSales = TownSystem.evaluateMaterialSales(gameState, actualGameDataStore)
     actions.push(...materialSales)
     
     // Phase 8L: Emergency wood bundles from Agronomist
-    const emergencyWoodActions = TownSystem.evaluateEmergencyWood(gameState, gameDataStore)
+    const emergencyWoodActions = TownSystem.evaluateEmergencyWood(gameState, actualGameDataStore)
     actions.push(...emergencyWoodActions)
     
     // Purchase decisions based on vendor priorities
     if (gameState.resources.gold >= 50) {
-      const affordableUpgrades = TownSystem.getAffordableUpgrades(gameState, gameDataStore)
+      const affordableUpgrades = TownSystem.getAffordableUpgrades(gameState, actualGameDataStore)
       
       for (const upgrade of affordableUpgrades) {
         // Apply vendor priorities if available - simplified for now
@@ -60,8 +78,8 @@ export class TownSystem {
     }
     
     // Skill training decisions
-    if (townParams.skillTraining && gameState.resources.gold >= 200) {
-      const trainingOptions = TownSystem.getAvailableTraining(gameState, gameDataStore)
+    if (townParams && 'skillTraining' in townParams && townParams.skillTraining && gameState.resources.gold >= 200) {
+      const trainingOptions = TownSystem.getAvailableTraining(gameState, actualGameDataStore)
       
       for (const training of trainingOptions) {
         if (TownSystem.shouldTrainSkill(training, gameState)) {
@@ -327,6 +345,311 @@ export class TownSystem {
   static shouldTrainSkill(training: any, gameState: GameState): boolean {
     // Simple logic - train if hero level is low and we have energy
     return gameState.progression.heroLevel < 5 && gameState.resources.energy.current > 50
+  }
+
+  // =============================================================================
+  // GAMESYSTEM INTERFACE IMPLEMENTATION
+  // =============================================================================
+
+  /**
+   * Execute a town-related action
+   */
+  static execute(action: GameAction, state: GameState): ActionResult {
+    try {
+      switch (action.type) {
+        case 'purchase':
+          return this.executePurchaseAction(action, state)
+        case 'sell_material':
+          return this.executeSellMaterialAction(action, state)
+        case 'build':
+          return this.executeBuildAction(action, state)
+        case 'train':
+          return this.executeTrainAction(action, state)
+        default:
+          return createFailureResult(`Unknown town action type: ${action.type}`)
+      }
+    } catch (error) {
+      return createFailureResult(`Error executing town action: ${error}`)
+    }
+  }
+
+  /**
+   * Process town systems during simulation tick
+   */
+  static tick(deltaTime: number, state: GameState): SystemTickResult {
+    const stateChanges: Record<string, any> = {}
+    const events: any[] = []
+
+    try {
+      // Check for urgent purchases needed
+      if (this.needsTowerAccess(state)) {
+        events.push({
+          type: 'tower_access_needed',
+          description: 'Hero needs tower access for seed collection',
+          importance: 'medium'
+        })
+      }
+
+      // Check for low materials that could be emergency purchased
+      const wood = state.resources.materials.get('wood') || 0
+      if (wood < 5 && state.resources.gold >= 20) {
+        events.push({
+          type: 'emergency_wood_available',
+          description: 'Emergency wood purchase available',
+          importance: 'low'
+        })
+      }
+
+    } catch (error) {
+      events.push({
+        type: 'town_error',
+        description: `Error in town tick: ${error}`,
+        importance: 'high'
+      })
+    }
+
+    return createTickResult(stateChanges, events)
+  }
+
+  /**
+   * Validate if a town action can be executed
+   */
+  static canExecute(action: GameAction, state: GameState): ValidationResult {
+    switch (action.type) {
+      case 'purchase':
+        return this.canPurchase(action, state)
+      case 'sell_material':
+        return this.canSellMaterial(action, state)
+      case 'build':
+        return this.canBuild(action, state)
+      case 'train':
+        return this.canTrain(action, state)
+      default:
+        return { canExecute: false, reason: `Unknown action type: ${action.type}` }
+    }
+  }
+
+  // =============================================================================
+  // ACTION EXECUTION METHODS
+  // =============================================================================
+
+  /**
+   * Execute purchase action
+   */
+  private static executePurchaseAction(action: GameAction, state: GameState): ActionResult {
+    if (state.resources.gold < action.goldCost) {
+      return createFailureResult('Not enough gold for purchase')
+    }
+
+    const itemId = action.target
+    if (!itemId) {
+      return createFailureResult('No item specified for purchase')
+    }
+
+    // Handle blueprint purchases
+    if (itemId.includes('blueprint_')) {
+      const blueprint = state.inventory.blueprints.get(itemId)
+      if (blueprint) {
+        blueprint.purchased = true
+      } else {
+        state.inventory.blueprints.set(itemId, {
+          id: itemId,
+          purchased: true,
+          isBuilt: false,
+          buildCost: {
+            energy: 10,
+            materials: new Map([['wood', 5]]),
+            time: 5
+          }
+        })
+      }
+    }
+
+    state.resources.gold -= action.goldCost
+
+    return createSuccessResult(
+      `Purchased ${itemId} for ${action.goldCost} gold`,
+      {
+        'resources.gold': state.resources.gold,
+        'inventory.blueprints': state.inventory.blueprints
+      }
+    )
+  }
+
+  /**
+   * Execute sell material action
+   */
+  private static executeSellMaterialAction(action: GameAction, state: GameState): ActionResult {
+    const materialType = action.target
+    if (!materialType) {
+      return createFailureResult('No material specified for sale')
+    }
+
+    const currentAmount = state.resources.materials.get(materialType) || 0
+    const sellAmount = Math.min(currentAmount, 10) // Sell up to 10 at a time
+
+    if (sellAmount <= 0) {
+      return createFailureResult(`No ${materialType} available to sell`)
+    }
+
+    const pricePerUnit = this.getMaterialPrice(materialType)
+    const goldGained = sellAmount * pricePerUnit
+
+    state.resources.materials.set(materialType, currentAmount - sellAmount)
+    state.resources.gold += goldGained
+
+    return createSuccessResult(
+      `Sold ${sellAmount} ${materialType} for ${goldGained} gold`,
+      {
+        'resources.gold': state.resources.gold,
+        [`resources.materials.${materialType}`]: currentAmount - sellAmount
+      }
+    )
+  }
+
+  /**
+   * Execute build action
+   */
+  private static executeBuildAction(action: GameAction, state: GameState): ActionResult {
+    const blueprintId = action.target
+    if (!blueprintId) {
+      return createFailureResult('No blueprint specified for building')
+    }
+
+    const blueprint = state.inventory.blueprints.get(blueprintId)
+    if (!blueprint || !blueprint.purchased) {
+      return createFailureResult('Blueprint not available or not purchased')
+    }
+
+    blueprint.isBuilt = true
+    const structureName = blueprintId.replace('blueprint_', '')
+    state.progression.builtStructures.add(structureName)
+
+    return createSuccessResult(
+      `Built ${structureName} from blueprint`,
+      {
+        'inventory.blueprints': state.inventory.blueprints,
+        'progression.builtStructures': state.progression.builtStructures
+      }
+    )
+  }
+
+  /**
+   * Execute train action
+   */
+  private static executeTrainAction(action: GameAction, state: GameState): ActionResult {
+    if (state.resources.gold < action.goldCost) {
+      return createFailureResult('Not enough gold for training')
+    }
+
+    const skill = action.target
+    const experienceGained = action.expectedRewards?.experience || 50
+
+    state.resources.gold -= action.goldCost
+    state.progression.experience += experienceGained
+
+    return createSuccessResult(
+      `Trained ${skill} skill for ${experienceGained} experience`,
+      {
+        'resources.gold': state.resources.gold,
+        'progression.experience': state.progression.experience
+      }
+    )
+  }
+
+  // =============================================================================
+  // VALIDATION METHODS
+  // =============================================================================
+
+  /**
+   * Validate purchase action
+   */
+  private static canPurchase(action: GameAction, state: GameState): ValidationResult {
+    if (state.resources.gold < action.goldCost) {
+      return { 
+        canExecute: false, 
+        reason: 'Not enough gold',
+        missingResources: { gold: action.goldCost - state.resources.gold }
+      }
+    }
+
+    return { canExecute: true }
+  }
+
+  /**
+   * Validate sell material action
+   */
+  private static canSellMaterial(action: GameAction, state: GameState): ValidationResult {
+    const materialType = action.target
+    if (!materialType) {
+      return { canExecute: false, reason: 'No material specified' }
+    }
+
+    const currentAmount = state.resources.materials.get(materialType) || 0
+    if (currentAmount <= 0) {
+      return { 
+        canExecute: false, 
+        reason: `No ${materialType} available to sell`,
+        missingResources: { [materialType]: 1 }
+      }
+    }
+
+    return { canExecute: true }
+  }
+
+  /**
+   * Validate build action
+   */
+  private static canBuild(action: GameAction, state: GameState): ValidationResult {
+    const blueprintId = action.target
+    if (!blueprintId) {
+      return { canExecute: false, reason: 'No blueprint specified' }
+    }
+
+    const blueprint = state.inventory.blueprints.get(blueprintId)
+    if (!blueprint || !blueprint.purchased) {
+      return { canExecute: false, reason: 'Blueprint not available' }
+    }
+
+    if (blueprint.isBuilt) {
+      return { canExecute: false, reason: 'Already built' }
+    }
+
+    return { canExecute: true }
+  }
+
+  /**
+   * Validate train action
+   */
+  private static canTrain(action: GameAction, state: GameState): ValidationResult {
+    if (state.resources.gold < action.goldCost) {
+      return { 
+        canExecute: false, 
+        reason: 'Not enough gold',
+        missingResources: { gold: action.goldCost - state.resources.gold }
+      }
+    }
+
+    return { canExecute: true }
+  }
+
+  // =============================================================================
+  // HELPER METHODS
+  // =============================================================================
+
+  /**
+   * Get material price for selling
+   */
+  private static getMaterialPrice(materialType: string): number {
+    const prices: Record<string, number> = {
+      'wood': 2,
+      'stone': 3,
+      'copper': 5,
+      'iron': 8,
+      'silver': 15,
+      'crystal': 50
+    }
+    return prices[materialType] || 1
   }
 
   /**

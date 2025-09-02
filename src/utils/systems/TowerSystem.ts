@@ -1,29 +1,46 @@
-// TowerSystem - Phase 9C Implementation
-// Tower navigation, seed catching, and reach upgrade system
+// TowerSystem - Phase 10B Core Game Loop System
+// Tower navigation, seed catching, and reach upgrade system implementing GameSystem interface
 
-import type { GameState, GameAction, AllParameters } from '@/types'
+import type { GameState, GameAction, AllParameters, SimulationConfig } from '@/types'
 import { SeedSystem, MANUAL_CATCHING, AUTO_CATCHERS } from './SeedSystem'
+import { 
+  type ActionResult, 
+  type SystemTickResult, 
+  type ValidationResult,
+  type EvaluationContext,
+  createSuccessResult,
+  createFailureResult,
+  createTickResult
+} from './GameSystem'
 
 /**
- * Tower system for seed catching and reach upgrades
+ * Tower system for seed catching and reach upgrades - implements GameSystem contract
  */
 export class TowerSystem {
+  // =============================================================================
+  // GAMESYSTEM INTERFACE IMPLEMENTATION
+  // =============================================================================
+
   /**
-   * Evaluates tower-specific actions (Phase 8N: Enhanced with SeedSystem)
+   * Evaluate tower-related actions that can be performed
    */
-  static evaluateActions(gameState: GameState, parameters: AllParameters, gameDataStore: any): GameAction[] {
+  static evaluateActions(
+    state: GameState, 
+    config: SimulationConfig | AllParameters,
+    context: EvaluationContext
+  ): GameAction[] {
     const actions: GameAction[] = []
-    const towerParams = parameters.tower
+    const parameters = this.extractTowerParameters(config)
     
-    if (!towerParams) return actions
+    if (!parameters) return actions
     
     // Get current tower metrics using SeedSystem
-    const towerReach = TowerSystem.getCurrentTowerReach(gameState)
+    const towerReach = this.getCurrentTowerReach(state)
     const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
-    const seedMetrics = SeedSystem.getSeedMetrics(gameState)
+    const seedMetrics = SeedSystem.getSeedMetrics(state)
     
     // Manual seed catching (Phase 8N: Enhanced with wind mechanics, aggressive in early game)
-    const farmPlots = gameState.progression.farmPlots || 3
+    const farmPlots = state.progression.farmPlots || 3
     const seedTargetBase = Math.max(farmPlots * 2, 6)  // At least 6 seeds, 2x farm plots
     const needsSeeds = seedMetrics.totalSeeds < seedTargetBase
     
@@ -44,14 +61,14 @@ export class TowerSystem {
       return actions // Return immediately to prioritize farm return
     }
     
-    if (needsSeeds && gameState.resources.energy.current > 30) {
-      const catchDuration = towerParams.decisionLogic?.catchDuration || 3
+    if (needsSeeds && state.resources.energy.current > 30) {
+      const catchDuration = parameters.decisionLogic?.catchDuration || 3
       
       // Use SeedSystem to calculate expected catch rate
       const catchRate = MANUAL_CATCHING.calculateCatchRate(
         windLevel.level,
-        TowerSystem.getBestNet(gameState),
-        TowerSystem.getPersonaCatchingSkill(gameState)
+        this.getBestNet(state),
+        this.getPersonaCatchingSkill(state)
       )
       
       const expectedSeeds = Math.floor(catchRate.seedsPerMinute * catchDuration)
@@ -72,9 +89,9 @@ export class TowerSystem {
     }
     
     // Auto-catcher upgrades (Phase 8N: Enhanced with SeedSystem rates)
-    if (gameState.resources.gold >= 1000) {
-      const currentAutoCatcher = TowerSystem.getAutoCatcherTier(gameState)
-      const nextTier = TowerSystem.getNextAutoCatcherTier(currentAutoCatcher)
+    if (state.resources.gold >= 1000) {
+      const currentAutoCatcher = this.getAutoCatcherTier(state)
+      const nextTier = this.getNextAutoCatcherTier(currentAutoCatcher)
       
       if (nextTier) {
         const tierData = AUTO_CATCHERS[nextTier]
@@ -94,19 +111,19 @@ export class TowerSystem {
     }
     
     // Tower reach upgrades
-    if (towerParams.unlockProgression?.reachLevelCosts && 
-        gameState.resources.energy.current > 50) {
-      const currentReach = TowerSystem.getCurrentTowerReach(gameState)
-      const nextCost = towerParams.unlockProgression.reachLevelCosts[currentReach]
+    if (parameters.unlockProgression?.reachLevelCosts && 
+        state.resources.energy.current > 50) {
+      const currentReach = this.getCurrentTowerReach(state)
+      const nextCost = parameters.unlockProgression.reachLevelCosts[currentReach]
       
-      if (nextCost && gameState.resources.gold >= nextCost) {
+      if (nextCost && state.resources.gold >= nextCost) {
         actions.push({
-          id: `tower_reach_upgrade_${Date.now()}`,
+          id: `upgrade_reach_${currentReach + 1}_${Date.now()}`,
           type: 'purchase',
           screen: 'tower',
           target: `tower_reach_${currentReach + 1}`,
           duration: 2,
-          energyCost: towerParams.unlockProgression.reachLevelEnergy?.[currentReach] || 20,
+          energyCost: 0,
           goldCost: nextCost,
           prerequisites: [],
           expectedRewards: {}
@@ -116,6 +133,244 @@ export class TowerSystem {
     
     return actions
   }
+
+  /**
+   * Execute a tower-related action
+   */
+  static execute(action: GameAction, state: GameState): ActionResult {
+    try {
+      switch (action.type) {
+        case 'catch_seeds':
+          return this.executeCatchSeedAction(action, state)
+        case 'purchase':
+          if (action.target?.includes('autocatcher')) {
+            return this.executeAutoCatcherUpgrade(action, state)
+          } else if (action.target?.includes('tower_reach')) {
+            return this.executeReachUpgrade(action, state)
+          }
+          return createFailureResult(`Unknown tower purchase: ${action.target}`)
+        default:
+          return createFailureResult(`Unknown tower action type: ${action.type}`)
+      }
+    } catch (error) {
+      return createFailureResult(`Error executing tower action: ${error}`)
+    }
+  }
+
+  /**
+   * Process tower systems during simulation tick
+   */
+  static tick(deltaTime: number, state: GameState): SystemTickResult {
+    const stateChanges: Record<string, any> = {}
+    const events: any[] = []
+
+    try {
+      // Process ongoing seed catching
+      const seedCatchingResult = this.processSeedCatching(state, deltaTime, null)
+      if (seedCatchingResult.completed) {
+        Object.assign(stateChanges, seedCatchingResult.stateChanges)
+        events.push(...seedCatchingResult.events)
+      }
+
+      // Process auto-catchers
+      const towerReach = this.getCurrentTowerReach(state)
+      const autoCatcherResult = SeedSystem.processAutoCatcher(state, deltaTime, towerReach)
+      if (autoCatcherResult && autoCatcherResult.seedsGained > 0) {
+        events.push({
+          type: 'autocatcher_seeds',
+          description: `Auto-catcher collected ${autoCatcherResult.seedsGained} seeds`,
+          importance: 'low'
+        })
+      }
+
+    } catch (error) {
+      events.push({
+        type: 'tower_error',
+        description: `Error in tower tick: ${error}`,
+        importance: 'high'
+      })
+    }
+
+    return createTickResult(stateChanges, events)
+  }
+
+  /**
+   * Validate if a tower action can be executed
+   */
+  static canExecute(action: GameAction, state: GameState): ValidationResult {
+    switch (action.type) {
+      case 'catch_seeds':
+        return this.canCatchSeeds(action, state)
+      case 'purchase':
+        return this.canPurchase(action, state)
+      default:
+        return { canExecute: false, reason: `Unknown action type: ${action.type}` }
+    }
+  }
+
+  // =============================================================================
+  // PARAMETER EXTRACTION
+  // =============================================================================
+
+  /**
+   * Extract tower parameters from configuration
+   */
+  private static extractTowerParameters(config: SimulationConfig | AllParameters): any {
+    if ('tower' in config) {
+      return config.tower
+    }
+    // Default tower parameters
+    return {
+      priorities: { upgradeOrder: ['reach', 'autocatcher', 'nets'] },
+      decisionLogic: { catchDuration: 3 },
+      unlockProgression: { reachLevelCosts: { 1: 100, 2: 250, 3: 500 } }
+    }
+  }
+
+  // =============================================================================
+  // TOWER REACH SYSTEM (MOVED FROM SIMULATIONENGINE)
+  // =============================================================================
+
+  /**
+   * Get current tower reach level
+   * MOVED FROM SimulationEngine.getCurrentTowerReach()
+   */
+  static getCurrentTowerReach(gameState: GameState): number {
+    let reach = 1 // Base reach
+    
+    // Check built tower reaches
+    for (let level = 1; level <= 11; level++) {
+      if (gameState.progression.builtStructures.has(`tower_reach_${level}`)) {
+        reach = Math.max(reach, level)
+      }
+    }
+    
+    return reach
+  }  // =============================================================================
+  // ACTION EXECUTION METHODS  
+  // =============================================================================
+
+  /**
+   * Execute seed catching action
+   */
+  private static executeCatchSeedAction(action: GameAction, state: GameState): ActionResult {
+    // Check if already catching seeds
+    if (state.processes.seedCatching && !state.processes.seedCatching.isComplete) {
+      return createFailureResult('Already catching seeds')
+    }
+
+    // Start seed catching process
+    state.processes.seedCatching = {
+      startedAt: state.time.totalMinutes,
+      duration: action.duration,
+      progress: 0,
+      windLevel: SeedSystem.getCurrentWindLevel(this.getCurrentTowerReach(state)).level,
+      netType: this.getBestNet(state) as string,
+      expectedSeeds: 0,
+      isComplete: false
+    }
+
+    return createSuccessResult(
+      `Started catching seeds for ${action.duration} minutes`,
+      { 'processes.seedCatching': state.processes.seedCatching }
+    )
+  }
+
+  /**
+   * Execute auto-catcher upgrade
+   */
+  private static executeAutoCatcherUpgrade(action: GameAction, state: GameState): ActionResult {
+    if (state.resources.gold < action.goldCost) {
+      return createFailureResult('Not enough gold for auto-catcher upgrade')
+    }
+
+    // Add the structure to built structures
+    state.progression.builtStructures.add(action.target!)
+    state.resources.gold -= action.goldCost
+
+    return createSuccessResult(
+      `Upgraded auto-catcher to ${action.target}`,
+      {
+        'progression.builtStructures': state.progression.builtStructures,
+        'resources.gold': state.resources.gold
+      }
+    )
+  }
+
+  /**
+   * Execute tower reach upgrade
+   */
+  private static executeReachUpgrade(action: GameAction, state: GameState): ActionResult {
+    if (state.resources.gold < action.goldCost) {
+      return createFailureResult('Not enough gold for reach upgrade')
+    }
+
+    if (state.resources.energy.current < action.energyCost) {
+      return createFailureResult('Not enough energy for reach upgrade')
+    }
+
+    // Add the structure to built structures
+    state.progression.builtStructures.add(action.target!)
+    state.resources.gold -= action.goldCost
+    state.resources.energy.current -= action.energyCost
+
+    return createSuccessResult(
+      `Upgraded tower reach to ${action.target}`,
+      {
+        'progression.builtStructures': state.progression.builtStructures,
+        'resources.gold': state.resources.gold,
+        'resources.energy.current': state.resources.energy.current
+      }
+    )
+  }
+
+  // =============================================================================
+  // VALIDATION METHODS
+  // =============================================================================
+
+  /**
+   * Validate seed catching action
+   */
+  private static canCatchSeeds(action: GameAction, state: GameState): ValidationResult {
+    // Check if already catching seeds
+    if (state.processes.seedCatching && !state.processes.seedCatching.isComplete) {
+      return { canExecute: false, reason: 'Already catching seeds' }
+    }
+
+    // Check if in tower location
+    if (state.location.currentScreen !== 'tower') {
+      return { canExecute: false, reason: 'Must be in tower to catch seeds' }
+    }
+
+    return { canExecute: true }
+  }
+
+  /**
+   * Validate purchase action
+   */
+  private static canPurchase(action: GameAction, state: GameState): ValidationResult {
+    if (state.resources.gold < action.goldCost) {
+      return { 
+        canExecute: false, 
+        reason: 'Not enough gold',
+        missingResources: { gold: action.goldCost - state.resources.gold }
+      }
+    }
+
+    if (state.resources.energy.current < action.energyCost) {
+      return { 
+        canExecute: false, 
+        reason: 'Not enough energy',
+        missingResources: { energy: action.energyCost - state.resources.energy.current }
+      }
+    }
+
+    return { canExecute: true }
+  }
+
+  // =============================================================================
+  // EXISTING METHODS (Phase 9C Implementation)
+  // =============================================================================
 
   /**
    * Process ongoing seed catching activities
@@ -138,19 +393,19 @@ export class TowerSystem {
     // Check if completed
     if (elapsed >= process.duration) {
       // Calculate seeds gained based on wind level and equipment
-      const towerReach = TowerSystem.getCurrentTowerReach(gameState)
+      const towerReach = this.getCurrentTowerReach(gameState)
       const windLevel = SeedSystem.getCurrentWindLevel(towerReach)
       const catchRate = MANUAL_CATCHING.calculateCatchRate(
         windLevel.level,
-        TowerSystem.getBestNet(gameState),
-        TowerSystem.getPersonaCatchingSkill(gameState)
+        this.getBestNet(gameState),
+        this.getPersonaCatchingSkill(gameState)
       )
       
       const seedsGained = Math.floor(catchRate.seedsPerMinute * process.duration)
       const seedPool = catchRate.seedPool
       
       // Add seeds to inventory
-      const seedTypes = TowerSystem.selectSeedsFromPool(seedPool, seedsGained, gameDataStore)
+      const seedTypes = this.selectSeedsFromPool(seedPool, seedsGained, gameDataStore)
       for (const seedType of seedTypes) {
         const currentAmount = gameState.resources.seeds.get(seedType) || 0
         gameState.resources.seeds.set(seedType, currentAmount + 1)
@@ -175,22 +430,6 @@ export class TowerSystem {
     }
     
     return { completed: false, stateChanges: {}, events: [] }
-  }
-
-  /**
-   * Get current tower reach level
-   */
-  static getCurrentTowerReach(gameState: GameState): number {
-    let reach = 1 // Base reach
-    
-    // Check built tower reaches
-    for (let level = 1; level <= 11; level++) {
-      if (gameState.progression.builtStructures.has(`tower_reach_${level}`)) {
-        reach = level
-      }
-    }
-    
-    return reach
   }
 
   /**

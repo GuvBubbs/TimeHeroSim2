@@ -10,6 +10,7 @@ import { validationService } from './validation'
 import { eventBus, type IEventBus } from './events'
 import { HelperSystem } from './systems/HelperSystem'
 import { FarmSystem } from './systems/FarmSystem'
+import { TowerSystem } from './systems/TowerSystem'
 import { SeedSystem } from './systems/SeedSystem'
 import type { 
   SimulationConfig, 
@@ -406,7 +407,7 @@ export class SimulationEngine {
     }
 
     try {
-      const towerReach = this.getCurrentTowerReach()
+      const towerReach = TowerSystem.getCurrentTowerReach(this.gameState)
       SeedSystem.processAutoCatcher(this.gameState, deltaTime, towerReach)
     } catch (error) {
       console.error('Error in SeedSystem.processAutoCatcher:', error)
@@ -516,13 +517,6 @@ export class SimulationEngine {
 
   /**
    * Get current tower reach (should be moved to TowerSystem)
-   */
-  private getCurrentTowerReach(): number {
-    return 10 // Placeholder - should call TowerSystem
-  }
-
-  /**
-   * Convert process event to game event
    */
   private convertProcessEventToGameEvent(processEvent: any): GameEvent {
     return {

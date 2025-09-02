@@ -1,7 +1,17 @@
-// FarmSystem - Phase 10A Consolidation
-// Complete farm management system combining crop growth and water management
+// FarmSystem - Phase 10B Core Game Loop System
+// Complete farm management system implementing GameSystem interface
 
-import type { GameState, CropState } from '@/types'
+import type { GameState, CropState, GameAction, SimulationConfig, AllParameters } from '@/types'
+import { 
+  type GameSystem, 
+  type ActionResult, 
+  type SystemTickResult, 
+  type ValidationResult,
+  type EvaluationContext,
+  createSuccessResult,
+  createFailureResult,
+  createTickResult
+} from './GameSystem'
 
 /**
  * Water retention upgrade configuration
@@ -122,9 +132,570 @@ export const WATERING_TOOLS = {
 }
 
 /**
- * Complete farm management system - crops and water
+ * Complete farm management system - implements GameSystem contract
  */
 export class FarmSystem {
+  // =============================================================================
+  // GAMESYSTEM INTERFACE IMPLEMENTATION
+  // =============================================================================
+
+  /**
+   * Evaluate farm-related actions that can be performed
+   */
+  static evaluateActions(
+    state: GameState, 
+    config: SimulationConfig | AllParameters,
+    context: EvaluationContext
+  ): GameAction[] {
+    const actions: GameAction[] = []
+    const parameters = this.extractFarmParameters(config)
+    
+    if (!parameters) return actions
+
+    // Check if automation is enabled
+    if (!parameters.automation?.autoPlant && !parameters.automation?.autoWater && !parameters.automation?.autoHarvest) {
+      return actions
+    }
+
+    // Evaluate planting actions
+    if (parameters.automation?.autoPlant && context.availableEnergy > 10) {
+      const plantingActions = this.evaluatePlantingActions(state, parameters, context)
+      actions.push(...plantingActions)
+    }
+
+    // Evaluate watering actions
+    if (parameters.automation?.autoWater && state.resources.water.current > 0) {
+      const wateringActions = this.evaluateWateringActions(state, parameters, context)
+      actions.push(...wateringActions)
+    }
+
+    // Evaluate harvest actions
+    if (parameters.automation?.autoHarvest) {
+      const harvestActions = this.evaluateHarvestActions(state, parameters, context)
+      actions.push(...harvestActions)
+    }
+
+    // Evaluate pump actions if water is low
+    if (state.resources.water.current < state.resources.water.max * 0.3) {
+      const pumpActions = this.evaluatePumpActions(state, parameters, context)
+      actions.push(...pumpActions)
+    }
+
+    return actions
+  }
+
+  /**
+   * Execute a farm-related action
+   */
+  static execute(action: GameAction, state: GameState): ActionResult {
+    try {
+      switch (action.type) {
+        case 'plant':
+          return this.executePlantAction(action, state)
+        case 'water':
+          return this.executeWaterAction(action, state)
+        case 'harvest':
+          return this.executeHarvestAction(action, state)
+        case 'pump':
+          return this.executePumpAction(action, state)
+        default:
+          return createFailureResult(`Unknown farm action type: ${action.type}`)
+      }
+    } catch (error) {
+      return createFailureResult(`Error executing farm action: ${error}`)
+    }
+  }
+
+  /**
+   * Process farm systems during simulation tick
+   */
+  static tick(deltaTime: number, state: GameState): SystemTickResult {
+    const stateChanges: Record<string, any> = {}
+    const events: any[] = []
+
+    try {
+      // Process crop growth
+      this.processCropGrowth(state, deltaTime, null)
+      
+      // Process auto-pump generation
+      const pumpResult = this.processAutoPumpGeneration(state, deltaTime)
+      if (pumpResult.waterGenerated > 0) {
+        events.push({
+          type: 'water_generated',
+          description: `Auto-pump generated ${pumpResult.waterGenerated} water`,
+          importance: 'low'
+        })
+      }
+
+      // Check for crops that need attention
+      const criticalCrops = this.getCriticallyDryCrops(state)
+      if (criticalCrops.length > 0) {
+        events.push({
+          type: 'crops_dry',
+          description: `${criticalCrops.length} crops need watering urgently`,
+          importance: 'medium'
+        })
+      }
+
+      const readyCrops = this.getReadyToHarvestCrops(state)
+      if (readyCrops.length > 0) {
+        events.push({
+          type: 'crops_ready',
+          description: `${readyCrops.length} crops are ready for harvest`,
+          importance: 'medium'
+        })
+      }
+
+    } catch (error) {
+      events.push({
+        type: 'farm_error',
+        description: `Error in farm tick: ${error}`,
+        importance: 'high'
+      })
+    }
+
+    return createTickResult(stateChanges, events)
+  }
+
+  /**
+   * Validate if a farm action can be executed
+   */
+  static canExecute(action: GameAction, state: GameState): ValidationResult {
+    switch (action.type) {
+      case 'plant':
+        return this.canPlant(action, state)
+      case 'water':
+        return this.canWater(action, state)
+      case 'harvest':
+        return this.canHarvest(action, state)
+      case 'pump':
+        return this.canPump(action, state)
+      default:
+        return { canExecute: false, reason: `Unknown action type: ${action.type}` }
+    }
+  }
+
+  // =============================================================================
+  // PARAMETER EXTRACTION
+  // =============================================================================
+
+  /**
+   * Extract farm parameters from configuration
+   */
+  private static extractFarmParameters(config: SimulationConfig | AllParameters): any {
+    if ('farm' in config) {
+      return config.farm
+    }
+    if ('parameterOverrides' in config && config.parameterOverrides) {
+      // Extract from simulation config - simplified for now
+      return {
+        automation: { autoPlant: true, autoWater: true, autoHarvest: true },
+        priorities: { cropPreference: ['carrot', 'radish'], wateringThreshold: 0.3 }
+      }
+    }
+    return null
+  }
+
+  // =============================================================================
+  // ACTION EVALUATION METHODS
+  // =============================================================================
+
+  /**
+   * Evaluate planting actions
+   */
+  private static evaluatePlantingActions(
+    state: GameState, 
+    parameters: any, 
+    context: EvaluationContext
+  ): GameAction[] {
+    const actions: GameAction[] = []
+    
+    // Find available plots
+    const availablePlots = state.progression.availablePlots
+    const currentCrops = state.processes.crops.length
+    const freePlots = availablePlots - currentCrops
+
+    if (freePlots > 0 && state.resources.energy.current > 5) {
+      // Choose crop based on preferences
+      const preferredCrops = parameters.priorities?.cropPreference || ['carrot', 'radish']
+      const cropToPlant = preferredCrops[0] || 'carrot'
+
+      // Check if we have seeds
+      const seedCount = state.resources.seeds.get(cropToPlant) || 0
+      if (seedCount > 0) {
+        actions.push({
+          id: `plant_${cropToPlant}_${Date.now()}`,
+          type: 'plant',
+          screen: 'farm',
+          target: cropToPlant,
+          duration: 2,
+          energyCost: 5,
+          goldCost: 0,
+          prerequisites: [],
+          expectedRewards: {},
+          score: 300 + (freePlots * 50) // Higher score for more free plots
+        })
+      }
+    }
+
+    return actions
+  }
+
+  /**
+   * Evaluate watering actions
+   */
+  private static evaluateWateringActions(
+    state: GameState, 
+    parameters: any, 
+    context: EvaluationContext
+  ): GameAction[] {
+    const actions: GameAction[] = []
+    
+    const dryCrops = this.getCriticallyDryCrops(state)
+    const wateringThreshold = parameters.priorities?.wateringThreshold || 0.3
+
+    if (dryCrops.length > 0 && state.resources.water.current > 0) {
+      actions.push({
+        id: `water_crops_${Date.now()}`,
+        type: 'water',
+        screen: 'farm',
+        target: 'all_dry',
+        duration: Math.min(dryCrops.length * 0.5, 5), // 0.5 min per crop, max 5 min
+        energyCost: 0,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {},
+        score: 400 + (dryCrops.length * 100) // High priority for watering
+      })
+    }
+
+    return actions
+  }
+
+  /**
+   * Evaluate harvest actions
+   */
+  private static evaluateHarvestActions(
+    state: GameState, 
+    parameters: any, 
+    context: EvaluationContext
+  ): GameAction[] {
+    const actions: GameAction[] = []
+    
+    const readyCrops = this.getReadyToHarvestCrops(state)
+
+    if (readyCrops.length > 0) {
+      actions.push({
+        id: `harvest_crops_${Date.now()}`,
+        type: 'harvest',
+        screen: 'farm',
+        target: 'ready',
+        duration: readyCrops.length * 0.5, // 0.5 min per crop
+        energyCost: readyCrops.length * 2, // 2 energy per crop
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {
+          items: ['crops'],
+          experience: readyCrops.length * 10
+        },
+        score: 500 + (readyCrops.length * 100) // Very high priority
+      })
+    }
+
+    return actions
+  }
+
+  /**
+   * Evaluate pump actions
+   */
+  private static evaluatePumpActions(
+    state: GameState, 
+    parameters: any, 
+    context: EvaluationContext
+  ): GameAction[] {
+    const actions: GameAction[] = []
+    
+    const waterPercent = state.resources.water.current / state.resources.water.max
+    
+    if (waterPercent < 0.3 && state.resources.energy.current > 10) {
+      actions.push({
+        id: `pump_water_${Date.now()}`,
+        type: 'pump',
+        screen: 'farm',
+        target: 'well',
+        duration: 3,
+        energyCost: 10,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: {
+          water: Math.min(20, state.resources.water.max - state.resources.water.current)
+        },
+        score: 350 - (waterPercent * 100) // Higher score when water is lower
+      })
+    }
+
+    return actions
+  }
+
+  // =============================================================================
+  // ACTION EXECUTION METHODS
+  // =============================================================================
+
+  /**
+   * Execute planting action
+   */
+  private static executePlantAction(action: GameAction, state: GameState): ActionResult {
+    const cropType = action.target
+    if (!cropType) {
+      return createFailureResult('No crop type specified for planting')
+    }
+
+    // Check if we have seeds
+    const seedCount = state.resources.seeds.get(cropType) || 0
+    if (seedCount <= 0) {
+      return createFailureResult(`No ${cropType} seeds available`)
+    }
+
+    // Check energy
+    if (state.resources.energy.current < action.energyCost) {
+      return createFailureResult('Not enough energy to plant')
+    }
+
+    // Check available plots
+    const availablePlots = state.progression.availablePlots
+    const currentCrops = state.processes.crops.length
+    if (currentCrops >= availablePlots) {
+      return createFailureResult('No free plots available')
+    }
+
+    // Execute planting
+    const plotId = `plot_${currentCrops + 1}`
+    const newCrop: CropState = {
+      plotId,
+      cropId: cropType,
+      plantedAt: state.time.totalMinutes,
+      growthTimeRequired: 10, // Default, should be from CSV
+      waterLevel: 1.0,
+      isWithered: false,
+      readyToHarvest: false,
+      growthProgress: 0,
+      growthStage: 0,
+      maxStages: 3,
+      droughtTime: 0
+    }
+
+    state.processes.crops.push(newCrop)
+    state.resources.seeds.set(cropType, seedCount - 1)
+    state.resources.energy.current -= action.energyCost
+
+    return createSuccessResult(
+      `Planted ${cropType} in ${plotId}`,
+      {
+        'processes.crops': state.processes.crops,
+        [`resources.seeds.${cropType}`]: seedCount - 1,
+        'resources.energy.current': state.resources.energy.current
+      }
+    )
+  }
+
+  /**
+   * Execute watering action
+   */
+  private static executeWaterAction(action: GameAction, state: GameState): ActionResult {
+    const waterNeeded = this.calculateTotalWaterNeeded(state)
+    const waterAvailable = state.resources.water.current
+    const waterToUse = Math.min(waterNeeded, waterAvailable)
+
+    if (waterToUse <= 0) {
+      return createFailureResult('No water available or no crops need watering')
+    }
+
+    // Distribute water to crops
+    const result = this.distributeWaterToCrops(state, waterToUse)
+    state.resources.water.current -= result.waterUsed
+
+    return createSuccessResult(
+      `Watered ${result.plotsWatered} plots using ${result.waterUsed} water`,
+      {
+        'resources.water.current': state.resources.water.current,
+        'processes.crops': state.processes.crops
+      }
+    )
+  }
+
+  /**
+   * Execute harvest action
+   */
+  private static executeHarvestAction(action: GameAction, state: GameState): ActionResult {
+    const readyCrops = this.getReadyToHarvestCrops(state)
+    
+    if (readyCrops.length === 0) {
+      return createFailureResult('No crops ready for harvest')
+    }
+
+    if (state.resources.energy.current < action.energyCost) {
+      return createFailureResult('Not enough energy to harvest')
+    }
+
+    // Remove harvested crops and add rewards
+    let totalExperience = 0
+    let totalGold = 0
+    const harvestedCrops: string[] = []
+
+    for (const crop of readyCrops) {
+      // Remove crop from active crops
+      const cropIndex = state.processes.crops.findIndex(c => c.plotId === crop.plotId)
+      if (cropIndex >= 0) {
+        state.processes.crops.splice(cropIndex, 1)
+        harvestedCrops.push(crop.cropId)
+        totalExperience += 10
+        totalGold += 5
+      }
+    }
+
+    state.resources.energy.current -= action.energyCost
+    state.progression.experience += totalExperience
+    state.resources.gold += totalGold
+
+    return createSuccessResult(
+      `Harvested ${harvestedCrops.length} crops: ${harvestedCrops.join(', ')}`,
+      {
+        'processes.crops': state.processes.crops,
+        'resources.energy.current': state.resources.energy.current,
+        'progression.experience': state.progression.experience,
+        'resources.gold': state.resources.gold
+      }
+    )
+  }
+
+  /**
+   * Execute pump action
+   */
+  private static executePumpAction(action: GameAction, state: GameState): ActionResult {
+    if (state.resources.energy.current < action.energyCost) {
+      return createFailureResult('Not enough energy to pump water')
+    }
+
+    const waterSpace = state.resources.water.max - state.resources.water.current
+    const waterGained = Math.min(20, waterSpace) // Gain up to 20 water
+
+    if (waterGained <= 0) {
+      return createFailureResult('Water tank is already full')
+    }
+
+    state.resources.water.current += waterGained
+    state.resources.energy.current -= action.energyCost
+
+    return createSuccessResult(
+      `Pumped ${waterGained} water`,
+      {
+        'resources.water.current': state.resources.water.current,
+        'resources.energy.current': state.resources.energy.current
+      }
+    )
+  }
+
+  // =============================================================================
+  // VALIDATION METHODS
+  // =============================================================================
+
+  /**
+   * Validate planting action
+   */
+  private static canPlant(action: GameAction, state: GameState): ValidationResult {
+    const cropType = action.target
+    if (!cropType) {
+      return { canExecute: false, reason: 'No crop type specified' }
+    }
+
+    // Check seeds
+    const seedCount = state.resources.seeds.get(cropType) || 0
+    if (seedCount <= 0) {
+      return { 
+        canExecute: false, 
+        reason: 'No seeds available',
+        missingResources: { [cropType]: 1 }
+      }
+    }
+
+    // Check energy
+    if (state.resources.energy.current < action.energyCost) {
+      return { 
+        canExecute: false, 
+        reason: 'Not enough energy',
+        missingResources: { energy: action.energyCost - state.resources.energy.current }
+      }
+    }
+
+    // Check available plots
+    const availablePlots = state.progression.availablePlots
+    const currentCrops = state.processes.crops.length
+    if (currentCrops >= availablePlots) {
+      return { canExecute: false, reason: 'No free plots available' }
+    }
+
+    return { canExecute: true }
+  }
+
+  /**
+   * Validate watering action
+   */
+  private static canWater(action: GameAction, state: GameState): ValidationResult {
+    if (state.resources.water.current <= 0) {
+      return { 
+        canExecute: false, 
+        reason: 'No water available',
+        missingResources: { water: 1 }
+      }
+    }
+
+    const dryCrops = this.getCriticallyDryCrops(state)
+    if (dryCrops.length === 0) {
+      return { canExecute: false, reason: 'No crops need watering' }
+    }
+
+    return { canExecute: true }
+  }
+
+  /**
+   * Validate harvest action
+   */
+  private static canHarvest(action: GameAction, state: GameState): ValidationResult {
+    const readyCrops = this.getReadyToHarvestCrops(state)
+    if (readyCrops.length === 0) {
+      return { canExecute: false, reason: 'No crops ready for harvest' }
+    }
+
+    if (state.resources.energy.current < action.energyCost) {
+      return { 
+        canExecute: false, 
+        reason: 'Not enough energy',
+        missingResources: { energy: action.energyCost - state.resources.energy.current }
+      }
+    }
+
+    return { canExecute: true }
+  }
+
+  /**
+   * Validate pump action
+   */
+  private static canPump(action: GameAction, state: GameState): ValidationResult {
+    if (state.resources.energy.current < action.energyCost) {
+      return { 
+        canExecute: false, 
+        reason: 'Not enough energy',
+        missingResources: { energy: action.energyCost - state.resources.energy.current }
+      }
+    }
+
+    if (state.resources.water.current >= state.resources.water.max) {
+      return { canExecute: false, reason: 'Water tank is already full' }
+    }
+
+    return { canExecute: true }
+  }
+
   // =============================================================================
   // CROP MANAGEMENT
   // =============================================================================

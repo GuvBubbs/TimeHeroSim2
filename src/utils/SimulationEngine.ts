@@ -18,6 +18,7 @@ import { ForgeSystem } from './systems/ForgeSystem'
 import { DecisionEngine } from './ai/DecisionEngine'
 import { ActionExecutor } from './execution/ActionExecutor'
 import { StateManager } from './state'
+import { ProcessManager } from './processes'
 import type { 
   SimulationConfig, 
   AllParameters,
@@ -50,6 +51,7 @@ export class SimulationEngine {
   private decisionEngine: DecisionEngine
   private actionExecutor: ActionExecutor
   private stateManager: StateManager
+  private processManager: ProcessManager
   private isRunning: boolean = false
   private tickCount: number = 0
   private lastProgressCheck?: {
@@ -74,6 +76,7 @@ export class SimulationEngine {
     this.decisionEngine = new DecisionEngine()
     this.actionExecutor = new ActionExecutor()
     this.stateManager = new StateManager(this.gameState)
+    this.processManager = new ProcessManager()
     this.actionExecutor.setStateManager(this.stateManager)
   }
 
@@ -533,31 +536,28 @@ export class SimulationEngine {
       // Update time
       this.updateTime(deltaTime)
       
-      // Process ongoing activities
-      const ongoingEvents = this.processOngoingActivities(deltaTime)
+      // Process all ongoing activities using unified ProcessManager
+      const processResult = this.processManager.tick(deltaTime, this.gameState, this.gameDataStore)
       
-      // Process all game systems in order with error handling
-      try {
-        // Process crop growth and water consumption
-        CropSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
-      } catch (error) {
-        console.error('Error in CropSystem.processCropGrowth:', error)
+      // Debug logging for ProcessManager (Phase 9G)
+      if (processResult.completed.length > 0 || processResult.failed.length > 0 || processResult.events.length > 0) {
+        console.log('🔄 ProcessManager: Activity detected', {
+          completed: processResult.completed.length,
+          failed: processResult.failed.length, 
+          events: processResult.events.length,
+          activeProcesses: this.processManager.getActiveProcesses().length
+        })
       }
       
-      try {
-        // Process crafting operations
-        CraftingSystem.processCrafting(this.gameState, deltaTime, this.gameDataStore)
-      } catch (error) {
-        console.error('Error in CraftingSystem.processCrafting:', error)
-      }
+      // Add process events to ongoing events
+      const ongoingEvents = processResult.events.map(processEvent => ({
+        timestamp: processEvent.timestamp,
+        type: processEvent.type,
+        description: processEvent.description,
+        importance: processEvent.importance
+      }))
       
-      try {
-        // Process mining operations
-        MiningSystem.processMining(this.gameState, deltaTime)
-      } catch (error) {
-        console.error('Error in MiningSystem.processMining:', error)
-      }
-      
+      // Process other systems that aren't yet in ProcessManager
       try {
         // Process helper automation
         HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
@@ -733,106 +733,10 @@ export class SimulationEngine {
   /**
    * Processes ongoing activities (crops, crafting, adventures, seed catching)
    */
-  private processOngoingActivities(deltaTime: number): GameEvent[] {
-    const events: GameEvent[] = []
-    
-    // Debug logging for seed catching state
-    if (this.gameState.processes.seedCatching) {
-      console.log(`🔍 ONGOING ACTIVITIES: Seed catching exists - isComplete=${this.gameState.processes.seedCatching.isComplete}, startedAt=${this.gameState.processes.seedCatching.startedAt}, currentTime=${this.gameState.time.totalMinutes}`)
-    }
-    
-    // Process crop growth
-    for (const crop of this.gameState.processes.crops) {
-      crop.waterLevel = Math.max(0, crop.waterLevel - deltaTime * 0.1) // Water evaporation
-      
-      if (crop.waterLevel > 0) {
-        const progress = (this.gameState.time.totalMinutes - crop.plantedAt) / crop.growthTimeRequired
-        if (progress >= 1.0 && !crop.readyToHarvest) {
-          crop.readyToHarvest = true
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'crop_ready',
-            description: `${crop.cropId} is ready to harvest`,
-            importance: 'medium'
-          })
-        }
-      } else {
-        // Crop might wither without water
-        if (Math.random() < this.parameters.farm.cropMechanics.witheredCropChance * deltaTime / 60) {
-          crop.isWithered = true
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'crop_withered',
-            description: `${crop.cropId} withered due to lack of water`,
-            importance: 'high'
-          })
-        }
-      }
-    }
-    
-    // Process active seed catching sessions
-    if (this.gameState.processes.seedCatching) {
-      const seedCatch = this.gameState.processes.seedCatching
-      
-      if (!seedCatch.isComplete) {
-        const elapsedTime = this.gameState.time.totalMinutes - seedCatch.startedAt
-        
-        // Update progress based on elapsed time
-        seedCatch.progress = Math.min(1.0, elapsedTime / seedCatch.duration)
-        
-        // Debug logging for seed catching timing
-        console.log(`🔍 SEED CATCH DEBUG: totalMinutes=${this.gameState.time.totalMinutes}, startedAt=${seedCatch.startedAt}, elapsedTime=${elapsedTime}, duration=${seedCatch.duration}, progress=${seedCatch.progress.toFixed(3)}`)
-        
-        if (seedCatch.progress >= 1.0) {
-          console.log(`🎯 SEED CATCH COMPLETION CONDITIONS MET: About to complete seed catching!`)
-          
-          // Seed catching complete - award seeds
-          seedCatch.isComplete = true
-          
-          // Calculate seeds caught based on wind level and net type
-          const seedsAwarded = seedCatch.expectedSeeds
-          
-          // Add seeds to inventory (mix of available seed types based on tower reach)
-          const currentCarrotSeeds = this.gameState.resources.seeds.get('carrot') || 0
-          this.gameState.resources.seeds.set('carrot', currentCarrotSeeds + Math.floor(seedsAwarded * 0.6))
-          
-          const currentRadishSeeds = this.gameState.resources.seeds.get('radish') || 0
-          this.gameState.resources.seeds.set('radish', currentRadishSeeds + Math.floor(seedsAwarded * 0.4))
-          
-          events.push({
-            timestamp: this.gameState.time.totalMinutes,
-            type: 'seed_catching_complete',
-            description: `Seed catching session complete! Caught ${seedsAwarded} seeds using ${seedCatch.netType} net`,
-            importance: 'high'
-          })
-          
-          // Clear the active seed catching session
-          this.gameState.processes.seedCatching = null
-          
-          console.log(`🌰 SEED CATCHING COMPLETE: +${seedsAwarded} seeds (${Math.floor(seedsAwarded * 0.6)} carrot, ${Math.floor(seedsAwarded * 0.4)} radish)`)
-        } else {
-          console.log(`⏳ SEED CATCH PROGRESS: ${(seedCatch.progress * 100).toFixed(1)}% complete (${elapsedTime.toFixed(1)}/${seedCatch.duration} min)`)
-        }
-      } else {
-        console.log(`✅ SEED CATCH ALREADY COMPLETE: Session finished`)
-      }
-    }
-    
-    // Adventures are now processed immediately in executeAction, no ongoing processing needed
-    
-    // FIXED: No energy regeneration - energy only from crop harvests
-    // this.gameState.resources.energy.current = Math.min(
-    //   this.gameState.resources.energy.max,
-    //   this.gameState.resources.energy.current + this.gameState.resources.energy.regenerationRate * deltaTime
-    // )
-    
-    return events
-  }
-
-  // REMOVED: makeDecisions() method - now handled by DecisionEngine
-  // REMOVED: shouldHeroActNow() method - now handled by DecisionEngine  
-  // REMOVED: scoreAction() method - now handled by ActionScorer
-  // REMOVED: checkActionPrerequisites() method - now handled by ActionFilter
+  // PHASE 9G: REMOVED - processOngoingActivities() method
+  // This method (~100 lines) has been moved to ProcessManager
+  // ProcessManager now handles crop growth, seed catching, crafting, mining, and adventure processes
+  // The unified system provides better lifecycle management and fixes the seed catching completion bug
   
   /**
    * Evaluates actions for the current screen

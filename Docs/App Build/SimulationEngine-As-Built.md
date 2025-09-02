@@ -4,7 +4,7 @@
 
 The SimulationEngine is the core intelligence system that powers the TimeHero Simulator. It provides realistic AI-driven gameplay simulation with comprehensive decision-making, resource management, and progression tracking. The engine simulates a complete Time Hero gameplay experience from tutorial through endgame, making intelligent decisions based on persona characteristics, CSV game data, and complex prerequisite relationships.
 
-**Status**: ✅ Production-Ready with Centralized State Management (Phase 9F Complete)
+**Status**: ✅ Production-Ready with Centralized Process Management (Phase 9G Complete)
 
 ## Architecture Overview
 
@@ -14,36 +14,49 @@ SimulationEngine (Core Logic) ──► Web Worker ──► SimulationBridge �
 ├── AI Decision Making           ├── MapSerializer        ├── Error Management    ├── State Updates     ├── Resource Display  
 ├── Centralized Action Execution ├── Performance Stats    ├── Data Validation     ├── Event Processing  ├── Action Tracking
 ├── Centralized State Management └── Background Processing└── Real-time Events    └── Widget Updates    └── Progress Monitoring
+├── Unified Process Management                                                                          
 └── Persona-Driven Behavior
 ```
 
 ### Core Components
 
 **Main Files**:
-- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making (~3500 lines, reduced from ~5700 lines)
+- `src/utils/SimulationEngine.ts` - Main simulation logic and AI decision-making (~3400 lines, reduced from ~3500 lines in Phase 9G)
 - `src/workers/simulation.worker.ts` - Web Worker for background processing  
 - `src/utils/SimulationBridge.ts` - Main thread communication bridge
 - `src/utils/WidgetDataAdapter.ts` - Transforms GameState to widget-friendly formats
 
+**Phase 9G: Unified Process Management System**:
+- `src/utils/processes/ProcessManager.ts` - Central orchestrator for all ongoing processes (NEW)
+- `src/utils/processes/ProcessRegistry.ts` - Process registration and tracking with concurrent limits (NEW)
+- `src/utils/processes/types/ProcessTypes.ts` - Comprehensive type system for process operations (NEW)
+- `src/utils/processes/handlers/` - Individual process handlers for each activity type (NEW)
+  - `SeedCatchingHandler.ts` - Fixes seed catching completion bug
+  - `CropGrowthHandler.ts` - Crop growth lifecycle management
+  - `CraftingHandler.ts` - Forge crafting queue management
+  - `MiningHandler.ts` - Mining session management
+  - `AdventureHandler.ts` - Adventure progress tracking
+  - `HelperTrainingHandler.ts` - Helper skill development
+
 **Phase 9F: Centralized State Management System**:
-- `src/utils/state/StateManager.ts` - Main orchestrator for all state changes with transaction support (NEW)
-- `src/utils/state/ResourceManager.ts` - Specialized resource handling with storage limits (NEW)
-- `src/utils/state/StateValidator.ts` - Comprehensive state validation and invariant checking (NEW)
-- `src/utils/state/StateSnapshot.ts` - State snapshots for rollback capability (NEW)
-- `src/utils/state/types/` - Complete type system for state management operations (NEW)
+- `src/utils/state/StateManager.ts` - Main orchestrator for all state changes with transaction support
+- `src/utils/state/ResourceManager.ts` - Specialized resource handling with storage limits
+- `src/utils/state/StateValidator.ts` - Comprehensive state validation and invariant checking
+- `src/utils/state/StateSnapshot.ts` - State snapshots for rollback capability
+- `src/utils/state/types/` - Complete type system for state management operations
 
 **Phase 9E: Centralized Action Execution System**:
-- `src/utils/execution/ActionExecutor.ts` - Centralized action execution with unified pipeline (NEW)
-- `src/utils/execution/ActionValidator.ts` - Pre-execution validation for all action types (NEW)
-- `src/utils/execution/types/ActionResult.ts` - Result types and state change interfaces (NEW)
-- `src/utils/execution/ExecutionContext.ts` - Execution context management (NEW)
-- `src/utils/execution/StateUpdater.ts` - Centralized state mutation logic (NEW)
+- `src/utils/execution/ActionExecutor.ts` - Centralized action execution with unified pipeline
+- `src/utils/execution/ActionValidator.ts` - Pre-execution validation for all action types
+- `src/utils/execution/types/ActionResult.ts` - Result types and state change interfaces
+- `src/utils/execution/ExecutionContext.ts` - Execution context management
+- `src/utils/execution/StateUpdater.ts` - Centralized state mutation logic
 
 **Phase 9C: Extracted Game Systems**:
-- `src/utils/systems/TowerSystem.ts` - Tower navigation, seed catching, and reach upgrades (NEW)
-- `src/utils/systems/TownSystem.ts` - Vendor interactions, blueprint purchases, and material trading (NEW)
-- `src/utils/systems/AdventureSystem.ts` - Route selection, combat execution, and reward processing (NEW)
-- `src/utils/systems/ForgeSystem.ts` - Crafting actions, heat management, and material processing (NEW)
+- `src/utils/systems/TowerSystem.ts` - Tower navigation, seed catching, and reach upgrades
+- `src/utils/systems/TownSystem.ts` - Vendor interactions, blueprint purchases, and material trading
+- `src/utils/systems/AdventureSystem.ts` - Route selection, combat execution, and reward processing
+- `src/utils/systems/ForgeSystem.ts` - Crafting actions, heat management, and material processing
 
 **Existing Game Systems**:
 - `src/utils/systems/CropSystem.ts` - Crop growth and water management
@@ -131,6 +144,82 @@ interface ActionResult {
 5. **Improved Maintainability**: Action execution logic centralized and easily extensible
 6. **Enhanced Testability**: ActionExecutor can be tested independently with mock game states
 7. **State Management**: Centralized state updates with proper resource tracking and validation
+
+## Phase 9G: Process Management Extraction Summary
+
+### Extracted Process Management (~100 lines removed from SimulationEngine)
+
+**From SimulationEngine to ProcessManager**:
+- `processOngoingActivities()` - Complete ongoing process management with scattered system calls
+- Individual system processing calls: `CropSystem.processCropGrowth()`, `CraftingSystem.processCrafting()`, `MiningSystem.processMining()`
+- Inline seed catching logic with timing bug that prevented proper completion detection
+- Scattered process event generation and state management
+
+**New ProcessManager System**:
+- Unified `ProcessManager.tick()` interface replacing all scattered process management
+- Process lifecycle management: start → update → complete/cancel for all process types
+- Process registry with concurrent limits and metadata tracking
+- Comprehensive process handlers implementing `IProcessHandler` interface
+- Fixed seed catching completion bug with proper elapsed time calculation
+
+**Process Handler Architecture**:
+```typescript
+interface IProcessHandler {
+  canStart(data: ProcessData, gameState: GameState): ValidationResult
+  initialize(handle: ProcessHandle, data: ProcessData, gameState: GameState): InitResult
+  update(handle: ProcessHandle, deltaTime: number, gameState: GameState, gameDataStore: any): ProcessUpdateResult
+  complete(handle: ProcessHandle, gameState: GameState): ProcessCompletionResult
+  cancel(handle: ProcessHandle, gameState: GameState): void
+  getMetadata(): ProcessMetadata
+}
+```
+
+### Process Management Integration
+
+**Before Phase 9G**:
+```typescript
+// Scattered process management with timing bugs
+try {
+  CropSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
+} catch (error) {
+  console.error('Error in CropSystem.processCropGrowth:', error)
+}
+
+try {
+  CraftingSystem.processCrafting(this.gameState, deltaTime, this.gameDataStore)
+} catch (error) {
+  console.error('Error in CraftingSystem.processCrafting:', error)
+}
+
+// ... more individual system calls
+
+const ongoingEvents = this.processOngoingActivities(deltaTime) // 100+ lines with seed catching bug
+```
+
+**After Phase 9G**:
+```typescript
+// Unified process management with proper lifecycle
+const processResult = this.processManager.tick(deltaTime, this.gameState, this.gameDataStore)
+
+// Clean event handling
+const ongoingEvents = processResult.events.map(processEvent => ({
+  timestamp: processEvent.timestamp,
+  type: processEvent.type,
+  description: processEvent.description,
+  importance: processEvent.importance
+}))
+```
+
+### Benefits of Phase 9G Extraction
+
+1. **Code Reduction**: SimulationEngine reduced by ~100 lines with removal of `processOngoingActivities()`
+2. **Bug Fix**: Seed catching completion timing bug resolved in `SeedCatchingHandler`
+3. **Unified Interface**: Single `ProcessManager.tick()` replaces scattered system calls
+4. **Process Lifecycle**: Consistent start/update/complete flow for all process types
+5. **Concurrent Limits**: Process registry enforces maximum concurrent processes per type
+6. **Error Isolation**: Individual process failures don't affect other processes
+7. **Extensibility**: Easy to add new process types with standardized `IProcessHandler`
+8. **Monitoring**: Process statistics and registry provide visibility into active processes
 
 ## Phase 9C: System Extraction Summary
 

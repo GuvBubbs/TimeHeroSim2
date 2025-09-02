@@ -1,5 +1,5 @@
-// SimulationEngine - Pure Orchestration Layer (Phase 9J Refactor)
-// Coordinates all simulation modules without implementation details
+// SimulationOrchestrator - Pure orchestration layer
+// Phase 9J Implementation - Clean coordination of all simulation modules
 
 import { MapSerializer } from './MapSerializer'
 import { DecisionEngine } from './ai/DecisionEngine'
@@ -32,10 +32,10 @@ import type {
 } from '@/types'
 
 /**
- * Core simulation engine - Pure orchestration layer
- * All implementation details have been moved to specialized modules
+ * Core simulation orchestrator that coordinates all simulation modules
+ * This is a pure orchestration layer - all implementation details are in specialized modules
  */
-export class SimulationEngine {
+export class SimulationOrchestrator {
   private config: SimulationConfig
   private gameState: GameState
   private parameters: AllParameters
@@ -65,7 +65,7 @@ export class SimulationEngine {
     this.parameters = this.extractParametersFromConfig(config)
     
     if (!gameDataStore) {
-      throw new Error('SimulationEngine requires a valid gameDataStore with CSV data')
+      throw new Error('SimulationOrchestrator requires a valid gameDataStore with CSV data')
     }
     
     this.gameDataStore = gameDataStore
@@ -79,7 +79,7 @@ export class SimulationEngine {
     this.processManager = new ProcessManager()
     this.actionExecutor.setStateManager(this.stateManager)
     
-    // Initialize validation service
+    // Initialize validation service with game data
     validationService.initialize(gameDataStore)
     
     // Initialize event bus integration
@@ -88,31 +88,32 @@ export class SimulationEngine {
   }
 
   /**
-   * Main simulation tick - Pure orchestration
+   * Main simulation tick - coordinates all modules
    */
   tick(): TickResult {
-    console.log('⏰ SimulationEngine: tick() called, tickCount:', this.tickCount, 'totalMinutes:', this.gameState.time.totalMinutes, 'isRunning:', this.isRunning)
+    console.log('⏰ SimulationOrchestrator: tick() called, tickCount:', this.tickCount, 'totalMinutes:', this.gameState.time.totalMinutes, 'isRunning:', this.isRunning)
     
+    const startTime = this.gameState.time.totalMinutes
     const deltaTime = this.calculateDeltaTime()
     
     try {
       // 1. Update time
       this.updateTime(deltaTime)
       
-      // 2. Process all ongoing activities through ProcessManager
+      // 2. Process all ongoing activities
       const processResult = this.processManager.tick(deltaTime, this.gameState, this.gameDataStore)
       
-      // 3. Update game systems that aren't in ProcessManager yet
+      // 3. Process other systems
       this.updateGameSystems(deltaTime)
       
-      // 4. Make AI decisions through DecisionEngine
+      // 4. Make AI decisions
       const decisionResult = this.decisionEngine.getNextActions(this.gameState, this.parameters, this.gameDataStore)
       const decisions = decisionResult.actions
       
-      // 5. Execute actions through ActionExecutor
+      // 5. Execute actions
       const { executedActions, actionEvents } = this.executeActions(decisions)
       
-      // 6. Update automation and progression
+      // 6. Update systems and check conditions
       this.updateAutomation()
       this.updatePhaseProgression()
       
@@ -122,7 +123,7 @@ export class SimulationEngine {
       
       this.tickCount++
       
-      // 8. Debug logging
+      // Debug logging
       this.logTickResults(executedActions, decisions)
       
       return {
@@ -164,17 +165,49 @@ export class SimulationEngine {
     this.gameState.time.speed = Math.max(0.1, Math.min(10, speed))
   }
 
+  /**
+   * Pause simulation
+   */
+  pause(): void {
+    this.isRunning = false
+  }
+
+  /**
+   * Resume simulation
+   */
+  resume(): void {
+    this.isRunning = true
+  }
+
+  /**
+   * Stop simulation
+   */
+  stop(): void {
+    this.isRunning = false
+  }
+
   // =============================================================================
-  // PRIVATE ORCHESTRATION METHODS - Configuration and initialization only
+  // PRIVATE METHODS - Orchestration logic only
   // =============================================================================
 
   /**
    * Extract parameters from configuration
    */
   private extractParametersFromConfig(config: SimulationConfig): AllParameters {
+    // Create baseline parameters
     let baseParameters = this.createDefaultParameters()
     
-    // Apply parameter overrides
+    // Handle serialized parameters if provided
+    if (config.parameters) {
+      try {
+        const serializedParams = config.parameters instanceof Map ? config.parameters : new Map(Object.entries(config.parameters))
+        baseParameters = this.mergeParameters(baseParameters, serializedParams)
+      } catch (error) {
+        console.warn('Failed to deserialize parameters from config:', error)
+      }
+    }
+    
+    // Apply any parameter overrides
     if (config.parameterOverrides && config.parameterOverrides.size > 0) {
       baseParameters = this.applyParameterOverrides(baseParameters, config.parameterOverrides)
     }
@@ -188,19 +221,24 @@ export class SimulationEngine {
   private createDefaultParameters(): AllParameters {
     return {
       farm: {
-        automation: { autoPlant: true, autoWater: true, autoHarvest: true },
-        priorities: { cropPreference: ['turnip', 'carrot', 'potato'], wateringThreshold: 0.3 }
+        automation: { plantingEnabled: true, wateringEnabled: true, harvestingEnabled: true },
+        priorities: { cropPreference: ['turnip', 'carrot', 'potato'], wateringThreshold: 0.3 },
+        timing: { plantingFrequency: 30, harvestCheckFrequency: 10 }
       },
       tower: {
-        priorities: { upgradeOrder: ['reach', 'autocatcher', 'nets'] }
+        automation: { catchingEnabled: true, autoUpgradeEnabled: true },
+        priorities: { upgradeOrder: ['reach', 'autocatcher', 'nets'] },
+        timing: { catchingFrequency: 60 }
       },
       town: {
-        priorities: { blueprintPreference: ['infrastructure', 'automation', 'cosmetic'] }
+        automation: { tradingEnabled: true, upgradeEnabled: true },
+        priorities: { blueprintPreference: ['infrastructure', 'automation', 'cosmetic'] },
+        timing: { visitFrequency: 120 }
       },
       decisions: {
         checkins: { enabled: true, frequency: 30, urgencyThreshold: 0.7 },
         priorities: { safety: 0.8, efficiency: 0.6, exploration: 0.4 },
-        interrupts: { enabled: true, emergencyMode: { threshold: 0.9, actions: [] } }
+        interrupts: { enabled: true, emergencyThreshold: 0.9 }
       },
       persona: { strategy: 'balanced', riskTolerance: 0.5, explorationBias: 0.3 }
     }
@@ -254,7 +292,7 @@ export class SimulationEngine {
         'casual': { name: 'Casual Player', strategy: 'balanced', riskTolerance: 0.5, explorationBias: 0.5 },
         'weekend_warrior': { name: 'Weekend Warrior', strategy: 'efficient', riskTolerance: 0.3, explorationBias: 0.7 }
       }
-      return personaMap[config.quickSetup.personaId as keyof typeof personaMap] || personaMap['casual']
+      return personaMap[config.quickSetup.personaId] || personaMap['casual']
     }
     return { name: 'Default', strategy: 'balanced', riskTolerance: 0.5, explorationBias: 0.5 }
   }
@@ -272,31 +310,23 @@ export class SimulationEngine {
         speed: 1
       },
       resources: {
-        energy: { current: 100, max: 100, regenerationRate: 0 },
-        water: { current: 20, max: 20, autoGenRate: 0 },
+        energy: { current: 100, maximum: 100 },
+        water: { current: 20, maximum: 20 },
         gold: 50,
         seeds: this.initializeSeeds(),
         materials: this.initializeMaterials()
       },
       progression: {
-        heroLevel: 1,
-        experience: 0,
-        farmStage: 1,
         farmPlots: 3,
-        availablePlots: 3,
-        currentPhase: 'Tutorial',
-        completedAdventures: [],
-        completedCleanups: new Set(),
-        unlockedUpgrades: [],
         unlockedAreas: ['farm'],
-        builtStructures: new Set(['farm']),
-        victoryConditionsMet: false
+        completedTutorials: [],
+        availablePlots: 3,
+        nextPlotCost: 100
       },
       inventory: {
-        tools: new Map(),
+        tools: new Map([['watering_can', 1], ['hoe', 1]]),
         weapons: new Map(),
         armor: new Map(),
-        blueprints: new Map(),
         capacity: 50,
         currentWeight: 0
       },
@@ -305,18 +335,13 @@ export class SimulationEngine {
         adventures: [],
         training: [],
         crafting: [],
-        mining: { depth: 0, energyDrain: 0, isActive: false, timeAtDepth: 0 },
+        mining: [],
         construction: []
       },
-      helpers: {
-        gnomes: [],
-        housingCapacity: 3,
-        currentHousing: 0,
-        availableRoles: ['farming', 'water_management'],
-        rescueQueue: []
-      },
+      helpers: [],
       location: {
-        currentScreen: 'farm'
+        currentScreen: 'farm',
+        history: ['farm']
       },
       automation: {
         plantingEnabled: true,
@@ -329,8 +354,9 @@ export class SimulationEngine {
         energyReserve: 10
       },
       priorities: {
-        upgradeOrder: ['farm_plots', 'water_capacity', 'energy_capacity'],
-        helperRoles: ['farming', 'water_management', 'seed_collection']
+        crops: ['turnip', 'carrot', 'potato'],
+        upgrades: ['farm_plots', 'water_capacity', 'energy_capacity'],
+        helpers: ['farming', 'water_management', 'seed_collection']
       }
     }
   }
@@ -355,10 +381,6 @@ export class SimulationEngine {
       ['stone', 10]
     ])
   }
-
-  // =============================================================================
-  // PRIVATE ORCHESTRATION METHODS - Coordination logic only
-  // =============================================================================
 
   /**
    * Calculate delta time for this tick
@@ -388,22 +410,25 @@ export class SimulationEngine {
   }
 
   /**
-   * Update game systems not yet in ProcessManager
+   * Update game systems that aren't in ProcessManager yet
    */
   private updateGameSystems(deltaTime: number): void {
     try {
+      // Process helper automation
       HelperSystem.processHelpers(this.gameState, deltaTime, this.gameDataStore)
     } catch (error) {
       console.error('Error in HelperSystem.processHelpers:', error)
     }
 
     try {
+      // Process auto-pump water generation
       WaterSystem.processAutoPumpGeneration(this.gameState, deltaTime)
     } catch (error) {
       console.error('Error in WaterSystem.processAutoPumpGeneration:', error)
     }
 
     try {
+      // Process auto-catcher seed collection
       const towerReach = this.getCurrentTowerReach()
       SeedSystem.processAutoCatcher(this.gameState, deltaTime, towerReach)
     } catch (error) {
@@ -412,7 +437,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Execute actions through ActionExecutor
+   * Execute actions using ActionExecutor
    */
   private executeActions(decisions: GameAction[]): { executedActions: GameAction[], actionEvents: GameEvent[] } {
     const executedActions: GameAction[] = []
@@ -432,7 +457,7 @@ export class SimulationEngine {
       }
     }
     
-    // Update DecisionEngine checkin time after successful actions
+    // Update DecisionEngine lastCheckinTime after successful actions
     if (executedActions.length > 0) {
       this.decisionEngine.updateLastCheckin(this.gameState)
     }
@@ -441,29 +466,19 @@ export class SimulationEngine {
   }
 
   /**
-   * Update automation systems (placeholder - logic should be in dedicated modules)
+   * Update automation systems
    */
   private updateAutomation(): void {
-    // Automation logic delegated to individual systems
+    // Automation logic should be in dedicated modules
+    // This is just a placeholder for now
   }
 
   /**
-   * Update phase progression (placeholder - logic should be in StateManager)
+   * Update phase progression
    */
   private updatePhaseProgression(): void {
-    // Phase progression logic delegated to StateManager
-    const plots = this.gameState.progression.farmPlots
-    const level = this.gameState.progression.heroLevel
-    
-    if (plots <= 10 && level <= 3) {
-      this.gameState.progression.currentPhase = 'Tutorial'
-    } else if (plots <= 30 && level <= 8) {
-      this.gameState.progression.currentPhase = 'Early'
-    } else if (plots <= 60 && level <= 12) {
-      this.gameState.progression.currentPhase = 'Mid'
-    } else {
-      this.gameState.progression.currentPhase = 'Late'
-    }
+    // Phase progression logic should be in StateManager
+    // This is just a placeholder for now
   }
 
   /**
@@ -482,7 +497,7 @@ export class SimulationEngine {
       this.lastProgressCheck = {
         day: this.gameState.time.day,
         plots: this.gameState.progression.farmPlots,
-        level: this.gameState.progression.heroLevel,
+        level: 1, // Placeholder
         gold: this.gameState.resources.gold,
         lastProgressDay: this.gameState.time.day
       }
@@ -503,7 +518,7 @@ export class SimulationEngine {
       this.lastProgressCheck = {
         day: this.gameState.time.day,
         plots: this.gameState.progression.farmPlots,
-        level: this.gameState.progression.heroLevel,
+        level: 1, // Placeholder
         gold: this.gameState.resources.gold,
         lastProgressDay: this.gameState.time.day
       }
@@ -513,10 +528,11 @@ export class SimulationEngine {
   }
 
   /**
-   * Get current tower reach (should be moved to TowerSystem)
+   * Get current tower reach for seed catching
    */
   private getCurrentTowerReach(): number {
-    return 10 // Placeholder - should call TowerSystem
+    // This should be moved to TowerSystem
+    return 10 // Placeholder
   }
 
   /**
@@ -554,7 +570,9 @@ export class SimulationEngine {
    * Determine current game phase
    */
   private determineCurrentPhase(): string {
-    return this.gameState.progression.currentPhase
+    if (this.gameState.progression.farmPlots < 10) return 'Early Game'
+    if (this.gameState.progression.farmPlots < 30) return 'Mid Game'
+    return 'Late Game'
   }
 
   /**
@@ -582,6 +600,7 @@ export class SimulationEngine {
    * Setup event bus integration
    */
   private setupEventBusIntegration(): void {
+    // Subscribe to relevant events
     this.eventBus.on('state_changed', (event) => {
       console.log('📊 State changed:', event.data)
     })
@@ -590,6 +609,7 @@ export class SimulationEngine {
       console.log('⚡ Action executed:', event.data.action.type)
     })
 
+    // Update event bus with initial metadata
     this.updateEventBusMetadata()
   }
 
@@ -598,13 +618,13 @@ export class SimulationEngine {
    */
   private updateEventBusMetadata(): void {
     this.eventBus.emit('simulation_started', {
-      personaId: this.config.quickSetup?.personaId || 'default',
+      timestamp: this.gameState.time.totalMinutes,
+      persona: this.persona.name,
       config: {
         plantingEnabled: this.gameState.automation.plantingEnabled,
         wateringEnabled: this.gameState.automation.wateringEnabled,
         harvestingEnabled: this.gameState.automation.harvestingEnabled
-      },
-      startTime: Date.now()
+      }
     })
   }
 }

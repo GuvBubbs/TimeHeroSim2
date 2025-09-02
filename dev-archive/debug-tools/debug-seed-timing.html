@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Seed Catching Debug Monitor</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
+    .log { margin: 5px 0; }
+    .error { color: #ff6666; }
+    .warning { color: #ffaa00; }
+    .info { color: #66ddff; }
+  </style>
+</head>
+<body>
+  <h1>🌰 Seed Catching Debug Monitor</h1>
+  <div id="logs"></div>
+  
+  <script>
+    // Monitor console.log output for seed catching debug
+    const originalLog = console.log
+    const logsDiv = document.getElementById('logs')
+    
+    console.log = function(...args) {
+      originalLog.apply(console, args)
+      
+      const message = args.join(' ')
+      if (message.includes('SEED CATCH') || message.includes('🌰') || message.includes('totalMinutes') || message.includes('ONGOING ACTIVITIES')) {
+        const logElement = document.createElement('div')
+        logElement.className = 'log'
+        logElement.textContent = `${new Date().toLocaleTimeString()}: ${message}`
+        
+        if (message.includes('COMPLETE')) logElement.className += ' info'
+        if (message.includes('FAILED')) logElement.className += ' error'
+        if (message.includes('DEBUG')) logElement.className += ' warning'
+        
+        logsDiv.appendChild(logElement)
+        logsDiv.scrollTop = logsDiv.scrollHeight
+      }
+    }
+    
+    // Open the actual app in an iframe
+    const iframe = document.createElement('iframe')
+    iframe.src = 'http://localhost:5175/'
+    iframe.style.width = '100%'
+    iframe.style.height = '400px'
+    iframe.style.border = '1px solid #444'
+    iframe.style.marginTop = '20px'
+    document.body.appendChild(iframe)
+    
+    // Log some debug info
+    console.log('🔍 Debug monitor started - watching for seed catching logs...')
+  </script>
+</body>
+</html>

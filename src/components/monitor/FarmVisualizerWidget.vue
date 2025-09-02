@@ -68,11 +68,41 @@
             
             <!-- Legend -->
             <div class="farm-legend mt-3">
-              <span>🟩 Ready</span>
-              <span>🌱 Growing</span>
-              <span>⬜ Locked</span>
-              <span>🌊 Watered</span>
-              <span>🏜️ Dry</span>
+              <div class="legend-section">
+                <div class="text-xs font-semibold text-sim-text mb-1">Status:</div>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                  <!-- Crop Status -->
+                  <span class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded bg-green-600"></div>
+                    Ready
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded bg-yellow-500"></div>
+                    Growing
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded bg-red-600"></div>
+                    Withered
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded bg-gray-600 opacity-20"></div>
+                    Locked
+                  </span>
+                  <!-- Water Status -->
+                  <span class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded bg-blue-300"></div>
+                    Wet
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded bg-blue-200"></div>
+                    Damp
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded bg-yellow-800"></div>
+                    Dry
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -132,17 +162,26 @@ const PlotCell = defineComponent({
     const plotClass = computed(() => {
       if (!props.unlocked) return 'locked'
       if (!props.plot) return 'empty'
-      if (props.plot.ready) return 'ready'
-      if (props.plot.growing) return 'growing'
-      return props.plot.watered ? 'watered' : 'dry'
+      if (props.plot.state === 'ready') return 'ready'
+      if (props.plot.state === 'growing') return 'growing'
+      if (props.plot.state === 'withered') return 'withered'
+      
+      // Water-based coloring for empty plots
+      if (props.plot.waterLevel > 0.7) return 'plot-wet'
+      if (props.plot.waterLevel > 0.3) return 'plot-damp'
+      return 'plot-dry'
     })
     
     const plotIcon = computed(() => {
       if (!props.unlocked) return '⬜'
       if (!props.plot) return '⬛'
-      if (props.plot.ready) return '🟩'
-      if (props.plot.growing) return '🌱'
-      return props.plot.watered ? '🌊' : '🏜️'
+      if (props.plot.state === 'ready') return '🟩'
+      if (props.plot.state === 'growing') return '🌱'
+      if (props.plot.state === 'withered') return '💀'
+      
+      // Water-based icons for empty plots
+      if (props.plot.waterLevel > 0.3) return '🌊'
+      return '🏜️'
     })
     
     const plotTooltip = computed(() => {
@@ -248,6 +287,22 @@ const farmSummary = computed(() => {
   background-color: #eab308;
 }
 
+.plot-cell.withered {
+  background-color: #dc2626;
+}
+
+.plot-cell.plot-wet {
+  background-color: #4FC3F7;
+}
+
+.plot-cell.plot-damp {
+  background-color: #81D4FA;
+}
+
+.plot-cell.plot-dry {
+  background-color: #8D6E63;
+}
+
 .plot-cell.watered {
   background-color: #3b82f6;
 }
@@ -262,10 +317,18 @@ const farmSummary = computed(() => {
 
 .farm-legend {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   font-size: 0.8em;
-  justify-content: flex-start;
-  flex-wrap: wrap;
   margin-top: 16px;
+}
+
+.legend-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.legend-section .flex {
+  flex-wrap: wrap;
 }
 </style>

@@ -45,6 +45,7 @@ export interface ProgressionState {
   completedCleanups: Set<string>  // Cleanup actions that have been completed
   unlockedUpgrades: string[]
   unlockedAreas: string[]
+  builtStructures: Set<string>  // Structures that have been built (farm always included)
   victoryConditionsMet: boolean
 }
 
@@ -74,12 +75,27 @@ export interface ArmorState {
 }
 
 /**
+ * Blueprint state for purchased but not yet built structures
+ */
+export interface BlueprintState {
+  id: string
+  purchased: boolean
+  isBuilt: boolean
+  buildCost: {
+    energy?: number
+    materials?: Map<string, number>
+    time?: number
+  }
+}
+
+/**
  * Player inventory
  */
 export interface InventoryState {
   tools: Map<string, ToolState>
   weapons: Map<string, WeaponState>
   armor: Map<string, ArmorState>
+  blueprints: Map<string, BlueprintState>
   capacity: number
   currentWeight: number
 }
@@ -142,6 +158,19 @@ export interface MiningState {
 }
 
 /**
+ * Seed catching process state
+ */
+export interface SeedCatchingState {
+  startedAt: number       // Total minutes when started
+  duration: number        // Expected duration in minutes
+  progress: number        // 0-1
+  windLevel: number       // Wind level when started
+  netType: string         // Net type being used
+  expectedSeeds: number   // Expected seeds to catch
+  isComplete: boolean
+}
+
+/**
  * Active processes
  */
 export interface ProcessState {
@@ -149,6 +178,7 @@ export interface ProcessState {
   adventure: AdventureState | null
   crafting: CraftingState[]
   mining: MiningState | null
+  seedCatching: SeedCatchingState | null
 }
 
 /**
@@ -246,18 +276,25 @@ export interface GameState {
  */
 export interface GameAction {
   id: string
-  type: 'move' | 'plant' | 'water' | 'pump' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper' | 'cleanup'
+  type: 'move' | 'plant' | 'water' | 'pump' | 'harvest' | 'adventure' | 'craft' | 'purchase' | 'rescue' | 'mine' | 'wait' | 'catch_seeds' | 'train' | 'stoke' | 'assign_role' | 'train_helper' | 'cleanup' | 'build' | 'sell_material'
   screen: GameScreen
   target?: string          // Item ID, plot ID, etc.
+  toScreen?: GameScreen    // Target screen for move actions
+  description?: string     // Human-readable description for logging/debugging
   duration: number         // Expected duration in minutes
   energyCost: number
   goldCost: number
   prerequisites: string[]
+  materialCosts?: { [key: string]: number } // Material costs for some actions
   expectedRewards: {
     experience?: number
     gold?: number
     items?: string[]
     resources?: { [key: string]: number }
+    materials?: { [key: string]: number }
+    plots?: number
+    water?: number
+    energy?: number
   }
   score?: number          // AI scoring for decision making
 }
@@ -296,6 +333,7 @@ export interface SerializedGameState {
     tools: Array<[string, ToolState]>       // Map serialized
     weapons: Array<[string, WeaponState]>   // Map serialized
     armor: Array<[string, ArmorState]>      // Map serialized
+    blueprints: Array<[string, BlueprintState]>  // Map serialized
     capacity: number
     currentWeight: number
   }

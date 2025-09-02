@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Simulation Setup system provides a streamlined interface for configuring and launching simulations of TimeHero gameplay. **Phase 5 is now COMPLETE** ✅, featuring comprehensive parameter configuration screens, drag-and-drop interfaces, advanced simulation controls, and optimized UI layout. **Phase 8L integration completed** ✅ - simulation engine now fully functional with fixed timing system, bootstrap economy, and complete economic progression flow. **Phase 8M integration completed** ✅ - simulation engine enhanced with simplified combat challenges, complete helper mechanics with level scaling, and strategic equipment-based boss encounters. **Phase 8O polish and validation completed** ✅ - comprehensive validation systems, offline progression calculations, mining tool effects, and enhanced AI decision-making with bottleneck detection and persona-driven strategies. The system delivers auto-generated naming, persona integration, complete parameter management, visual consistency, and production-ready parameter override capabilities throughout all 9 game systems.
+The Simulation Setup system provides a streamlined interface for configuring and launching simulations of TimeHero gameplay. **Phase 5 is now COMPLETE** ✅, featuring comprehensive parameter configuration screens, drag-and-drop interfaces, advanced simulation controls, and optimized UI layout. **Phase 8L integration completed** ✅ - simulation engine now fully functional with fixed timing system, bootstrap economy, and complete economic progression flow. **Phase 8M integration completed** ✅ - simulation engine enhanced with simplified combat challenges, complete helper mechanics with level scaling, and strategic equipment-based boss encounters. **Phase 8O polish and validation completed** ✅ - comprehensive validation systems, offline progression calculations, mining tool effects, and enhanced AI decision-making with bottleneck detection and persona-driven strategies. **Phase 9D AI Decision-Making extraction completed** ✅ - complete modular AI architecture with DecisionEngine, PersonaStrategy, ActionScorer, and ActionFilter components providing intelligent, persona-driven decision-making separated from execution logic. The system delivers auto-generated naming, persona integration, complete parameter management, visual consistency, and production-ready parameter override capabilities throughout all 9 game systems with advanced AI orchestration.
 
 ## Architecture Overview
 
@@ -38,10 +38,35 @@ SimulationSetupView.vue (Main Interface) ✅ COMPLETE
 │   ├── Auto-recovery from corrupted parameter data
 │   ├── Configuration export for simulation engine
 │   └── Deep clone parameter management preserving Map objects
+├── Phase 9D: AI Decision-Making Architecture ✅ COMPLETE
+│   ├── DecisionEngine.ts (500 lines) - Main AI orchestrator
+│   │   ├── Emergency detection and response systems
+│   │   ├── Persona-based action selection and prioritization
+│   │   ├── Multi-screen action coordination
+│   │   └── Comprehensive decision logging and reasoning
+│   ├── PersonaStrategy.ts (300 lines) - Behavioral patterns
+│   │   ├── SpeedrunnerStrategy (8-12 min intervals, optimization-focused)
+│   │   ├── CasualPlayerStrategy (25-35 min intervals, balanced approach)
+│   │   └── WeekendWarriorStrategy (day-based sessions, progress-focused)
+│   ├── ActionScorer.ts (349 lines) - Intelligent action scoring
+│   │   ├── Base scoring with resource/progression logic
+│   │   ├── Urgency multipliers for critical situations
+│   │   ├── Future value calculations
+│   │   └── Persona-specific score adjustments
+│   ├── ActionFilter.ts (287 lines) - Action validation
+│   │   ├── Resource requirement validation
+│   │   ├── CSV prerequisite checking via gameDataStore
+│   │   ├── Action-specific validation logic
+│   │   └── Comprehensive filtering pipeline
+│   └── DecisionTypes.ts (205 lines) - Complete type system
+│       ├── IDecisionEngine, IPersonaStrategy interfaces
+│       ├── ScoredAction, DecisionResult types
+│       └── Emergency detection and response configurations
 └── Complete Integration Hooks ✅
     ├── Fully functional Parameter Editor (Phase 5B-5D ✅)
     ├── Launch simulation hook (Ready for Phase 6)
-    └── Live monitor navigation (Ready for Phase 6)
+    ├── Live monitor navigation (Ready for Phase 6)
+    └── Advanced AI Decision-Making (Phase 9D ✅)
 ```
 
 **File Locations**:
@@ -51,6 +76,12 @@ SimulationSetupView.vue (Main Interface) ✅ COMPLETE
 - Shared Components: `src/components/parameters/shared/`
 - State Management: `src/stores/simulation.ts`, `src/stores/parameters.ts`
 - Type Definitions: `src/types/simulation.ts`, `src/types/game-data.ts`
+- AI Decision-Making (Phase 9D): `src/utils/ai/`
+  - DecisionEngine: `src/utils/ai/DecisionEngine.ts`
+  - PersonaStrategy: `src/utils/ai/PersonaStrategy.ts`
+  - ActionScorer: `src/utils/ai/ActionScorer.ts`
+  - ActionFilter: `src/utils/ai/ActionFilter.ts`
+  - Type Definitions: `src/utils/ai/types/DecisionTypes.ts`
 
 ## Core Data Structures
 
@@ -163,10 +194,20 @@ interface ParameterStore {
    - Exchange rate management, resource prioritization
    - Inventory management and logistics
 
-9. **🧠 Decision Engine** (`DecisionParameters.vue`)
+9. **🧠 Decision Engine** (`DecisionParameters.vue`) ⭐ **Phase 9D Enhanced**
    - AI decision logic, priority weighting, automation rules
    - Strategic planning, emergency response protocols
    - Adaptive behavior configuration
+   - **NEW: Modular AI Architecture Integration**
+     - DecisionEngine orchestration parameters
+     - PersonaStrategy behavior customization
+     - ActionScorer priority adjustments
+     - ActionFilter validation rules
+   - **Persona-Specific AI Tuning**
+     - Check-in frequency per persona (Speedrunner: 8-12min, Casual: 25-35min, Weekend: day-based)
+     - Optimization vs. exploration balance
+     - Risk tolerance and efficiency factors
+     - Emergency response thresholds
 
 ### Advanced UI Components
 
@@ -538,7 +579,13 @@ function launchSimulation(): SimulationConfig | null {
     // - Proper timing system (0.5x = 5 ticks/sec = 9.6 min/day) 
     // - Complete economic progression flow (farm → town → adventure → progression)
     // - Logging controls integrated with speed-based auto-adjustment
-    console.log('Launching simulation with functional engine:', simulationData)
+    // ✅ Phase 9D - AI Decision-Making architecture integrated
+    // - DecisionEngine orchestrates all AI decision-making (replacing old makeDecisions method)
+    // - PersonaStrategy drives persona-specific behaviors (check-in timing, optimization levels)
+    // - ActionScorer provides intelligent action prioritization with persona adjustments
+    // - ActionFilter validates actions against resources and prerequisites
+    // - Clean separation of decision-making from execution logic
+    console.log('Launching simulation with functional engine and AI:', simulationData)
   }
   
   return config
@@ -548,9 +595,49 @@ function launchSimulation(): SimulationConfig | null {
 **Phase 8L Simulation Engine Fixes Applied**:
 - ✅ **Speed Calibration**: Fixed timing system with proper speed calculations (0.5x-max speeds)
 - ✅ **Bootstrap Economy**: Starting gold changed from 0g → 50g to enable progression
+- ✅ **Materials Initialization**: Starting materials reset to 0 (eliminated false "earned" resource display)
 - ✅ **Navigation Logic**: Fixed critical off-by-one bug preventing town visits
 - ✅ **Logging System**: Speed-based log level auto-adjustment (verbose → errors)
 - ✅ **Material Trading**: Gold generation system for late-game progression
+
+**Phase 9D AI Decision-Making Integration** ✅ **COMPLETE**:
+The simulation engine now features a completely modular AI architecture:
+
+**✅ DecisionEngine Architecture**:
+- Main AI orchestrator (500 lines) replacing old `makeDecisions()` method
+- Emergency detection for critical resource shortages (seeds, water, energy)
+- Multi-screen action coordination across all game systems
+- Comprehensive decision logging with reasoning and score breakdown
+
+**✅ PersonaStrategy System**:
+- Three distinct behavioral patterns (300 lines total):
+  - **SpeedrunnerStrategy**: 8-12 minute check-in intervals, optimization-focused
+  - **CasualPlayerStrategy**: 25-35 minute intervals, balanced approach
+  - **WeekendWarriorStrategy**: Day-based sessions, progress-focused
+- Dynamic check-in timing based on game state and persona characteristics
+- Persona-specific action score adjustments and risk tolerance
+
+**✅ ActionScorer Intelligence**:
+- Sophisticated action scoring (349 lines) with multiple factors:
+  - Base scoring using resource/progression logic
+  - Urgency multipliers for critical situations (seed shortages, low energy)
+  - Future value calculations for long-term planning
+  - Persona-specific score adjustments based on optimization level
+- Integration with SeedSystem for seed shortage priority handling
+
+**✅ ActionFilter Validation**:
+- Comprehensive action filtering (287 lines) ensuring valid decisions:
+  - Resource requirement validation (energy, gold, materials)
+  - CSV prerequisite checking via gameDataStore integration
+  - Action-specific validation logic per game system
+  - Prevents invalid actions from reaching execution layer
+
+**✅ Architecture Benefits**:
+- **Clean Separation**: Decision-making logic completely separated from execution
+- **Modular Design**: Each AI component can be tested and enhanced independently
+- **Persona Integration**: AI behavior directly driven by user-selected personas
+- **Extensible**: Easy to add new personas, scoring rules, or filtering logic
+- **Maintainable**: 1,641 lines of AI logic extracted from 5,590-line SimulationEngine
 
 **Energy System Corrections** ✅ **FIXED**:
 The energy system has been corrected to match game design specifications:
@@ -738,6 +825,7 @@ const housingValidation = 'activeGnomes = min(rescuedGnomes, totalCapacity)'
 - **Logging System**: Auto-adjustment works across all speed levels
 - **Material Trading**: Late-game gold generation system functional
 - **Energy Management**: Harvest-only energy economy properly implemented
+- **Materials Reset**: Starting materials corrected to 0 (eliminated false "earned" resource display)
 
 ### Phase 8M Combat & Helper System Validation ✅
 - **Boss Challenge System**: All 7 boss types apply appropriate penalties based on equipment
@@ -828,6 +916,13 @@ The Simulation Setup system now seamlessly integrates with a fully functional si
 6. **Combat Strategy Validation**: Equipment choices directly impact adventure success rates
 7. **Helper Efficiency Testing**: Level scaling formulas produce meaningful progression benefits
 8. **Housing Constraint Testing**: Gnome capacity limits create strategic building decisions
+9. **AI Decision-Making Validation** ✅ **NEW**: Phase 9D modular AI architecture fully functional
+   - **Emergency Detection**: AI correctly identifies critical resource shortages (seeds < 3, water = 0)
+   - **Persona Behaviors**: Distinct check-in patterns and decision-making styles per persona
+   - **Action Prioritization**: Intelligent scoring and filtering of available actions
+   - **Decision Reasoning**: Comprehensive logging of AI decision factors and reasoning
+   - **Resource Constraint Handling**: AI adapts to energy limitations and prerequisite failures
+   - **Smart Adaptation**: Falls back to movement when blocked by resource constraints
 
 ### Production Ready Features
 - **Reliable Launch**: Configured simulations start successfully and run to completion
@@ -838,5 +933,12 @@ The Simulation Setup system now seamlessly integrates with a fully functional si
 - **Combat Balance Testing**: Strategic boss encounters validate equipment choice importance
 - **Helper Optimization**: Level scaling system enables workforce efficiency analysis
 - **Resource Constraint Validation**: Housing limitations test strategic building priorities
+- **AI Architecture Testing** ✅ **NEW**: Phase 9D modular AI system enables comprehensive behavior analysis
+  - **Persona Behavior Validation**: Test distinct player type strategies and check-in patterns
+  - **Decision Logic Testing**: Validate AI reasoning and action prioritization under various conditions
+  - **Emergency Response Testing**: Verify AI adaptation to critical resource shortage scenarios
+  - **Action Filtering Validation**: Ensure only valid actions reach execution layer
+  - **Performance Monitoring**: Track AI decision-making overhead and response times
+  - **Extensibility Testing**: Validate ease of adding new personas and scoring rules
 
-The system now delivers on its core promise: **enabling rapid, reliable testing and validation of TimeHero gameplay balance through configurable simulation scenarios with real-time monitoring capabilities**. Phase 8M enhancements add **strategic depth through equipment-driven combat challenges, scalable helper progression systems, and meaningful resource allocation constraints**, creating a comprehensive balance testing environment that validates both economic progression and tactical gameplay mechanics.
+The system now delivers on its core promise: **enabling rapid, reliable testing and validation of TimeHero gameplay balance through configurable simulation scenarios with real-time monitoring capabilities**. Phase 8M enhancements add **strategic depth through equipment-driven combat challenges, scalable helper progression systems, and meaningful resource allocation constraints**, creating a comprehensive balance testing environment that validates both economic progression and tactical gameplay mechanics. **Phase 9D AI Decision-Making extraction delivers a modular, extensible AI architecture** that separates decision-making from execution, enabling **sophisticated persona-driven behaviors, intelligent action prioritization, and comprehensive decision reasoning** while maintaining **clean code architecture and testing capabilities** for advanced AI behavior validation and tuning.

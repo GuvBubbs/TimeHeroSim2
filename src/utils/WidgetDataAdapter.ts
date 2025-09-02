@@ -208,8 +208,10 @@ export class WidgetDataAdapter {
       resources.materials.forEach((count, type) => {
         materials[type] = count
       })
+      console.log(`🔄 WidgetDataAdapter: Converted materials Map to object`, materials)
     } else if (resources.materials && typeof resources.materials === 'object') {
       Object.assign(materials, resources.materials)
+      console.log(`🔄 WidgetDataAdapter: Used materials object directly`, materials)
     }
 
     return {
@@ -480,6 +482,23 @@ export class WidgetDataAdapter {
       progress = 0 // Continuous activity
       timeRemaining = 0
     }
+    // Check for active seed catching
+    else if (processes.seedCatching && !processes.seedCatching.isComplete) {
+      const seedCatch = processes.seedCatching
+      currentAction = {
+        id: 'catch_seeds',
+        type: 'catch_seeds',
+        screen: 'tower',
+        target: `${seedCatch.netType} net at wind level ${seedCatch.windLevel}`,
+        duration: seedCatch.duration || 5,
+        energyCost: 0,
+        goldCost: 0,
+        prerequisites: [],
+        expectedRewards: { items: [`${seedCatch.expectedSeeds} seeds`] }
+      }
+      progress = (seedCatch.progress || 0) * 100
+      timeRemaining = Math.max(0, (seedCatch.duration || 5) * (1 - (seedCatch.progress || 0)))
+    }
     // Check for farm actions in progress
     else if (processes.crops && processes.crops.length > 0) {
       // Check if any crops are actively being worked on
@@ -510,30 +529,8 @@ export class WidgetDataAdapter {
       }
     }
 
-    // If no ongoing process, show the most recently executed action
-    if (!currentAction && gameState.events && gameState.events.length > 0) {
-      // Find the most recent action event
-      const recentActionEvent = gameState.events
-        .filter(event => event.type === 'action_executed' || event.type === 'action')
-        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0]
-      
-      if (recentActionEvent && recentActionEvent.data) {
-        const actionData = recentActionEvent.data
-        currentAction = {
-          id: actionData.id || actionData.action || 'unknown',
-          type: actionData.type || actionData.action || 'unknown',
-          screen: actionData.screen || gameState.location?.currentScreen || 'farm',
-          target: actionData.target || '',
-          duration: 0, // Completed action
-          energyCost: actionData.energyCost || 0,
-          goldCost: actionData.goldCost || 0,
-          prerequisites: [],
-          expectedRewards: actionData.rewards || {}
-        }
-        progress = 100 // Completed
-        timeRemaining = 0
-      }
-    }
+    // Note: Events are now handled through EventBus system
+    // Old event-based action tracking has been removed
 
     // Get next action from automation or decision system
     let nextAction: GameAction | null = null

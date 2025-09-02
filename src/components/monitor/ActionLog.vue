@@ -41,7 +41,7 @@
           
           <!-- Icon -->
           <div class="shrink-0 w-5 flex justify-center">
-            <span class="text-sm">{{ getActionIcon(entry.type) }}</span>
+            <i :class="getActionIcon(entry.type)" class="text-sm"></i>
           </div>
           
           <!-- Content -->
@@ -208,52 +208,64 @@ const formatTick = (timestamp: number): string => {
 const getActionIcon = (type: string): string => {
   const icons: Record<string, string> = {
     // Farm actions
-    plant: '🌱',
-    water: '💧', 
-    harvest: '🌾',
-    cleanup: '🧹',
-    pump: '🚰',
+    plant: 'fas fa-seedling text-green-400',
+    water: 'fas fa-tint text-blue-400', 
+    harvest: 'fas fa-cut text-yellow-400',
+    cleanup: 'fas fa-broom text-amber-400',
+    pump: 'fas fa-faucet text-cyan-400',
     
     // Combat actions
-    combat: '⚔️',
-    victory: '🏆',
-    defeat: '💀',
+    combat: 'fas fa-sword text-red-400',
+    victory: 'fas fa-trophy text-yellow-500',
+    defeat: 'fas fa-skull text-red-600',
     
     // Craft actions
-    craft: '🔨',
-    refine: '🔥',
-    forge: '⚒️',
-    stoke: '🔥',
+    craft: 'fas fa-hammer text-orange-400',
+    refine: 'fas fa-fire text-red-500',
+    forge: 'fas fa-industry text-orange-500',
+    stoke: 'fas fa-fire text-red-500',
     
     // Town actions
-    purchase: '💰',
-    upgrade: '📈',
-    train: '📚',
+    purchase: 'fas fa-shopping-cart text-purple-400',
+    upgrade: 'fas fa-arrow-up text-green-500',
+    train: 'fas fa-graduation-cap text-blue-500',
+    build: 'fas fa-tools text-indigo-400',
     
     // Mine actions
-    mine: '⛏️',
+    mine: 'fas fa-mountain text-gray-500',
     
     // Tower actions
-    catch_seeds: '🪝',
+    catch_seeds: 'fas fa-building text-amber-400',
+    seed_catching_complete: 'fas fa-building text-amber-400',
+    seed_catching_started: 'fas fa-building text-amber-400',
     
     // Helper actions
-    helper: '👥',
-    rescue: '🆘',
-    assign_role: '👷',
-    train_helper: '🎓',
+    helper: 'fas fa-users text-pink-400',
+    rescue: 'fas fa-heart text-pink-400',
+    assign_role: 'fas fa-user-tag text-purple-300',
+    train_helper: 'fas fa-graduation-cap text-blue-400',
     
     // Navigation
-    move: '🚶',
+    move: 'fas fa-route text-gray-400',
     
     // Economy
-    gold: '🪙',
-    energy: '⚡',
+    gold: 'fas fa-coins text-yellow-400',
+    energy: 'fas fa-bolt text-yellow-300',
     
     // Adventure
-    adventure: '🗡️',
+    adventure: 'fas fa-map text-red-400',
+    
+    // Farm events
+    crop_ready: 'fas fa-check text-green-400',
+    crop_withered: 'fas fa-skull text-red-400',
+    
+    // Screen icons based on configuration
+    farm: 'fas fa-seedling text-green-400',
+    tower: 'fas fa-building text-gray-400',
+    town: 'fas fa-city text-blue-400',
     
     // Default
-    default: '•'
+    default: 'fas fa-circle text-gray-400'
   }
   return icons[type] || icons.default
 }
@@ -263,11 +275,19 @@ const getEntryClass = (type: string): string => {
     plant: 'border-l-2 border-green-400',
     harvest: 'border-l-2 border-yellow-400',
     water: 'border-l-2 border-blue-400',
+    pump: 'border-l-2 border-cyan-400',
+    catch_seeds: 'border-l-2 border-amber-400',
     craft: 'border-l-2 border-orange-400',
     purchase: 'border-l-2 border-purple-400',
     move: 'border-l-2 border-gray-400',
     combat: 'border-l-2 border-red-400',
-    mine: 'border-l-2 border-gray-500'
+    adventure: 'border-l-2 border-red-500',
+    mine: 'border-l-2 border-gray-500',
+    cleanup: 'border-l-2 border-green-500',
+    build: 'border-l-2 border-indigo-400',
+    rescue: 'border-l-2 border-pink-400',
+    seed_catching_complete: 'border-l-2 border-amber-400',
+    crop_ready: 'border-l-2 border-green-300'
   }
   return classes[type] || 'border-l-2 border-gray-400'
 }

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { SimulationEngine } from '../src/utils/SimulationEngine'
+import { SimulationOrchestrator } from '../src/utils/SimulationOrchestrator'
 import type { SimulationConfig } from '../src/types'
 
 // Simple mock game data store
@@ -39,11 +39,11 @@ function createSimpleConfig(): SimulationConfig {
 }
 
 describe('Simple Integration Tests', () => {
-  let engine: SimulationEngine
+  let engine: SimulationOrchestrator
 
   beforeEach(() => {
     const config = createSimpleConfig()
-    engine = new SimulationEngine(config, mockGameDataStore)
+    engine = new SimulationOrchestrator(config, mockGameDataStore)
   })
 
   it('should initialize without errors', () => {
@@ -118,7 +118,7 @@ describe('Simple Integration Tests', () => {
       const config = createSimpleConfig()
       config.quickSetup.personaId = personaId as any
       
-      const testEngine = new SimulationEngine(config, mockGameDataStore)
+      const testEngine = new SimulationOrchestrator(config, mockGameDataStore)
       
       // Should initialize without errors
       expect(testEngine).toBeDefined()
@@ -160,7 +160,7 @@ describe('System Error Resilience', () => {
     }
     
     const config = createSimpleConfig()
-    const engine = new SimulationEngine(config, emptyGameDataStore)
+    const engine = new SimulationOrchestrator(config, emptyGameDataStore)
     
     // Should not crash even with empty data
     expect(() => {
@@ -177,7 +177,7 @@ describe('System Error Resilience', () => {
       ['adventure.thresholds.riskTolerance', 0.8]
     ])
     
-    const engine = new SimulationEngine(config, mockGameDataStore)
+    const engine = new SimulationOrchestrator(config, mockGameDataStore)
     
     // Should initialize with overrides
     expect(engine).toBeDefined()

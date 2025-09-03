@@ -103,7 +103,7 @@ export class LiveMonitorDebug {
         wateringEnabled: true,
         harvestingEnabled: true,
         autoCleanupEnabled: false,
-        targetCrops: new Map([['turnip', 0.4], ['carrot', 0.3], ['potato', 0.3]]),
+        targetCrops: new Map([['carrot', 0.5], ['radish', 0.5]]),
         wateringThreshold: 30,
         energyReserve: 20
       },

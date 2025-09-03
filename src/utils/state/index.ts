@@ -1,7 +1,7 @@
 // State Management Module - Phase 9F Implementation
 // Centralized exports for state management system
 
-export { StateManager } from './StateManager'
+export { StateManager } from '../orchestration/StateManager'
 export { ResourceManager } from './ResourceManager'
 export { StateValidator } from './StateValidator'
 export { StateSnapshot } from './StateSnapshot'

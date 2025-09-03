@@ -3,7 +3,7 @@
 
 import type { GameState, GameAction, AllParameters } from '../../types'
 import type { IActionScorer, IPersonaStrategy, ScoredAction, ScoreFactor } from './types/DecisionTypes'
-import { SeedSystem } from '../systems/SeedSystem'
+import { SeedSystem } from '../systems/support/SeedSystem'
 
 /**
  * Action scoring system with persona-based adjustments

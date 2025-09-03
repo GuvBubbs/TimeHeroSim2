@@ -14,7 +14,7 @@ import type {
   ProcessEvent,
   CropProcessData
 } from '../types/ProcessTypes'
-import { CropSystem } from '../../systems/CropSystem'
+import { FarmSystem } from '../../systems/core/FarmSystem'
 
 export class CropGrowthHandler implements IProcessHandler {
   
@@ -85,7 +85,7 @@ export class CropGrowthHandler implements IProcessHandler {
     
     // Use existing CropSystem to process growth
     const previousReadyState = crop.readyToHarvest
-    CropSystem.processCropGrowth(gameState, deltaTime, gameDataStore)
+    FarmSystem.processCropGrowth(gameState, deltaTime, gameDataStore)
     
     // Update handle progress based on crop growth
     handle.progress = crop.growthProgress

@@ -13,14 +13,14 @@ import type {
 import { PersonaStrategyFactory } from './PersonaStrategy'
 import { ActionScorer } from './ActionScorer'
 import { ActionFilter } from './ActionFilter'
-import { SeedSystem } from '../systems/SeedSystem'
+import { SeedSystem } from '../systems/support/SeedSystem'
 
 // Import existing systems
-import { TowerSystem } from '../systems/TowerSystem'
-import { TownSystem } from '../systems/TownSystem'
-import { AdventureSystem } from '../systems/AdventureSystem'
-import { ForgeSystem } from '../systems/ForgeSystem'
-import { HelperSystem } from '../systems/HelperSystem'
+import { TowerSystem } from '../systems/core/TowerSystem'
+import { TownSystem } from '../systems/core/TownSystem'
+import { AdventureSystem } from '../systems/core/AdventureSystem'
+import { ForgeSystem } from '../systems/core/ForgeSystem'
+import { HelperSystem } from '../systems/core/HelperSystem'
 
 /**
  * Core decision engine that orchestrates AI decision-making

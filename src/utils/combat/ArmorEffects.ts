@@ -1,7 +1,24 @@
 // ArmorEffects - Phase 8M Simple Armor Effect Implementation
 // Handles armor special effects with straightforward trigger mechanics
 
-import type { ArmorEffect, Enemy } from '../systems/CombatSystem'
+// Local type definitions for combat-related types
+export type ArmorEffect = 
+  | 'none'
+  | 'Reflection' 
+  | 'Evasion'
+  | 'Critical Shield'
+  | 'Type Resist'
+  | 'Speed Boost'
+  | 'Regeneration'
+  | 'Vampiric'
+  | 'Gold Magnet'
+
+export interface Enemy {
+  name: string
+  health: number
+  damage: number
+  type?: string
+}
 
 export interface ArmorEffectData {
   chance?: number           // Proc chance (0-1)

@@ -5,15 +5,15 @@
  * 1. PrerequisiteValidator with CSV data validation
  * 2. Enhanced MiningSystem with material bonuses and Abyss Seeker effects
  * 3. OfflineProgressionSystem calculations
- * 4. RouteEnemyRollSystem persistence
+ * 4. AdventureSystem enemy roll persistence
  * 5. Enhanced AI decision-making with bottleneck detection
  */
 
 import { PrerequisiteValidator } from '../validators/PrerequisiteValidator'
-import { MiningSystem } from '../systems/MiningSystem'
-import { OfflineProgressionSystem } from '../systems/OfflineProgressionSystem'
-import { RouteEnemyRollSystem } from '../systems/RouteEnemyRollSystem'
-import { SimulationEngine } from '../SimulationEngine'
+import { MineSystem } from '../systems/core/MineSystem'
+import { OfflineProgressionSystem } from '../systems/support/OfflineProgressionSystem'
+import { AdventureSystem } from '../systems/core/AdventureSystem'
+import { SimulationOrchestrator } from '../orchestration/SimulationOrchestrator'
 import type { GameState, GameDataItem, SimulationConfig } from '@/types'
 
 interface TestResult {
@@ -128,7 +128,7 @@ export class Phase8OIntegrationTest {
       const originalMaterialCount = gameState.resources.materials.get('raw_stone') || 0
       
       // Drop materials and check for no bonus
-      MiningSystem.dropMaterials(gameState, 250) // Depth 250m = stone tier
+      MineSystem.dropMaterials(gameState, 250) // Depth 250m = stone tier
       const basicPickaxeResult = gameState.resources.materials.get('raw_stone') || 0
       
       // Test with Abyss Seeker for obsidian bonus
@@ -137,7 +137,7 @@ export class Phase8OIntegrationTest {
       gameState.resources.materials.set('raw_obsidian', 0)
       
       // Drop obsidian materials (depth > 4500m for obsidian)
-      MiningSystem.dropMaterials(gameState, 4750)
+      MineSystem.dropMaterials(gameState, 4750)
       const obsidianCount = gameState.resources.materials.get('raw_obsidian') || 0
       
       // Abyss Seeker should provide material bonus + obsidian doubling
@@ -206,15 +206,15 @@ export class Phase8OIntegrationTest {
   }
 
   /**
-   * Test RouteEnemyRollSystem persistence
+   * Test AdventureSystem enemy roll persistence
    */
   private async testRouteEnemyRolls(): Promise<void> {
     const startTime = Date.now()
     
     try {
       // Test roll generation and persistence
-      const roll1 = RouteEnemyRollSystem.getRoll('meadow_path', 'Short')
-      const roll2 = RouteEnemyRollSystem.getRoll('meadow_path', 'Short') // Should be same
+      const roll1 = AdventureSystem.getEnemyRoll('meadow_path', 'Short')
+      const roll2 = AdventureSystem.getEnemyRoll('meadow_path', 'Short') // Should be same
       
       if (roll1.rollSeed === roll2.rollSeed && roll1.totalEnemies === roll2.totalEnemies) {
         this.addResult('RouteEnemyRolls - Persistence', true,
@@ -227,15 +227,15 @@ export class Phase8OIntegrationTest {
       }
       
       // Test roll clearing
-      RouteEnemyRollSystem.clearRoll('meadow_path', 'Short', 'complete')
-      const hasActiveRoll = RouteEnemyRollSystem.hasActiveRoll('meadow_path', 'Short')
+      AdventureSystem.clearEnemyRoll('meadow_path', 'Short', 'complete')
+      const hasActiveRoll = AdventureSystem.hasActiveEnemyRoll('meadow_path', 'Short')
       
       this.addResult('RouteEnemyRolls - Clearing', !hasActiveRoll,
         hasActiveRoll ? 'Roll was not cleared properly' : 'Roll clearing successful',
         Date.now() - startTime)
         
       // Test statistics
-      const stats = RouteEnemyRollSystem.getStatistics()
+      const stats = AdventureSystem.getEnemyRollStatistics()
       this.addResult('RouteEnemyRolls - Statistics', true,
         `Statistics functional: ${stats.totalActiveRolls} active rolls`,
         Date.now() - startTime)
@@ -263,7 +263,7 @@ export class Phase8OIntegrationTest {
         parameters: new Map()
       }
       
-      const engine = new SimulationEngine(config)
+      const engine = new SimulationOrchestrator(config)
       
       // Test bottleneck detection by setting up bottleneck scenarios
       const gameState = engine.getGameState()
@@ -321,7 +321,7 @@ export class Phase8OIntegrationTest {
         parameters: new Map()
       }
       
-      const engine = new SimulationEngine(config)
+      const engine = new SimulationOrchestrator(config)
       
       // Run simulation for short duration
       let tickCount = 0
@@ -370,11 +370,11 @@ export class Phase8OIntegrationTest {
         minute: 0 
       },
       resources: {
-        energy: { current: 100, max: 200 },
-        gold: { current: 50, max: 999999 },
-        water: { current: 20, max: 100 },
-        seeds: new Map([['carrot', 5], ['radish', 3]]),
-        materials: new Map([['wood', 10], ['stone', 5]])
+        energy: { current: 3, max: 100 },
+        gold: { current: 75, max: 999999 },
+        water: { current: 0, max: 20 },
+        seeds: new Map([['carrot', 1], ['radish', 1]]),
+        materials: new Map()
       },
       progression: {
         heroLevel: 1,

@@ -1,7 +1,7 @@
 // Simulation Web Worker - Phase 6B
 // Runs the simulation engine in a separate thread
 
-import { SimulationEngine } from '../utils/SimulationEngine'
+import { SimulationOrchestrator } from '../utils/orchestration/SimulationOrchestrator'
 import { MapSerializer } from '../utils/MapSerializer'
 import type { 
   WorkerInputMessage,
@@ -157,8 +157,8 @@ function handleInitialize(serializedConfig: any, serializedParameters?: any, gam
     })
     
     // Create simulation engine with game data
-    console.log('🔧 Worker: Creating SimulationEngine with validated CSV data...')
-    workerState.engine = new SimulationEngine(config, gameDataStore)
+    console.log('🔧 Worker: Creating SimulationOrchestrator with validated CSV data...')
+    workerState.engine = new SimulationOrchestrator(config, gameDataStore)
     workerState.initialized = true
     workerState.errorCount = 0
     

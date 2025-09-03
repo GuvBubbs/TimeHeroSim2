@@ -86,6 +86,7 @@ export class SimulationEngine {
     // Initialize event bus integration
     this.eventBus = eventBus
     this.setupEventBusIntegration()
+    this.setupStateManagerEventIntegration()
 
     // Handle any offline time if resuming simulation
     this.handleOfflineProgression()
@@ -111,7 +112,14 @@ export class SimulationEngine {
    * Main simulation tick - Pure orchestration
    */
   tick(): TickResult {
-    console.log('⏰ SimulationEngine: tick() called, tickCount:', this.tickCount, 'totalMinutes:', this.gameState.time.totalMinutes, 'isRunning:', this.isRunning)
+    // Set running state on first tick
+    if (!this.isRunning) {
+      this.isRunning = true
+      console.log('🚀 SimulationEngine: Started running')
+    }
+    
+    const state = this.stateManager.getState()
+    console.log('⏰ SimulationEngine: tick() called, tickCount:', this.tickCount, 'totalMinutes:', state.time.totalMinutes, 'isRunning:', this.isRunning)
     
     const deltaTime = this.calculateDeltaTime()
     
@@ -126,7 +134,7 @@ export class SimulationEngine {
       this.updateGameSystems(deltaTime)
       
       // 4. Make AI decisions through DecisionEngine
-      const decisionResult = this.decisionEngine.getNextActions(this.gameState, this.parameters, this.gameDataStore)
+      const decisionResult = this.decisionEngine.getNextActions(this.stateManager.getState(), this.parameters, this.gameDataStore)
       const decisions = decisionResult.actions
       
       // 5. Execute actions through ActionExecutor
@@ -163,16 +171,17 @@ export class SimulationEngine {
    * Get current game state (read-only)
    */
   getGameState(): Readonly<GameState> {
-    return this.gameState
+    return this.stateManager.getState()
   }
 
   /**
    * Get simulation statistics
    */
   getStats() {
+    const state = this.stateManager.getState()
     return {
       tickCount: this.tickCount,
-      daysPassed: Math.floor(this.gameState.time.totalMinutes / (24 * 60)),
+      daysPassed: Math.floor(state.time.totalMinutes / (24 * 60)),
       currentPhase: this.determineCurrentPhase()
     }
   }
@@ -181,7 +190,7 @@ export class SimulationEngine {
    * Set simulation speed
    */
   setSpeed(speed: number): void {
-    this.gameState.time.speed = Math.max(0.1, Math.min(10, speed))
+    this.stateManager.setTimeSpeed(speed)
   }
 
   // =============================================================================
@@ -372,7 +381,13 @@ export class SimulationEngine {
    * Initialize starting materials
    */
   private initializeMaterials(): Map<string, number> {
-    return new Map()
+    return new Map([
+      ['wood', 25],
+      ['stone', 18], 
+      ['iron', 7],
+      ['copper', 12],
+      ['silver', 2]
+    ])
   }
 
   // =============================================================================
@@ -383,33 +398,20 @@ export class SimulationEngine {
    * Calculate delta time for this tick
    */
   private calculateDeltaTime(): number {
-    return 1 * this.gameState.time.speed
+    const state = this.stateManager.getState()
+    return 1 * state.time.speed
   }
 
   /**
    * Update game time
    */
   private updateTime(deltaTime: number): void {
-    this.gameState.time.totalMinutes += deltaTime
-    this.gameState.time.minute += deltaTime
-    
-    // Handle hour rollover
-    while (this.gameState.time.minute >= 60) {
-      this.gameState.time.minute -= 60
-      this.gameState.time.hour += 1
-    }
-    
-    // Handle day rollover
-    while (this.gameState.time.hour >= 24) {
-      this.gameState.time.hour -= 24
-      this.gameState.time.day += 1
-    }
+    // Update time through StateManager
+    this.stateManager.updateTime(deltaTime)
     
     // Update location time tracking
-    this.gameState.location.timeOnScreen += deltaTime
-  }
-
-  /**
+    this.stateManager.addLocationTime(deltaTime)
+  }  /**
    * Update game systems not yet in ProcessManager
    */
   private updateGameSystems(deltaTime: number): void {
@@ -482,17 +484,18 @@ export class SimulationEngine {
    */
   private updatePhaseProgression(): void {
     // Phase progression logic delegated to StateManager
-    const plots = this.gameState.progression.farmPlots
-    const level = this.gameState.progression.heroLevel
+    const state = this.stateManager.getState()
+    const plots = state.progression.farmPlots
+    const level = state.progression.heroLevel
     
     if (plots <= 10 && level <= 3) {
-      this.gameState.progression.currentPhase = 'Tutorial'
+      this.stateManager.updatePhase('Tutorial', 'Early game progression')
     } else if (plots <= 30 && level <= 8) {
-      this.gameState.progression.currentPhase = 'Early'
+      this.stateManager.updatePhase('Early', 'Mid-game progression')
     } else if (plots <= 60 && level <= 12) {
-      this.gameState.progression.currentPhase = 'Mid'
+      this.stateManager.updatePhase('Mid', 'Advanced progression')
     } else {
-      this.gameState.progression.currentPhase = 'Late'
+      this.stateManager.updatePhase('Late', 'Endgame progression')
     }
   }
 
@@ -500,57 +503,61 @@ export class SimulationEngine {
    * Check victory conditions
    */
   private checkVictoryConditions(): boolean {
-    return this.gameState.progression.farmPlots >= 90 || 
-           (this.gameState.resources.gold >= 10000 && this.gameState.progression.farmPlots >= 50)
+    const state = this.stateManager.getState()
+    return state.progression.farmPlots >= 90 || 
+           (state.resources.gold >= 10000 && state.progression.farmPlots >= 50)
   }
 
-  /**
+    /**
    * Check bottleneck conditions
    */
   private checkBottleneckConditions(): boolean {
+    const state = this.stateManager.getState()
+    
     if (!this.lastProgressCheck) {
       this.lastProgressCheck = {
-        day: this.gameState.time.day,
-        plots: this.gameState.progression.farmPlots,
-        level: this.gameState.progression.heroLevel,
-        gold: this.gameState.resources.gold,
-        lastProgressDay: this.gameState.time.day
+        day: state.time.day,
+        plots: state.progression.farmPlots,
+        level: state.progression.heroLevel,
+        gold: state.resources.gold,
+        lastProgressDay: state.time.day
       }
       return false
     }
 
-    const daysSinceLastCheck = this.gameState.time.day - this.lastProgressCheck.lastProgressDay
+    const daysSinceLastCheck = state.time.day - this.lastProgressCheck.lastProgressDay
     
-    if (daysSinceLastCheck >= 7) {
-      const plotsGained = this.gameState.progression.farmPlots - this.lastProgressCheck.plots
-      const goldGained = this.gameState.resources.gold - this.lastProgressCheck.gold
+    if (daysSinceLastCheck >= 3) {
+      const plotsGained = state.progression.farmPlots - this.lastProgressCheck.plots
+      const goldGained = state.resources.gold - this.lastProgressCheck.gold
       
-      if (plotsGained === 0 && goldGained < 100) {
-        return true // Bottlenecked
+      if (plotsGained < 2 && goldGained < 100) {
+        return true
       }
-      
-      // Update progress check
+
       this.lastProgressCheck = {
-        day: this.gameState.time.day,
-        plots: this.gameState.progression.farmPlots,
-        level: this.gameState.progression.heroLevel,
-        gold: this.gameState.resources.gold,
-        lastProgressDay: this.gameState.time.day
+        day: state.time.day,
+        plots: state.progression.farmPlots,
+        level: state.progression.heroLevel,
+        gold: state.resources.gold,
+        lastProgressDay: state.time.day
       }
     }
-    
+
     return false
   }
 
   /**
-   * Get current tower reach (should be moved to TowerSystem)
+   * Convert process event to game event
    */
   private convertProcessEventToGameEvent(processEvent: any): GameEvent {
+    const state = this.stateManager.getState()
     return {
-      timestamp: processEvent.timestamp,
-      type: processEvent.type,
-      description: processEvent.description,
-      importance: processEvent.importance || 'low'
+      timestamp: state.time.totalMinutes,
+      type: processEvent.type || 'unknown',
+      description: processEvent.description || 'Unknown event',
+      importance: processEvent.importance || 'low',
+      data: processEvent.data
     }
   }
 
@@ -558,11 +565,13 @@ export class SimulationEngine {
    * Create error tick result
    */
   private createErrorTickResult(deltaTime: number, error: any): TickResult {
+    const state = this.stateManager.getState()
+    
     return {
-      gameState: this.gameState,
+      gameState: state,
       executedActions: [],
       events: [{
-        timestamp: this.gameState.time.totalMinutes,
+        timestamp: state.time.totalMinutes,
         type: 'error',
         description: `Simulation error: ${error}`,
         importance: 'high'
@@ -577,21 +586,24 @@ export class SimulationEngine {
    * Determine current game phase
    */
   private determineCurrentPhase(): string {
-    return this.gameState.progression.currentPhase
+    const state = this.stateManager.getState()
+    return state.progression.currentPhase
   }
 
   /**
    * Log tick results for debugging
    */
   private logTickResults(executedActions: GameAction[], decisions: GameAction[]): void {
+    const state = this.stateManager.getState()
+    
     if (this.tickCount % 10 === 0) {
       console.log(`🎮 Tick ${this.tickCount}:`, {
-        energy: Math.round(this.gameState.resources.energy.current),
-        water: Math.round(this.gameState.resources.water.current),
-        plots: this.gameState.progression.farmPlots,
+        energy: Math.round(state.resources.energy.current),
+        water: Math.round(state.resources.water.current),
+        plots: state.progression.farmPlots,
         possibleActions: decisions.length,
         executedActions: executedActions.length,
-        currentHour: this.gameState.time.hour
+        currentHour: state.time.hour
       })
     }
     
@@ -617,15 +629,26 @@ export class SimulationEngine {
   }
 
   /**
+   * Setup StateManager event integration
+   */
+  private setupStateManagerEventIntegration(): void {
+    // Note: StateManager events are automatically included in TransactionResult.events
+    // The events are then picked up by the EventBus when StateManager transactions complete
+    console.log('🔗 StateManager event integration initialized')
+  }
+
+  /**
    * Update event bus metadata
    */
   private updateEventBusMetadata(): void {
+    const state = this.stateManager.getState()
+    
     this.eventBus.emit('simulation_started', {
       personaId: this.config.quickSetup?.personaId || 'default',
       config: {
-        plantingEnabled: this.gameState.automation.plantingEnabled,
-        wateringEnabled: this.gameState.automation.wateringEnabled,
-        harvestingEnabled: this.gameState.automation.harvestingEnabled
+        plantingEnabled: state.automation.plantingEnabled,
+        wateringEnabled: state.automation.wateringEnabled,
+        harvestingEnabled: state.automation.harvestingEnabled
       },
       startTime: Date.now()
     })

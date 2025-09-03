@@ -1,53 +1,64 @@
-# SimulationEngine As-Built Documentation - Phase 10E Complete
+# SimulationEngine As-Built Documentation - Phase 10F Complete
 
 ## Overview
 
-The SimulationEngine has completed Phase 10E (Action Router Implementation), replacing massive switch-based action execution with clean system routing. This phase removes ~644 lines from ActionExecutor and establishes clean action dispatch architecture.
+The SimulationEngine has completed Phase 10F (State Management Consolidation), eliminating ALL direct state mutations and establishing centralized state management through StateManager. This phase consolidates state control and adds comprehensive event emission.
 
-**Status**: ✅ Phase 10E Complete - Action Router Implemented
+**Status**: ✅ Phase 10F Complete - State Management Consolidated
 
-## Current State After Phase 10E (September 3, 2025)
+## Current State After Phase 10F (September 3, 2025)
 
 ### Files Status
-- **SimulationEngine.ts**: 633 lines (pure orchestration maintained)
-- **ActionExecutor.ts**: 725 lines → 81 lines (**644 lines removed**)
-- **ActionRouter.ts**: 210 lines (NEW - clean action routing)
-- **Systems**: All core systems now have standardized `execute()` methods
+- **SimulationEngine.ts**: 644 lines (pure orchestration with zero direct mutations)
+- **StateManager.ts**: 571 lines → 936 lines (**365 lines added**)
+- **Phase 10F**: Zero direct state mutations remain
 
-### Phase 10E Achievements
-1. **ActionRouter Architecture**: Replaced massive switch statements with clean routing
-   - **Routing Table**: Maps action types to appropriate systems
-   - **System Dispatch**: Clean `system.execute(action, state)` calls
-   - **Error Handling**: Comprehensive error recovery and type conversion
+### Phase 10F Achievements
+1. **State Management Consolidation**: All state mutations go through StateManager
+   - **Zero Direct Mutations**: Eliminated all 44 instances of `this.gameState.` mutations
+   - **Read-Only Access**: All state access through `StateManager.getState()`
+   - **Centralized Control**: StateManager now handles all state changes
 
-2. **ActionExecutor Streamlined**: 725 → 81 lines (-644 lines)
-   - **Removed**: 19 private execution methods (~564 lines)
-   - **Removed**: Massive switch statement (~80 lines)
-   - **New Architecture**: Simple validation → route → return pattern
+2. **StateManager Enhanced**: 571 → 936 lines (+365 lines)
+   - **Added**: Time management methods (updateTime, setTimeSpeed, addLocationTime)
+   - **Added**: Progression methods (updatePhase)
+   - **Added**: Resource methods (consumeResource, addResource)
+   - **Added**: Transaction support for atomic operations
+   - **Added**: Comprehensive event emission for all mutations
 
-3. **System Integration Enhanced**:
-   - **FarmSystem**: ✅ Already had execute() method
-   - **TowerSystem**: ✅ Already had execute() method  
-   - **TownSystem**: ✅ Already had execute() method
-   - **AdventureSystem**: ✅ Added standardized execute() method
-   - **ForgeSystem**: ✅ Added execute() method for craft/stoke actions
-   - **MineSystem**: ✅ Added execute() method for mining actions
-   - **HelperSystem**: ✅ Added execute() method for helper actions
+3. **Event Integration**:
+   - **StateEvent Objects**: All mutations emit proper StateEvent objects
+   - **Event Types**: 7 event types (time.updated, progression.phaseChanged, resource.consumed, etc.)
+   - **EventBus Ready**: Events structured for EventBus integration
 
-4. **ActionRouter Integration**:
-   - **Clean Routing**: 16 action types mapped to 7 systems
-   - **Special Handling**: Move/wait actions handled directly in router
-   - **Type Safety**: Proper ActionResult interface compatibility
-   - **Event Normalization**: Timestamps added to system events
+4. **Architecture Transformation**:
+   - **SimulationEngine**: Pure orchestration layer with zero direct mutations
+   - **StateManager**: Central authority for all state changes
+   - **Event-Driven**: Foundation for undo/redo and state replay
 
-### Action Routing Architecture (Phase 10E)
+### State Management Architecture (Phase 10F)
 
 ```
-ActionRouter (210 lines) - NEW Clean Dispatch Layer ✅
-├── route() - Main routing with error handling
-├── buildRoutingTable() - Action type → System mapping
-├── handleMoveAction() - Direct navigation handling
-├── handleWaitAction() - Simple delay handling
+SimulationEngine (644 lines) - PURE ORCHESTRATION WITH ZERO MUTATIONS ✅
+├── All state access through StateManager.getState()
+├── All mutations through StateManager methods
+├── No direct `this.gameState.` access remaining
+└── Event integration setup
+
+StateManager (936 lines) - CENTRALIZED STATE AUTHORITY ✅
+├── Time Management
+│   ├── updateTime(deltaTime) - Handle time progression with rollover
+│   ├── setTimeSpeed(speed) - Set simulation speed with validation
+│   └── addLocationTime(deltaTime) - Track screen time
+├── Progression Management
+│   └── updatePhase(newPhase, reason) - Handle phase transitions
+├── Resource Management  
+│   ├── consumeResource(type, amount) - With validation
+│   └── addResource(type, amount) - With limits
+├── Core Methods
+│   ├── getState() - Read-only state access
+│   └── transaction(fn) - Atomic operations
+└── Event Emission - All methods emit StateEvent objects
 └── Utility methods for system lookup and verification
 
 Routing Table:

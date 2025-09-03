@@ -567,4 +567,370 @@ export class StateManager {
       }
     }
   }
+
+  // =============================================================================
+  // PHASE 10F: STATE MANAGEMENT METHODS
+  // =============================================================================
+
+  /**
+   * Update game time with validation and events
+   */
+  updateTime(deltaTime: number): TransactionResult {
+    const oldTime = {
+      totalMinutes: this.gameState.time.totalMinutes,
+      minute: this.gameState.time.minute,
+      hour: this.gameState.time.hour,
+      day: this.gameState.time.day
+    }
+
+    const changes: StateChanges = {
+      reason: 'Time progression',
+      source: 'StateManager.updateTime',
+      changes: [
+        {
+          type: 'time_update',
+          path: 'time.totalMinutes',
+          operation: 'add',
+          oldValue: this.gameState.time.totalMinutes,
+          newValue: this.gameState.time.totalMinutes + deltaTime,
+          metadata: { deltaTime }
+        }
+      ]
+    }
+
+    // Apply the time change
+    this.gameState.time.totalMinutes += deltaTime
+    this.gameState.time.minute += deltaTime
+
+    // Handle hour/day rollover
+    while (this.gameState.time.minute >= 60) {
+      this.gameState.time.minute -= 60
+      this.gameState.time.hour += 1
+    }
+
+    while (this.gameState.time.hour >= 24) {
+      this.gameState.time.hour -= 24
+      this.gameState.time.day += 1
+    }
+
+    return {
+      success: true,
+      transactionId: this.generateTransactionId(),
+      appliedChanges: 1,
+      events: [{
+        type: 'time.updated',
+        description: `Time advanced by ${deltaTime} minutes`,
+        timestamp: this.gameState.time.totalMinutes,
+        importance: 'low' as const,
+        data: {
+          deltaTime,
+          oldTime,
+          newTime: {
+            totalMinutes: this.gameState.time.totalMinutes,
+            minute: this.gameState.time.minute,
+            hour: this.gameState.time.hour,
+            day: this.gameState.time.day
+          }
+        },
+        stateChanges: [{
+          type: 'time_update',
+          path: 'time',
+          operation: 'add',
+          oldValue: oldTime.totalMinutes,
+          newValue: this.gameState.time.totalMinutes,
+          metadata: { deltaTime }
+        }]
+      }]
+    }
+  }
+
+  /**
+   * Set time speed with validation
+   */
+  setTimeSpeed(speed: number): TransactionResult {
+    const oldSpeed = this.gameState.time.speed
+    const newSpeed = Math.max(0.1, Math.min(10, speed))
+
+    const changes: StateChanges = {
+      reason: 'Time speed change',
+      source: 'StateManager.setTimeSpeed',
+      changes: [{
+        type: 'time_speed_change',
+        path: 'time.speed',
+        operation: 'set',
+        oldValue: oldSpeed,
+        newValue: newSpeed,
+        metadata: { requestedSpeed: speed, clampedSpeed: newSpeed }
+      }]
+    }
+
+    this.gameState.time.speed = newSpeed
+
+    return {
+      success: true,
+      transactionId: this.generateTransactionId(),
+      appliedChanges: 1,
+      events: [{
+        type: 'time.speedChanged',
+        description: `Time speed changed from ${oldSpeed}x to ${newSpeed}x`,
+        timestamp: this.gameState.time.totalMinutes,
+        importance: 'medium' as const,
+        data: {
+          oldSpeed,
+          newSpeed,
+          requestedSpeed: speed
+        },
+        stateChanges: [{
+          type: 'time_speed_change',
+          path: 'time.speed',
+          operation: 'set',
+          oldValue: oldSpeed,
+          newValue: newSpeed,
+          metadata: { requestedSpeed: speed, clampedSpeed: newSpeed }
+        }]
+      }]
+    }
+  }
+
+  /**
+   * Add time to current location tracking
+   */
+  addLocationTime(deltaTime: number): TransactionResult {
+    const oldTime = this.gameState.location.timeOnScreen
+
+    this.gameState.location.timeOnScreen += deltaTime
+
+    return {
+      success: true,
+      transactionId: this.generateTransactionId(),
+      appliedChanges: 1,
+      events: [{
+        type: 'location.timeUpdated',
+        description: `Added ${deltaTime} minutes to ${this.gameState.location.currentScreen} screen time`,
+        timestamp: this.gameState.time.totalMinutes,
+        importance: 'low' as const,
+        data: {
+          screen: this.gameState.location.currentScreen,
+          deltaTime,
+          oldTime,
+          newTime: this.gameState.location.timeOnScreen
+        },
+        stateChanges: [{
+          type: 'location_time_update',
+          path: 'location.timeOnScreen',
+          operation: 'add',
+          oldValue: oldTime,
+          newValue: this.gameState.location.timeOnScreen,
+          metadata: { deltaTime, screen: this.gameState.location.currentScreen }
+        }]
+      }]
+    }
+  }
+
+  /**
+   * Update game progression phase
+   */
+  updatePhase(newPhase: string, reason?: string): TransactionResult {
+    const oldPhase = this.gameState.progression.currentPhase
+
+    if (oldPhase === newPhase) {
+      return {
+        success: true,
+        transactionId: this.generateTransactionId(),
+        appliedChanges: 0,
+        events: []
+      }
+    }
+
+    const changes: StateChanges = {
+      reason: reason || 'Phase progression',
+      source: 'StateManager.updatePhase',
+      changes: [{
+        type: 'phase_change',
+        path: 'progression.currentPhase',
+        operation: 'set',
+        oldValue: oldPhase,
+        newValue: newPhase,
+        metadata: { reason }
+      }]
+    }
+
+    this.gameState.progression.currentPhase = newPhase
+
+    return {
+      success: true,
+      transactionId: this.generateTransactionId(),
+      appliedChanges: 1,
+      events: [{
+        type: 'progression.phaseChanged',
+        description: `Game phase changed from ${oldPhase} to ${newPhase}${reason ? ` (${reason})` : ''}`,
+        timestamp: this.gameState.time.totalMinutes,
+        importance: 'high' as const,
+        data: {
+          oldPhase,
+          newPhase,
+          reason,
+          gameDay: this.gameState.time.day
+        },
+        stateChanges: [{
+          type: 'phase_change',
+          path: 'progression.currentPhase',
+          operation: 'set',
+          oldValue: oldPhase,
+          newValue: newPhase,
+          metadata: { reason }
+        }]
+      }]
+    }
+  }
+
+  /**
+   * Consume a resource with validation
+   */
+  consumeResource(type: 'energy' | 'water' | 'gold', amount: number): TransactionResult {
+    const resource = this.gameState.resources[type]
+    
+    if (typeof resource === 'object' && 'current' in resource) {
+      // Energy/Water with current/max structure
+      if (resource.current < amount) {
+        return {
+          success: false,
+          transactionId: this.generateTransactionId(),
+          appliedChanges: 0,
+          events: [],
+          error: `Insufficient ${type}: need ${amount}, have ${resource.current}`
+        }
+      }
+      resource.current -= amount
+    } else {
+      // Gold as number
+      if (resource < amount) {
+        return {
+          success: false,
+          transactionId: this.generateTransactionId(),
+          appliedChanges: 0,
+          events: [],
+          error: `Insufficient ${type}: need ${amount}, have ${resource}`
+        }
+      }
+      (this.gameState.resources[type] as number) -= amount
+    }
+
+    return {
+      success: true,
+      transactionId: this.generateTransactionId(),
+      appliedChanges: 1,
+      events: [{
+        type: 'resource.consumed',
+        description: `Consumed ${amount} ${type}`,
+        timestamp: this.gameState.time.totalMinutes,
+        importance: 'medium' as const,
+        data: {
+          type,
+          amount,
+          remaining: typeof resource === 'object' ? resource.current : resource
+        },
+        stateChanges: [{
+          type: 'resource_consumed',
+          path: `resources.${type}`,
+          operation: 'subtract',
+          oldValue: typeof resource === 'object' ? resource.current + amount : resource + amount,
+          newValue: typeof resource === 'object' ? resource.current : resource,
+          metadata: { resourceType: type, amountConsumed: amount }
+        }]
+      }]
+    }
+  }
+
+  /**
+   * Add a resource
+   */
+  addResource(type: 'energy' | 'water' | 'gold', amount: number): TransactionResult {
+    const resource = this.gameState.resources[type]
+    
+    if (typeof resource === 'object' && 'current' in resource) {
+      // Energy/Water with current/max structure
+      const oldCurrent = resource.current
+      resource.current = Math.min(resource.current + amount, resource.max)
+      const actualAdded = resource.current - oldCurrent
+      
+      return {
+        success: true,
+        transactionId: this.generateTransactionId(),
+        appliedChanges: 1,
+        events: [{
+          type: 'resource.added',
+          description: `Added ${actualAdded} ${type} (capped at max)`,
+          timestamp: this.gameState.time.totalMinutes,
+          importance: 'medium' as const,
+          data: {
+            type,
+            amount,
+            actualAdded,
+            current: resource.current,
+            max: resource.max
+          },
+          stateChanges: [{
+            type: 'resource_added',
+            path: `resources.${type}.current`,
+            operation: 'add',
+            oldValue: oldCurrent,
+            newValue: resource.current,
+            metadata: { resourceType: type, requestedAmount: amount, actualAdded }
+          }]
+        }]
+      }
+    } else {
+      // Gold as number
+      (this.gameState.resources[type] as number) += amount
+      
+      return {
+        success: true,
+        transactionId: this.generateTransactionId(),
+        appliedChanges: 1,
+        events: [{
+          type: 'resource.added',
+          description: `Added ${amount} ${type}`,
+          timestamp: this.gameState.time.totalMinutes,
+          importance: 'medium' as const,
+          data: {
+            type,
+            amount,
+            current: this.gameState.resources[type]
+          },
+          stateChanges: [{
+            type: 'resource_added',
+            path: `resources.${type}`,
+            operation: 'add',
+            oldValue: (this.gameState.resources[type] as number) - amount,
+            newValue: this.gameState.resources[type] as number,
+            metadata: { resourceType: type, amountAdded: amount }
+          }]
+        }]
+      }
+    }
+  }
+
+  /**
+   * Get read-only access to game state
+   */
+  getState(): Readonly<GameState> {
+    return this.gameState
+  }
+
+  /**
+   * Execute a transaction with multiple state changes
+   */
+  transaction<T>(fn: () => T): T {
+    const transactionId = this.beginTransaction()
+    
+    try {
+      const result = fn()
+      this.commitTransaction(transactionId)
+      return result
+    } catch (error) {
+      this.rollbackTransaction(transactionId)
+      throw error
+    }
+  }
 }

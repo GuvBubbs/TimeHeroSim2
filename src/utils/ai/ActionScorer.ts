@@ -140,6 +140,12 @@ export class ActionScorer implements IActionScorer {
       case 'build':
         // Build actions have ultra-high priority for progression
         score = action.score || 900 // Use pre-set score or default to 900
+        
+        // PHASE 11C: Specific scoring for tower building
+        if (action.target === 'tower') {
+          score = 950 // CRITICAL - must be high priority after blueprint purchase
+          console.log(`🏗️ TOWER BUILD: Scored at 950 (highest priority)`)
+        }
         break
         
       case 'purchase':

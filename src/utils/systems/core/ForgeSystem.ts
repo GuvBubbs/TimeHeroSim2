@@ -20,6 +20,24 @@ export class ForgeSystem {
     
     if (!forgeParams) return actions
     
+    // PHASE 11C DEBUGGING: Comprehensive forge status logging
+    const hasSwordBlueprint = gameState.inventory.blueprints?.has('blueprint_sword_1')
+    const hasWeapon = gameState.inventory.weapons?.has('sword_1')
+    const wood = gameState.resources.materials.get('wood') || 0
+    const stone = gameState.resources.materials.get('stone') || 0
+    
+    console.log(`⚔️ FORGE CHECK: SwordBlueprint=${hasSwordBlueprint}, HasSword=${hasWeapon}`)
+    console.log(`🔨 Materials available: Wood=${wood}, Stone=${stone}`)
+    
+    if (hasSwordBlueprint && !hasWeapon) {
+      console.log(`🔨 Can craft sword? Wood=${wood}/5, Stone=${stone}/3`)
+      if (wood >= 5 && stone >= 3) {
+        console.log(`✅ SWORD CRAFTING READY: All materials available`)
+      } else {
+        console.log(`❌ SWORD CRAFTING BLOCKED: Missing materials`)
+      }
+    }
+    
     // Crafting priorities based on tool needs and materials
     const craftingQueue = gameState.processes.crafting || []
     const maxConcurrent = 3 // Default max concurrent items
@@ -31,12 +49,21 @@ export class ForgeSystem {
         // Apply crafting priorities - simplified for now
         let priority = 1.0
         
+        // PHASE 11C DEBUGGING: Enhanced crafting priority for sword
+        if (item.id === 'sword_1') {
+          priority = 2.0 // High priority for sword
+          console.log(`⚔️ SWORD CRAFTING: High priority set for sword_1`)
+        }
+        
         // Check material requirements
         const hasResources = ForgeSystem.checkMaterialRequirements(item.materials, gameState)
         const heatRequired = item.heatRequirement || 50
         const currentHeat = ForgeSystem.getForgeHeat(gameState)
         
+        console.log(`🔥 FORGE HEAT: Current=${currentHeat}, Required=${heatRequired}`)
+        
         if (hasResources && currentHeat >= heatRequired && priority > 0.4) {
+          console.log(`✅ CRAFTING ACTION ADDED: ${item.id}`)
           actions.push({
             id: `craft_${item.id}_${Date.now()}`,
             type: 'craft',
@@ -48,6 +75,8 @@ export class ForgeSystem {
             prerequisites: [],
             expectedRewards: { items: [item.id] }
           })
+        } else {
+          console.log(`❌ CRAFTING BLOCKED for ${item.id}: hasResources=${hasResources}, heat=${currentHeat}/${heatRequired}`)
         }
       }
     }

@@ -133,15 +133,21 @@ export class TownSystem {
     
     // Check if hero has purchased blueprints that need to be built
     let hasUnbuiltBlueprints = false
+    let canBuildBlueprints = false
     for (const [blueprintId, blueprint] of gameState.inventory.blueprints) {
       if (blueprint.purchased && !blueprint.isBuilt) {
         hasUnbuiltBlueprints = true
         console.log(`🏠 UNBUILT BLUEPRINT FOUND: ${blueprintId}`)
+        
+        // Check if hero has enough energy to build (tower requires 5 energy)
+        if (gameState.resources.energy.current >= 5) {
+          canBuildBlueprints = true
+        }
         break
       }
     }
     
-    if (hasUnbuiltBlueprints) {
+    if (hasUnbuiltBlueprints && canBuildBlueprints) {
       console.log(`🏠 GENERATING FARM NAVIGATION: Need to return to farm to build purchased blueprints`)
       
       actions.push({
@@ -156,8 +162,10 @@ export class TownSystem {
         prerequisites: [],
         expectedRewards: {},
         description: 'Return to farm to build purchased blueprints',
-        score: 600 // Very high priority - hero needs to get back to build
+        score: 15 // Reduced from 600 to prevent bouncing when can't build
       })
+    } else if (hasUnbuiltBlueprints && !canBuildBlueprints) {
+      console.log(`🏠 BLUEPRINT BUILD BLOCKED: Need energy to build (have ${gameState.resources.energy.current}, need 5)`)
     }
     
     return actions
@@ -460,7 +468,7 @@ export class TownSystem {
       return createFailureResult('No item specified for purchase')
     }
 
-    // Handle blueprint purchases
+    // PHASE 11C DEBUGGING: Comprehensive blueprint purchase tracking
     if (itemId.includes('blueprint_')) {
       const blueprint = state.inventory.blueprints.get(itemId)
       if (blueprint) {
@@ -478,11 +486,27 @@ export class TownSystem {
         })
       }
       
-      // CRITICAL FIX: Handle tower blueprint purchase
-      if (itemId === 'blueprint_tower_reach_1') {
-        state.tower.blueprintsOwned.push('tower_reach_1')
-        console.log('🏗️ TOWER BLUEPRINT: Added tower_reach_1 to blueprintsOwned')
+      // PHASE 11C DEBUGGING: Enhanced blueprint purchase tracking
+      switch (itemId) {
+        case 'blueprint_tower_reach_1':
+          console.log(`🏪 TOWER BLUEPRINT PURCHASED! Gold: ${state.resources.gold} → ${state.resources.gold - action.goldCost}`)
+          state.tower.blueprintsOwned.push('tower_reach_1')
+          console.log(`🏗️ TOWER BLUEPRINT: Added tower_reach_1 to blueprintsOwned`)
+          console.log(`📋 Blueprints owned: ${Array.from(state.inventory.blueprints.keys()).join(', ')}`)
+          break;
+          
+        case 'blueprint_sword_1':
+          console.log(`⚔️ SWORD BLUEPRINT PURCHASED! Gold: ${state.resources.gold} → ${state.resources.gold - action.goldCost}`)
+          console.log(`📋 Blueprints owned: ${Array.from(state.inventory.blueprints.keys()).join(', ')}`)
+          break;
+          
+        default:
+          console.log(`📜 BLUEPRINT PURCHASED: ${itemId} for ${action.goldCost} gold`)
+          console.log(`📋 Blueprints owned: ${Array.from(state.inventory.blueprints.keys()).join(', ')}`)
+          break;
       }
+    } else {
+      console.log(`🛒 ITEM PURCHASED: ${itemId} for ${action.goldCost} gold`)
     }
 
     state.resources.gold -= action.goldCost

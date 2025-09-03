@@ -43,13 +43,38 @@ import {
 } from '../GameSystem'
 
 /**
+ * Energy rewards from crops (from crops.csv effect column)
+ */
+const CROP_ENERGY_REWARDS: Record<string, number> = {
+  carrot: 1,
+  radish: 1,
+  potato: 2,
+  cabbage: 3,
+  turnip: 2,
+  corn: 5,
+  tomato: 4,
+  strawberry: 8,
+  spinach: 5,
+  onion: 6,
+  garlic: 8,
+  cucumber: 12,
+  leek: 10,
+  wheat: 12,
+  asparagus: 20,
+  cauliflower: 18,
+  caisim: 15,
+  pumpkin: 25,
+  watermelon: 35
+}
+
+/**
  * Water retention upgrade configuration
  */
 export const WATER_RETENTION = {
   base: {
     waterPerPlot: 1,
-    durationMinutes: 30,  // Base water lasts 30 minutes
-    drainRate: 1/30       // 1 water per 30 minutes
+    durationMinutes: 10,  // Base water lasts 10 minutes (faster for testing)
+    drainRate: 1/10       // 1 water per 10 minutes (3x faster drainage)
   },
   
   upgrades: {
@@ -181,23 +206,35 @@ export class FarmSystem {
     
     if (!parameters) return actions
 
+    // PHASE 11C DEBUGGING: Tower building check with comprehensive logging
+    const hasTowerBlueprint = state.tower.blueprintsOwned.includes('tower_reach_1')
+    const towerBuilt = state.tower.isBuilt
+    const currentEnergy = state.resources.energy.current
+    
+    console.log(`🏗️ TOWER BUILD CHECK: Blueprint=${hasTowerBlueprint}, Built=${towerBuilt}, Energy=${currentEnergy}`)
+
     // CRITICAL: Tower building action (if blueprint owned but tower not built)
-    if (state.tower.blueprintsOwned.includes('tower_reach_1') && !state.tower.isBuilt) {
-      actions.push({
-        id: `build_tower_${Date.now()}`,
-        type: 'build',
-        screen: 'farm',
-        target: 'tower',
-        duration: 1,
-        energyCost: 5,
-        goldCost: 0,
-        prerequisites: [],
-        description: 'Build the seed catching tower',
-        expectedRewards: {
-          items: ['tower_access']
-        }
-      })
-      console.log('🏗️ TOWER BUILD: Tower building action available on farm')
+    if (hasTowerBlueprint && !towerBuilt) {
+      if (currentEnergy >= 5) {
+        actions.push({
+          id: `build_tower_${Date.now()}`,
+          type: 'build',
+          screen: 'farm',
+          target: 'tower',
+          duration: 1,
+          energyCost: 5,
+          goldCost: 0,
+          prerequisites: [],
+          description: 'Build the seed catching tower',
+          score: 950, // PHASE 11C: HIGH PRIORITY
+          expectedRewards: {
+            items: ['tower_access']
+          }
+        })
+        console.log(`🔨 TOWER BUILD ACTION ADDED with score 950`)
+      } else {
+        console.log(`⚠️ TOWER BUILD BLOCKED: Need 5 energy, have ${currentEnergy}`)
+      }
     }
 
     // ALWAYS evaluate manual actions for AI decision making
@@ -207,10 +244,14 @@ export class FarmSystem {
     const harvestActions = this.evaluateHarvestActions(state, parameters, context)
     actions.push(...harvestActions)
 
-    // Evaluate planting actions
-    if (context.availableEnergy > 5) { // Lower threshold for planting
+    // Evaluate planting actions - CRITICAL FIX: Planting should be FREE
+    // According to design: "Basic farming actions MUST be FREE (energyCost: 0): Planting seeds"
+    if (context.availableEnergy > 0) { // FIXED: Minimal energy requirement for planting (was >5)
       const plantingActions = this.evaluatePlantingActions(state, parameters, context)
       actions.push(...plantingActions)
+      console.log(`🌱 PLANTING CHECK: Generated ${plantingActions.length} planting actions with energy ${context.availableEnergy}`)
+    } else {
+      console.log(`⚠️ PLANTING BLOCKED: No energy available (${context.availableEnergy})`)
     }
 
     // Evaluate watering actions
@@ -359,28 +400,38 @@ export class FarmSystem {
     // Find available plots
     const availablePlots = state.progression.availablePlots
     const currentCrops = state.processes.crops.length
-    const freePlots = availablePlots - currentCrops
+    let freePlots = availablePlots - currentCrops
 
     if (freePlots > 0) {
-      // Choose crop based on preferences
+      // Choose crops based on preferences
       const preferredCrops = parameters.priorities?.cropPreference || ['carrot', 'radish']
-      const cropToPlant = preferredCrops[0] || 'carrot'
-
-      // Check if we have seeds
-      const seedCount = state.resources.seeds.get(cropToPlant) || 0
-      if (seedCount > 0) {
-        actions.push({
-          id: `plant_${cropToPlant}_${Date.now()}`,
-          type: 'plant',
-          screen: 'farm',
-          target: cropToPlant,
-          duration: 2,
-          energyCost: 0, // CORE GAME DESIGN: Basic farming actions (plant, water, harvest, pump) are FREE
-          goldCost: 0,
-          prerequisites: [],
-          expectedRewards: {},
-          score: 300 + (freePlots * 50) // Higher score for more free plots
-        })
+      
+      // Plant multiple seeds across all available plots
+      for (const cropType of preferredCrops) {
+        if (freePlots <= 0) break // No more plots available
+        
+        const seedCount = state.resources.seeds.get(cropType) || 0
+        if (seedCount > 0) {
+          // Plant up to the minimum of available seeds or free plots
+          const plantsToCreate = Math.min(seedCount, freePlots)
+          
+          for (let i = 0; i < plantsToCreate; i++) {
+            actions.push({
+              id: `plant_${cropType}_${Date.now()}_${i}`,
+              type: 'plant',
+              screen: 'farm',
+              target: cropType,
+              duration: 2,
+              energyCost: 0, // CORE GAME DESIGN: Basic farming actions (plant, water, harvest, pump) are FREE
+              goldCost: 0,
+              prerequisites: [],
+              expectedRewards: {},
+              score: 300 + (freePlots * 50) // Higher score for more free plots
+            })
+          }
+          
+          freePlots -= plantsToCreate // Update remaining free plots
+        }
       }
     }
 
@@ -594,8 +645,7 @@ export class FarmSystem {
     // NOTE: No energy check needed - basic farming actions are FREE
 
     // Remove harvested crops and add rewards
-    let totalExperience = 0
-    let totalGold = 0
+    let totalEnergyGained = 0
     const harvestedCrops: string[] = []
 
     for (const crop of readyCrops) {
@@ -604,22 +654,27 @@ export class FarmSystem {
       if (cropIndex >= 0) {
         state.processes.crops.splice(cropIndex, 1)
         harvestedCrops.push(crop.cropId)
-        totalExperience += 10
-        totalGold += 5
+        
+        // Add energy reward from crop data - ONLY REWARD FROM HARVESTING
+        const energyReward = CROP_ENERGY_REWARDS[crop.cropId] || 1
+        totalEnergyGained += energyReward
       }
     }
 
-    // NOTE: No energy deducted - basic farming actions are FREE
-    state.progression.experience += totalExperience
-    state.resources.gold += totalGold
+    // Apply energy reward - ONLY energy, nothing else
+    state.resources.energy.current = Math.min(
+      state.resources.energy.max, 
+      state.resources.energy.current + totalEnergyGained
+    )
+
+    // Log the rewards gained for debugging
+    console.log(`🌱 HARVEST REWARDS: Energy gained: ${totalEnergyGained} (ONLY energy from harvesting)`)
 
     return createSuccessResult(
-      `Harvested ${harvestedCrops.length} crops: ${harvestedCrops.join(', ')}`,
+      `Harvested ${harvestedCrops.length} crops: ${harvestedCrops.join(', ')}. Energy gained: ${totalEnergyGained}`,
       {
         'processes.crops': state.processes.crops,
-        // NOTE: energy not included since it's not changed
-        'progression.experience': state.progression.experience,
-        'resources.gold': state.resources.gold
+        'resources.energy.current': state.resources.energy.current
       }
     )
   }
@@ -672,6 +727,9 @@ export class FarmSystem {
       return createFailureResult(`Not enough energy (need ${action.energyCost}, have ${state.resources.energy.current})`)
     }
 
+    // PHASE 11C DEBUGGING: Enhanced tower building execution logging
+    console.log(`🏗️ BUILDING TOWER! Energy: ${state.resources.energy.current} → ${state.resources.energy.current - action.energyCost}`)
+
     // Build the tower
     state.tower.isBuilt = true
     state.tower.currentReach = 1 // Start with reach 1
@@ -682,7 +740,7 @@ export class FarmSystem {
       state.progression.unlockedAreas.push('tower')
     }
 
-    console.log('🏗️ TOWER BUILT: Tower construction completed! Tower area unlocked.')
+    console.log(`✅ TOWER BUILT! Can now catch seeds. Tower area unlocked.`)
 
     return createSuccessResult(
       `Built tower for ${action.energyCost} energy`,

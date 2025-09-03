@@ -146,6 +146,11 @@ export class SimulationOrchestrator {
       // 1. Update time through StateManager
       this.updateTime(deltaTime)
       
+      // PHASE 11C: Milestone tracking every 10 ticks
+      if (this.tickCount % 10 === 0) {
+        this.logProgressionMilestones()
+      }
+      
       // 2. Coordinate system updates
       this.updateGameSystems(deltaTime)
       
@@ -210,6 +215,13 @@ export class SimulationOrchestrator {
       FarmSystem.processAutoPumpGeneration(this.gameState, deltaTime)
     } catch (error) {
       console.error('Error in FarmSystem.processAutoPumpGeneration:', error)
+    }
+
+    try {
+      // CRITICAL FIX: Process crop growth - this was missing!
+      FarmSystem.processCropGrowth(this.gameState, deltaTime, this.gameDataStore)
+    } catch (error) {
+      console.error('Error in FarmSystem.processCropGrowth:', error)
     }
 
     try {
@@ -476,6 +488,28 @@ export class SimulationOrchestrator {
       console.log(`⚡ Tick ${this.tickCount}: Executed ${executedActions.length} actions:`, 
         executedActions.map(a => `${a.type}(${a.target})`))
     }
+  }
+
+  /**
+   * PHASE 11C: Log progression milestones for debugging
+   */
+  private logProgressionMilestones(): void {
+    const state = this.stateManager.getState()
+    const tick = this.tickCount
+    
+    const milestones = {
+      hasSeeds: Array.from(state.resources.seeds.values()).reduce((a: number, b: number) => a + b, 0) > 2,
+      hasTowerBlueprint: state.inventory.blueprints?.has('blueprint_tower_reach_1'),
+      towerBuilt: state.tower?.isBuilt,
+      seedsCollected: Array.from(state.resources.seeds.values()).reduce((a: number, b: number) => a + b, 0),
+      hasSwordBlueprint: state.inventory.blueprints?.has('blueprint_sword_1'),
+      hasSword: state.inventory.weapons?.has('sword_1'),
+      adventureReady: (state.inventory.weapons?.size || 0) > 0
+    }
+    
+    console.log(`📊 TICK ${tick} MILESTONES:`, milestones)
+    console.log(`💰 Resources: Energy=${state.resources.energy.current}, Gold=${state.resources.gold}`)
+    console.log(`📍 Location: ${state.location.currentScreen}`)
   }
 
   /**

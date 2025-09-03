@@ -196,7 +196,10 @@ export class ConfigurationManager {
         ['carrot', 1], // 1 Carrot seed
         ['radish', 1]  // 1 Radish seed (2 seeds total for 3 plots = need tower)
       ]),
-      materials: new Map() // Start with no materials
+      materials: new Map([
+        ['wood', 5],  // PHASE 11C: Starting materials for sword_1 crafting
+        ['stone', 3]  // PHASE 11C: Starting materials for sword_1 crafting
+      ])
     }
   }
 

@@ -31,9 +31,12 @@ export class TowerSystem {
   ): GameAction[] {
     const actions: GameAction[] = []
     
+    // PHASE 11C DEBUGGING: Comprehensive tower status logging
+    console.log(`🌱 TOWER SYSTEM: isBuilt=${state.tower?.isBuilt}, currentReach=${state.tower?.currentReach}`)
+    
     // CRITICAL FIX: Block all tower actions if tower is not built
     if (!state.tower.isBuilt) {
-      console.log('🚫 TOWER: Tower not built - no actions available')
+      console.log(`⚠️ Tower not built - no seed catching available`)
       return [] // No tower actions available until built
     }
     
@@ -50,6 +53,10 @@ export class TowerSystem {
     const farmPlots = state.progression.farmPlots || 3
     const seedTargetBase = Math.max(farmPlots * 2, 6)  // At least 6 seeds, 2x farm plots
     const needsSeeds = seedMetrics.totalSeeds < seedTargetBase
+    
+    // PHASE 11C DEBUGGING: Seed catching status
+    console.log(`🎣 CATCH SEEDS STATUS: totalSeeds=${seedMetrics.totalSeeds}, target=${seedTargetBase}, needsSeeds=${needsSeeds}`)
+    console.log(`🌪️ Wind level: ${windLevel.level}, tower reach: ${towerReach}`)
     
     // PHASE 8N FIX: Navigate back to farm when seeds are sufficient
     if (!needsSeeds && seedMetrics.totalSeeds >= seedTargetBase) {
@@ -80,6 +87,8 @@ export class TowerSystem {
       
       const expectedSeeds = Math.floor(catchRate.seedsPerMinute * catchDuration)
       
+      console.log(`🎣 CATCH SEEDS ACTION: Available at reach ${state.tower.currentReach}, expected seeds: ${expectedSeeds}`)
+      
       actions.push({
         id: `catch_seeds_${Date.now()}`,
         type: 'catch_seeds',
@@ -93,6 +102,8 @@ export class TowerSystem {
           items: ['seeds_mixed']
         }
       })
+    } else if (needsSeeds) {
+      console.log(`⚠️ SEED CATCHING BLOCKED: Need energy > 30, have ${state.resources.energy.current}`)
     }
     
     // Auto-catcher upgrades (Phase 8N: Enhanced with SeedSystem rates)

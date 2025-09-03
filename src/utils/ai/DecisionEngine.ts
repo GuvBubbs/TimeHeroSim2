@@ -181,8 +181,14 @@ export class DecisionEngine implements IDecisionEngine {
       const farmPlots = gameState.progression.farmPlots || 3
       const criticalThreshold = farmPlots
       
-      if (seedMetrics.totalSeeds < criticalThreshold) {
-        console.log(`🚨 EMERGENCY: Critical seed shortage (${seedMetrics.totalSeeds} < ${criticalThreshold})`)
+      // Check if hero has plantable seeds before triggering emergency
+      const availablePlots = gameState.progression.availablePlots || 3
+      const currentCrops = gameState.processes.crops.length
+      const freePlots = availablePlots - currentCrops
+      const hasPlantableSeeds = freePlots > 0 && seedMetrics.totalSeeds > 0
+      
+      if (seedMetrics.totalSeeds < criticalThreshold && !hasPlantableSeeds) {
+        console.log(`🚨 EMERGENCY: Critical seed shortage (${seedMetrics.totalSeeds} < ${criticalThreshold}) with no plantable seeds`)
         
         // CRITICAL FIX: Check if tower is built before navigation
         if (!gameState.tower.isBuilt) {
@@ -217,6 +223,8 @@ export class DecisionEngine implements IDecisionEngine {
             expectedRewards: { items: ['seeds'] }
           })
         }
+      } else if (hasPlantableSeeds) {
+        console.log(`🌱 EMERGENCY BYPASS: Hero has plantable seeds (${seedMetrics.totalSeeds} seeds, ${freePlots} free plots) - allowing normal planting progression`)
       }
 
       // Water crisis emergency
@@ -337,6 +345,14 @@ export class DecisionEngine implements IDecisionEngine {
   private evaluateNavigationActions(gameState: GameState, parameters: AllParameters, gameDataStore: any): GameAction[] {
     const actions: GameAction[] = []
     const currentScreen = gameState.location.currentScreen
+    // PHASE 11C: Enhanced navigation priorities based on progression needs
+    const hasSwordBlueprint = gameState.inventory.blueprints?.has('blueprint_sword_1')
+    const hasWeapon = gameState.inventory.weapons?.has('sword_1')
+    const needsForge = hasSwordBlueprint && !hasWeapon
+    
+    if (needsForge) {
+      console.log(`🔨 Hero needs to visit forge for crafting`)
+    }
     
     // Navigation priorities based on current needs
     const priorities = [
@@ -344,7 +360,7 @@ export class DecisionEngine implements IDecisionEngine {
       { screen: 'tower', reason: 'seed collection', score: 25 },
       { screen: 'town', reason: 'purchases and trading', score: 20 },
       { screen: 'adventure', reason: 'gold and experience', score: 15 },
-      { screen: 'forge', reason: 'crafting equipment', score: 10 },
+      { screen: 'forge', reason: 'crafting equipment', score: needsForge ? 35 : 10 }, // PHASE 11C: Higher priority when crafting needed
       { screen: 'mine', reason: 'material gathering', score: 10 }
     ]
 
@@ -502,30 +518,52 @@ export class DecisionEngine implements IDecisionEngine {
         if (seedMetrics.totalSeeds < farmPlots * 2) {
           return { reason: 'Need seeds for planting', score: 50 }
         }
-        return { reason: 'Regular seed collection', score: 10 }
+        return { reason: 'Regular seed collection', score: 5 } // Reduced from 10
         
       case 'town':
-        if (gameState.resources.gold > 100) {
-          return { reason: 'Have gold for purchases', score: 40 }
+        // Only move to town if there's a compelling reason
+        const hasTowerBlueprint = gameState.inventory.blueprints?.has('blueprint_tower_reach_1')
+        const hasSwordBlueprint = gameState.inventory.blueprints?.has('blueprint_sword_1')
+        
+        if (gameState.resources.gold > 100 && !hasTowerBlueprint) {
+          return { reason: 'Have gold for tower blueprint', score: 40 }
         }
-        return { reason: 'Check for available upgrades', score: 15 }
+        if (gameState.resources.gold > 150 && !hasSwordBlueprint) {
+          return { reason: 'Have gold for sword blueprint', score: 35 }
+        }
+        if (gameState.resources.gold > 200) {
+          return { reason: 'Have excess gold for upgrades', score: 25 }
+        }
+        return { reason: 'No compelling town reason', score: 2 } // Heavily reduced from 15
         
       case 'adventure':
         if (gameState.resources.gold < 50 && gameState.resources.energy.current > 50) {
-          return { reason: 'Need gold income', score: 35 }
+          return { reason: 'Need gold income', score: 30 } // Reduced from 35
         }
-        return { reason: 'Adventure for rewards', score: 20 }
+        return { reason: 'Adventure for rewards', score: 2 } // Heavily reduced from 20
+        
+      case 'forge':
+        const hasSwordBlueprintForge = gameState.inventory.blueprints?.has('blueprint_sword_1')
+        const hasWeapon = gameState.inventory.weapons?.has('sword_1')
+        if (hasSwordBlueprintForge && !hasWeapon) {
+          return { reason: 'Can craft sword with blueprint', score: 45 }
+        }
+        return { reason: 'No crafting needed', score: 1 } // Very low
         
       case 'mine':
         const materials = gameState.resources.materials
         const hasLowMaterials = ['stone', 'copper', 'iron'].some(mat => (materials.get(mat) || 0) < 10)
-        if (hasLowMaterials) {
-          return { reason: 'Need materials for crafting', score: 30 }
+        if (hasLowMaterials && gameState.resources.energy.current > 30) {
+          return { reason: 'Need materials for crafting', score: 25 } // Reduced from 30
         }
-        return { reason: 'Gather materials', score: 8 }
+        return { reason: 'No material needs', score: 1 } // Very low
+        
+      case 'farm':
+        // Always prefer to stay on farm if already there
+        return { reason: 'Farm is home base', score: 10 }
         
       default:
-        return { reason: 'General activity', score: 5 }
+        return { reason: 'No reason to go there', score: 0 } // Changed from 5 to 0
     }
   }
 

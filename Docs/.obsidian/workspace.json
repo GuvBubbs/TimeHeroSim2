@@ -172,6 +172,9 @@
   },
   "active": "c20dc5f44e63d3e5",
   "lastOpenFiles": [
+    "Sim Design/Phase 10/Phase 10K Post-Refactor Optimization Plan.md",
+    "Sim Design/Phase 10/Phase 10J Cleanup & Archive Plan.md",
+    "Sim Design/Phase 10/Phase 10I Integration & Verification Plan",
     "Sim Design/Phase10-Complete.md",
     "Sim Design/Phase10H-Complete.md",
     "Sim Design/Phase 10/Phase10G-Orchestrator-Complete.md",
@@ -196,8 +199,6 @@
     "Sim Design/Phase 10/Phase 10C Extract Activity Systems.md",
     "Sim Design/Phase 10/phase10c-activity-systems.md",
     "Sim Design/Phase 10/Phase 10B Extract Core Game Loop Systems.md",
-    "Sim Design/Phase 10/phase10b-core-systems.md",
-    "Sim Design/Phase 10/Phase 10A Audit & Cleanup Plan.md",
     "Sim Design/Playable Sim",
     "Sim Design/Phase 10",
     "Sim Design/untitled folder",
@@ -206,7 +207,6 @@
     "farm_actions.csv",
     "farm_actionsUPDATE.csv",
     "farm_cleanups.csv",
-    "Sim Design/End to end Build",
-    "Sim Design/Sim Refactor"
+    "Sim Design/End to end Build"
   ]
 }

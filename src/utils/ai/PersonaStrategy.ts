@@ -54,14 +54,25 @@ export abstract class BasePersonaStrategy implements IPersonaStrategy {
    * Check base conditions that apply to all personas
    */
   protected checkBaseConditions(currentTime: number, lastCheckIn: number, gameState: GameState): boolean {
+    // CRITICAL FIX: Allow immediate action on game start (lastCheckIn === 0)
+    if (lastCheckIn === 0) {
+      console.log(`🎯 PERSONA: Game start detected, allowing immediate action`);
+      return true;
+    }
+    
+    // CRITICAL FIX: Always allow actions in first 10 hours for active gameplay
+    // This must come BEFORE night time check to override time interpretation issues
+    if (currentTime < 600) { // First 10 hours
+      console.log(`🎯 PERSONA: Early game period (${currentTime} < 600 min), allowing action`);
+      return true // Allow multiple check-ins during initial gameplay
+    }
+    
     const currentHour = Math.floor((currentTime % (24 * 60)) / 60)
     
-    // Don't act at night (10 PM to 6 AM)
-    if (currentHour < 6 || currentHour >= 22) return false
-    
-    // FIXED: Always allow multiple actions in first 10 hours for active gameplay
-    if (currentTime < 600) { // First 10 hours
-      return true // Allow multiple check-ins during initial gameplay
+    // Don't act at night (10 PM to 6 AM) - only after early game period
+    if (currentHour < 6 || currentHour >= 22) {
+      console.log(`🎯 PERSONA: Night time (hour ${currentHour}), blocking action`);
+      return false;
     }
 
     return true
@@ -109,17 +120,33 @@ export class SpeedrunnerStrategy extends BasePersonaStrategy {
       return false
     }
 
+    // CRITICAL FIX: Allow immediate action on game start
+    if (lastCheckIn === 0) {
+      console.log(`🎯 SPEEDRUNNER: Game start - allowing immediate action`);
+      return true;
+    }
+
     const timeSinceLastCheckin = currentTime - lastCheckIn
     const emergencyInterval = this.getEmergencyInterval(gameState)
     
     // Handle emergencies first
     if (timeSinceLastCheckin >= emergencyInterval) {
+      console.log(`🎯 SPEEDRUNNER: Emergency interval triggered (${timeSinceLastCheckin} >= ${emergencyInterval})`);
       return true
     }
 
-    // Speedrunner checks in very frequently - every 8-12 minutes
-    const baseInterval = this.getMinCheckinInterval(gameState)
-    return timeSinceLastCheckin >= baseInterval
+    // Add fallback for stuck heroes (prevent infinite deadlock)
+    const MAX_IDLE_TIME = 30; // 30 minutes max idle
+    if (timeSinceLastCheckin > MAX_IDLE_TIME) {
+      console.warn(`⚠️ SPEEDRUNNER: Hero stuck for too long (${timeSinceLastCheckin} > ${MAX_IDLE_TIME}), forcing check-in`);
+      return true;
+    }
+
+    // Speedrunner checks in very frequently - every 5 minutes
+    const baseInterval = 5; // Fixed 5 minutes for speedrunner
+    const shouldAct = timeSinceLastCheckin >= baseInterval;
+    console.log(`🎯 SPEEDRUNNER: Time check: ${timeSinceLastCheckin} >= ${baseInterval} = ${shouldAct}`);
+    return shouldAct;
   }
 
   getMinCheckinInterval(gameState: GameState): number {
@@ -166,17 +193,33 @@ export class CasualPlayerStrategy extends BasePersonaStrategy {
       return false
     }
 
+    // CRITICAL FIX: Allow immediate action on game start
+    if (lastCheckIn === 0) {
+      console.log(`🎯 CASUAL: Game start - allowing immediate action`);
+      return true;
+    }
+
     const timeSinceLastCheckin = currentTime - lastCheckIn
     const emergencyInterval = this.getEmergencyInterval(gameState)
     
     // Handle emergencies (but less aggressively than speedrunner)
     if (timeSinceLastCheckin >= emergencyInterval * 1.5) {
+      console.log(`🎯 CASUAL: Emergency interval triggered (${timeSinceLastCheckin} >= ${emergencyInterval * 1.5})`);
       return true
     }
 
-    // FIXED: Casual players check in much more frequently for active gameplay - every 2-5 minutes
-    const activeGameplayInterval = 2.0 // 2 minutes for active sessions
-    return timeSinceLastCheckin >= activeGameplayInterval
+    // Add fallback for stuck heroes
+    const MAX_IDLE_TIME = 45; // 45 minutes max idle for casual
+    if (timeSinceLastCheckin > MAX_IDLE_TIME) {
+      console.warn(`⚠️ CASUAL: Hero stuck for too long (${timeSinceLastCheckin} > ${MAX_IDLE_TIME}), forcing check-in`);
+      return true;
+    }
+
+    // Casual players check in every 10 minutes
+    const baseInterval = 10; // Fixed 10 minutes for casual
+    const shouldAct = timeSinceLastCheckin >= baseInterval;
+    console.log(`🎯 CASUAL: Time check: ${timeSinceLastCheckin} >= ${baseInterval} = ${shouldAct}`);
+    return shouldAct;
   }
 
   getMinCheckinInterval(gameState: GameState): number {
@@ -225,17 +268,33 @@ export class WeekendWarriorStrategy extends BasePersonaStrategy {
       return false
     }
 
+    // CRITICAL FIX: Allow immediate action on game start
+    if (lastCheckIn === 0) {
+      console.log(`🎯 WEEKEND_WARRIOR: Game start - allowing immediate action`);
+      return true;
+    }
+
     const timeSinceLastCheckin = currentTime - lastCheckIn
     const emergencyInterval = this.getEmergencyInterval(gameState)
     
     // Handle emergencies
     if (timeSinceLastCheckin >= emergencyInterval) {
+      console.log(`🎯 WEEKEND_WARRIOR: Emergency interval triggered (${timeSinceLastCheckin} >= ${emergencyInterval})`);
       return true
     }
 
-    // Weekend warrior behavior varies by day
-    const baseInterval = this.getMinCheckinInterval(gameState)
-    return timeSinceLastCheckin >= baseInterval
+    // Add fallback for stuck heroes
+    const MAX_IDLE_TIME = 60; // 60 minutes max idle for weekend warrior
+    if (timeSinceLastCheckin > MAX_IDLE_TIME) {
+      console.warn(`⚠️ WEEKEND_WARRIOR: Hero stuck for too long (${timeSinceLastCheckin} > ${MAX_IDLE_TIME}), forcing check-in`);
+      return true;
+    }
+
+    // Weekend warrior checks in every 15 minutes
+    const baseInterval = 15; // Fixed 15 minutes for weekend warrior
+    const shouldAct = timeSinceLastCheckin >= baseInterval;
+    console.log(`🎯 WEEKEND_WARRIOR: Time check: ${timeSinceLastCheckin} >= ${baseInterval} = ${shouldAct}`);
+    return shouldAct;
   }
 
   getMinCheckinInterval(gameState: GameState): number {

@@ -1,6 +1,35 @@
 // FarmSystem - Phase 10B Core Game Loop System
 // Complete farm management system implementing GameSystem interface
 
+/**
+ * CRITICAL DESIGN DECISION - DO NOT CHANGE:
+ * 
+ * Basic farming actions MUST be FREE (energyCost: 0):
+ * - Planting seeds (sowing)
+ * - Watering crops
+ * - Harvesting crops
+ * - Pumping water from well
+ * 
+ * Only actions from these CSV files should cost energy:
+ * - farm_actions.csv (building storage, clearing land, etc.)
+ * - forge_actions.csv (crafting tools, smelting, etc.)
+ * - Mining actions (going deeper, etc.)
+ * - Combat actions
+ * 
+ * The core game loop is: Seeds → Plant → Water → Harvest → Energy
+ * This loop must be FREE or the game becomes unplayable.
+ * 
+ * Energy is spent on:
+ * - Land expansion/cleanup
+ * - Tool crafting
+ * - Deep mining
+ * - Combat/adventures
+ * 
+ * Energy is GAINED from:
+ * - Harvesting crops (energy conversion)
+ * - Adventure rewards
+ */
+
 import type { GameState, CropState, GameAction, SimulationConfig, AllParameters } from '@/types'
 import { 
   type GameSystem, 
@@ -315,7 +344,7 @@ export class FarmSystem {
     const currentCrops = state.processes.crops.length
     const freePlots = availablePlots - currentCrops
 
-    if (freePlots > 0 && state.resources.energy.current > 5) {
+    if (freePlots > 0) {
       // Choose crop based on preferences
       const preferredCrops = parameters.priorities?.cropPreference || ['carrot', 'radish']
       const cropToPlant = preferredCrops[0] || 'carrot'
@@ -329,7 +358,7 @@ export class FarmSystem {
           screen: 'farm',
           target: cropToPlant,
           duration: 2,
-          energyCost: 5,
+          energyCost: 0, // CORE GAME DESIGN: Basic farming actions (plant, water, harvest, pump) are FREE
           goldCost: 0,
           prerequisites: [],
           expectedRewards: {},
@@ -391,7 +420,7 @@ export class FarmSystem {
         screen: 'farm',
         target: 'ready',
         duration: readyCrops.length * 0.5, // 0.5 min per crop
-        energyCost: readyCrops.length * 2, // 2 energy per crop
+        energyCost: 0, // CORE GAME DESIGN: Basic farming actions (plant, water, harvest, pump) are FREE
         goldCost: 0,
         prerequisites: [],
         expectedRewards: {
@@ -417,14 +446,14 @@ export class FarmSystem {
     
     const waterPercent = state.resources.water.current / state.resources.water.max
     
-    if (waterPercent < 0.3 && state.resources.energy.current > 10) {
+    if (waterPercent < 0.3) {
       actions.push({
         id: `pump_water_${Date.now()}`,
         type: 'pump',
         screen: 'farm',
         target: 'well',
         duration: 3,
-        energyCost: 10,
+        energyCost: 0, // CORE GAME DESIGN: Basic farming actions (plant, water, harvest, pump) are FREE
         goldCost: 0,
         prerequisites: [],
         expectedRewards: {
@@ -456,10 +485,7 @@ export class FarmSystem {
       return createFailureResult(`No ${cropType} seeds available`)
     }
 
-    // Check energy
-    if (state.resources.energy.current < action.energyCost) {
-      return createFailureResult('Not enough energy to plant')
-    }
+    // NOTE: No energy check needed - basic farming actions are FREE
 
     // Check available plots
     const availablePlots = state.progression.availablePlots
@@ -486,14 +512,14 @@ export class FarmSystem {
 
     state.processes.crops.push(newCrop)
     state.resources.seeds.set(cropType, seedCount - 1)
-    state.resources.energy.current -= action.energyCost
+    // NOTE: No energy deducted - basic farming actions are FREE
 
     return createSuccessResult(
       `Planted ${cropType} in ${plotId}`,
       {
         'processes.crops': state.processes.crops,
-        [`resources.seeds.${cropType}`]: seedCount - 1,
-        'resources.energy.current': state.resources.energy.current
+        [`resources.seeds.${cropType}`]: seedCount - 1
+        // NOTE: energy not included since it's not changed
       }
     )
   }
@@ -533,9 +559,7 @@ export class FarmSystem {
       return createFailureResult('No crops ready for harvest')
     }
 
-    if (state.resources.energy.current < action.energyCost) {
-      return createFailureResult('Not enough energy to harvest')
-    }
+    // NOTE: No energy check needed - basic farming actions are FREE
 
     // Remove harvested crops and add rewards
     let totalExperience = 0
@@ -553,7 +577,7 @@ export class FarmSystem {
       }
     }
 
-    state.resources.energy.current -= action.energyCost
+    // NOTE: No energy deducted - basic farming actions are FREE
     state.progression.experience += totalExperience
     state.resources.gold += totalGold
 
@@ -561,7 +585,7 @@ export class FarmSystem {
       `Harvested ${harvestedCrops.length} crops: ${harvestedCrops.join(', ')}`,
       {
         'processes.crops': state.processes.crops,
-        'resources.energy.current': state.resources.energy.current,
+        // NOTE: energy not included since it's not changed
         'progression.experience': state.progression.experience,
         'resources.gold': state.resources.gold
       }
@@ -572,9 +596,7 @@ export class FarmSystem {
    * Execute pump action
    */
   private static executePumpAction(action: GameAction, state: GameState): ActionResult {
-    if (state.resources.energy.current < action.energyCost) {
-      return createFailureResult('Not enough energy to pump water')
-    }
+    // NOTE: No energy check needed - basic farming actions are FREE
 
     const waterSpace = state.resources.water.max - state.resources.water.current
     const waterGained = Math.min(20, waterSpace) // Gain up to 20 water
@@ -584,13 +606,13 @@ export class FarmSystem {
     }
 
     state.resources.water.current += waterGained
-    state.resources.energy.current -= action.energyCost
+    // NOTE: No energy deducted - basic farming actions are FREE
 
     return createSuccessResult(
       `Pumped ${waterGained} water`,
       {
-        'resources.water.current': state.resources.water.current,
-        'resources.energy.current': state.resources.energy.current
+        'resources.water.current': state.resources.water.current
+        // NOTE: energy not included since it's not changed
       }
     )
   }
@@ -618,14 +640,7 @@ export class FarmSystem {
       }
     }
 
-    // Check energy
-    if (state.resources.energy.current < action.energyCost) {
-      return { 
-        canExecute: false, 
-        reason: 'Not enough energy',
-        missingResources: { energy: action.energyCost - state.resources.energy.current }
-      }
-    }
+    // NOTE: No energy check needed - basic farming actions are FREE
 
     // Check available plots
     const availablePlots = state.progression.availablePlots
@@ -669,10 +684,11 @@ export class FarmSystem {
     if (state.resources.energy.current < action.energyCost) {
       return { 
         canExecute: false, 
-        reason: 'Not enough energy',
-        missingResources: { energy: action.energyCost - state.resources.energy.current }
+        reason: 'No crops ready for harvest'
       }
     }
+
+    // NOTE: No energy check needed - basic farming actions are FREE
 
     return { canExecute: true }
   }
@@ -681,13 +697,7 @@ export class FarmSystem {
    * Validate pump action
    */
   private static canPump(action: GameAction, state: GameState): ValidationResult {
-    if (state.resources.energy.current < action.energyCost) {
-      return { 
-        canExecute: false, 
-        reason: 'Not enough energy',
-        missingResources: { energy: action.energyCost - state.resources.energy.current }
-      }
-    }
+    // NOTE: No energy check needed - basic farming actions are FREE
 
     if (state.resources.water.current >= state.resources.water.max) {
       return { canExecute: false, reason: 'Water tank is already full' }

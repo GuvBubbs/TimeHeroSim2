@@ -158,7 +158,7 @@ export class ConfigurationManager {
   static initializeGameState(): GameState {
     return {
       time: ConfigurationManager.initializeTimeState(),
-      resources: ConfigurationManager.initializeResourceState(),
+      resources: ConfigurationManager.initializeResourcesState(),
       progression: ConfigurationManager.initializeProgressionState(),
       inventory: ConfigurationManager.initializeInventoryState(),
       processes: ConfigurationManager.initializeProcessState(),
@@ -182,21 +182,24 @@ export class ConfigurationManager {
     }
   }
 
-  /**
-   * Initialize resource state
+    /**
+   * Initialize resources state - Correct starting conditions per starting-conditions.md
    */
-  static initializeResourceState(): ResourceState {
+  static initializeResourcesState(): ResourcesState {
     return {
-      energy: { current: 3, max: 100, regenerationRate: 0 },
-      water: { current: 0, max: 20, autoGenRate: 0 },
-      gold: 75,
-      seeds: ConfigurationManager.initializeSeeds(),
-      materials: ConfigurationManager.initializeMaterials()
+      energy: { current: 3, max: 100, regenerationRate: 0 }, // Starting energy: 3 (gain through harvesting)
+      gold: 75, // Enough for Sword I & Tower Reach 1 blueprints
+      water: { current: 0, max: 20, autoGenRate: 0 }, // Start empty, pump to fill
+      seeds: new Map([
+        ['carrot', 1], // 1 Carrot seed
+        ['radish', 1]  // 1 Radish seed (2 seeds total for 3 plots = need tower)
+      ]),
+      materials: new Map() // Start with no materials
     }
   }
 
   /**
-   * Initialize progression state
+   * Initialize progression state - FIXED: Tower unlocked from start for tutorial gameplay
    */
   static initializeProgressionState(): ProgressionState {
     return {
@@ -209,7 +212,7 @@ export class ConfigurationManager {
       completedAdventures: [],
       completedCleanups: new Set(),
       unlockedUpgrades: [],
-      unlockedAreas: ['farm'],
+      unlockedAreas: ['farm', 'tower'], // FIXED: Added 'tower' for seed catching in tutorial
       builtStructures: new Set(['farm']),
       victoryConditionsMet: false
     }

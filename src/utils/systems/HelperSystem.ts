@@ -1161,9 +1161,8 @@ export class HelperSystem {
    * @returns True if gnome can be assigned a role (is housed)
    */
   static canAssignRole(gnome: GnomeState, gameState: GameState): boolean {
-    const validation = this.validateGnomeHousing(gameState)
-    
-    // Check if this gnome is one of the active ones
+    // A gnome can be assigned a role if it's housed (isAssigned=true) but doesn't have a specific role yet
+    // Note: isAssigned=true means the gnome has housing, not that it has a job role
     return gnome.isAssigned === true
   }
 

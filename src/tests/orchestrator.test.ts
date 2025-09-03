@@ -257,7 +257,7 @@ describe('Performance Benchmarking', () => {
     // Simulate many ticks of the core systems
     for (let i = 0; i < iterations; i++) {
       TowerSystem.tick(1, gameState)
-      HelperSystem.tick(1, gameState)
+      HelperSystem.processHelpers(gameState, 1, null)
       // Note: AdventureSystem doesn't have a tick method, it's action-based
     }
     

@@ -13,7 +13,7 @@ import { PrerequisiteValidator } from '../validators/PrerequisiteValidator'
 import { MineSystem } from '../systems/MineSystem'
 import { OfflineProgressionSystem } from '../systems/OfflineProgressionSystem'
 import { AdventureSystem } from '../systems/AdventureSystem'
-import { SimulationEngine } from '../SimulationEngine'
+import { SimulationOrchestrator } from '../SimulationOrchestrator'
 import type { GameState, GameDataItem, SimulationConfig } from '@/types'
 
 interface TestResult {
@@ -263,7 +263,7 @@ export class Phase8OIntegrationTest {
         parameters: new Map()
       }
       
-      const engine = new SimulationEngine(config)
+      const engine = new SimulationOrchestrator(config)
       
       // Test bottleneck detection by setting up bottleneck scenarios
       const gameState = engine.getGameState()
@@ -321,7 +321,7 @@ export class Phase8OIntegrationTest {
         parameters: new Map()
       }
       
-      const engine = new SimulationEngine(config)
+      const engine = new SimulationOrchestrator(config)
       
       // Run simulation for short duration
       let tickCount = 0

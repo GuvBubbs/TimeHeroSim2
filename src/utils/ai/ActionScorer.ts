@@ -41,12 +41,12 @@ export class ActionScorer implements IActionScorer {
 
     switch (action.type) {
       case 'harvest':
-        // Harvesting is always high priority
-        score = 100
+        // Harvesting is ULTRA high priority - it provides energy!
+        score = 1000 // Highest priority - energy is essential
         
-        // Bonus for energy when low
-        if (gameState.resources.energy.current < 50) {
-          score += 20
+        // Extra bonus if energy is low
+        if (gameState.resources.energy.current < 10) {
+          score = 1200 // Emergency harvest when energy critical
         }
         break
         
@@ -63,6 +63,14 @@ export class ActionScorer implements IActionScorer {
       case 'plant':
         // Planting score based on available space and energy
         score = 40
+        
+        // CRITICAL: Ultra-high priority when there are empty plots and seeds available
+        const emptyPlots = gameState.progression.farmPlots - gameState.processes.crops.length
+        const totalSeeds = Array.from(gameState.resources.seeds.values()).reduce((sum: number, count: number) => sum + count, 0)
+        
+        if (emptyPlots > 0 && totalSeeds > 0) {
+          score = 850 // Higher than town navigation - plant existing seeds FIRST
+        }
         
         // Higher score if we have excess energy
         if (gameState.resources.energy.current > gameState.automation.energyReserve + 20) {
@@ -136,16 +144,28 @@ export class ActionScorer implements IActionScorer {
         
       case 'purchase':
         // Purchase scoring based on gold availability and item importance
-        score = 50
+        score = 30 // Lower base score for purchases
         
-        // Higher score if we have plenty of gold
-        if (gameState.resources.gold > action.goldCost * 2) {
-          score += 30
-        }
-        
-        // Blueprint purchases are higher priority
+        // CRITICAL: Blueprint purchases get ULTRA HIGH priority for progression
         if (action.target?.includes('blueprint')) {
-          score += 40
+          score = 800 // VERY HIGH - progression blocking items
+          
+          // Extra bonus if this is a tower blueprint (critical for seed access)
+          if (action.target?.includes('tower_reach')) {
+            score = 900 // Absolute top priority
+          }
+        }
+        // Material purchases should be EXTREMELY low priority 
+        else if (action.target?.includes('bundle') || action.target?.includes('wood') || action.target?.includes('stone')) {
+          score = 1 // Absolute minimum priority for materials
+          
+          // Only boost slightly if we have EXCESSIVE gold (5x+ the cost) AND no blueprints to buy
+          const hasExcessiveGold = gameState.resources.gold > action.goldCost * 5
+          const hasAllBlueprints = gameState.inventory.blueprints.has('blueprint_tower_reach_1') // Add other blueprint checks as needed
+          
+          if (hasExcessiveGold && hasAllBlueprints) {
+            score = 3 // Still extremely low even with excess gold and all blueprints
+          }
         }
         break
         

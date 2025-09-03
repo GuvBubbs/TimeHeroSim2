@@ -30,6 +30,13 @@ export class TowerSystem {
     context: EvaluationContext
   ): GameAction[] {
     const actions: GameAction[] = []
+    
+    // CRITICAL FIX: Block all tower actions if tower is not built
+    if (!state.tower.isBuilt) {
+      console.log('🚫 TOWER: Tower not built - no actions available')
+      return [] // No tower actions available until built
+    }
+    
     const parameters = this.extractTowerParameters(config)
     
     if (!parameters) return actions
@@ -255,12 +262,12 @@ export class TowerSystem {
    */
   private static executeCatchSeedAction(action: GameAction, state: GameState): ActionResult {
     // Check if already catching seeds
-    if (state.processes.seedCatching && !state.processes.seedCatching.isComplete) {
+    if (state.tower.seedsCatching && !state.tower.seedsCatching.isComplete) {
       return createFailureResult('Already catching seeds')
     }
 
     // Start seed catching process
-    state.processes.seedCatching = {
+    state.tower.seedsCatching = {
       startedAt: state.time.totalMinutes,
       duration: action.duration,
       progress: 0,
@@ -272,7 +279,7 @@ export class TowerSystem {
 
     return createSuccessResult(
       `Started catching seeds for ${action.duration} minutes`,
-      { 'processes.seedCatching': state.processes.seedCatching }
+      { 'tower.seedsCatching': state.tower.seedsCatching }
     )
   }
 
@@ -333,7 +340,7 @@ export class TowerSystem {
    */
   private static canCatchSeeds(action: GameAction, state: GameState): ValidationResult {
     // Check if already catching seeds
-    if (state.processes.seedCatching && !state.processes.seedCatching.isComplete) {
+    if (state.tower.seedsCatching && !state.tower.seedsCatching.isComplete) {
       return { canExecute: false, reason: 'Already catching seeds' }
     }
 
@@ -380,7 +387,7 @@ export class TowerSystem {
     stateChanges: any
     events: any[]
   } {
-    const process = gameState.processes.seedCatching
+    const process = gameState.tower.seedsCatching
     
     if (!process || process.isComplete) {
       return { completed: false, stateChanges: {}, events: [] }

@@ -158,6 +158,17 @@ export interface MiningState {
 }
 
 /**
+ * Tower state tracking build status and capabilities
+ */
+export interface TowerState {
+  isBuilt: boolean         // Whether tower has been constructed
+  currentReach: number     // Tower reach level (0 when unbuilt)
+  blueprintsOwned: string[] // Tower blueprints purchased
+  autoCatcherTier: number  // Auto-catcher upgrade level
+  seedsCatching: SeedCatchingState | null // Current seed catching process
+}
+
+/**
  * Seed catching process state
  */
 export interface SeedCatchingState {
@@ -178,7 +189,7 @@ export interface ProcessState {
   adventure: AdventureState | null
   crafting: CraftingState[]
   mining: MiningState | null
-  seedCatching: SeedCatchingState | null
+  // Note: seedCatching moved to tower.seedsCatching
 }
 
 /**
@@ -269,6 +280,7 @@ export interface GameState {
   location: LocationState
   automation: AutomationState
   priorities: PriorityState
+  tower: TowerState
 }
 
 /**

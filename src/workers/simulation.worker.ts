@@ -139,6 +139,7 @@ function handleInitialize(serializedConfig: any, serializedParameters?: any, gam
     const gameDataStore = {
       itemsByGameFeature: gameData.itemsByGameFeature || {},
       itemsByCategory: gameData.itemsByCategory || {},
+      itemsByType: gameData.itemsByType || {},
       allItems: gameData.allItems || [],
       getItemById: (id: string) => {
         const item = gameData.itemsById?.[id] || null

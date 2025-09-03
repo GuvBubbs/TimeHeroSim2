@@ -168,12 +168,12 @@ export class TownSystem {
    */
   static needsTowerAccess(gameState: GameState): boolean {
     // Already have tower built
-    if (gameState.progression.builtStructures.has('tower_reach_1')) {
+    if (gameState.tower.isBuilt) {
       return false
     }
     
     // Already purchased tower blueprint but haven't built it yet
-    if (gameState.inventory.blueprints.has('blueprint_tower_reach_1')) {
+    if (gameState.tower.blueprintsOwned.includes('tower_reach_1')) {
       return false
     }
     
@@ -262,14 +262,26 @@ export class TownSystem {
   }
 
   /**
-   * Evaluate emergency wood purchases
+   * Evaluate emergency wood purchases - ONLY when actually needed for building
    */
   static evaluateEmergencyWood(gameState: GameState, gameDataStore: any): GameAction[] {
     const actions: GameAction[] = []
     
-    // Emergency wood if we're critically low
+    // Emergency wood ONLY if we're critically low AND actually need it for building
     const wood = gameState.resources.materials.get('wood') || 0
-    if (wood < 10 && gameState.resources.gold >= 20) {
+    const hasTowerBlueprint = gameState.inventory.blueprints.has('blueprint_tower_reach_1')
+    const towerIsBuilt = gameState.tower.isBuilt
+    
+    // Only buy wood if:
+    // 1. We have the blueprint but tower isn't built (need wood for building)
+    // 2. Wood is critically low (< 5)
+    // 3. We have gold available
+    // 4. We don't have more important purchases to make
+    const needsWoodForTower = hasTowerBlueprint && !towerIsBuilt && wood < 5
+    const hasAllBlueprints = hasTowerBlueprint // Add more blueprint checks as needed
+    
+    if (needsWoodForTower && hasAllBlueprints && gameState.resources.gold >= 20) {
+      console.log(`🚨 EMERGENCY WOOD: Need wood for tower building (wood: ${wood}, has blueprint: ${hasTowerBlueprint})`)
       actions.push({
         id: `buy_wood_bundle_${Date.now()}`,
         type: 'purchase',
@@ -281,6 +293,8 @@ export class TownSystem {
         prerequisites: [],
         expectedRewards: { items: ['wood'] }
       })
+    } else if (wood < 10) {
+      console.log(`🚫 WOOD PURCHASE BLOCKED: Not needed (wood: ${wood}, blueprint: ${hasTowerBlueprint}, tower built: ${towerIsBuilt})`)
     }
     
     return actions
@@ -304,8 +318,8 @@ export class TownSystem {
       prerequisites?: string[]
     }> = []
     
-    // Get all vendor items
-    const vendors = gameDataStore.getItemsByType('vendor') || []
+    // Get all vendor items - use itemsByGameFeature as fallback
+    const vendors = gameDataStore.itemsByType?.['vendor'] || gameDataStore.itemsByGameFeature?.['Town'] || []
     
     for (const vendor of vendors) {
       if (vendor.gold_cost && vendor.gold_cost <= gameState.resources.gold) {
@@ -463,6 +477,12 @@ export class TownSystem {
           }
         })
       }
+      
+      // CRITICAL FIX: Handle tower blueprint purchase
+      if (itemId === 'blueprint_tower_reach_1') {
+        state.tower.blueprintsOwned.push('tower_reach_1')
+        console.log('🏗️ TOWER BLUEPRINT: Added tower_reach_1 to blueprintsOwned')
+      }
     }
 
     state.resources.gold -= action.goldCost
@@ -471,7 +491,8 @@ export class TownSystem {
       `Purchased ${itemId} for ${action.goldCost} gold`,
       {
         'resources.gold': state.resources.gold,
-        'inventory.blueprints': state.inventory.blueprints
+        'inventory.blueprints': state.inventory.blueprints,
+        'tower.blueprintsOwned': state.tower.blueprintsOwned
       }
     )
   }

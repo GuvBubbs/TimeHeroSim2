@@ -181,27 +181,42 @@ export class FarmSystem {
     
     if (!parameters) return actions
 
-    // Check if automation is enabled
-    if (!parameters.automation?.autoPlant && !parameters.automation?.autoWater && !parameters.automation?.autoHarvest) {
-      return actions
+    // CRITICAL: Tower building action (if blueprint owned but tower not built)
+    if (state.tower.blueprintsOwned.includes('tower_reach_1') && !state.tower.isBuilt) {
+      actions.push({
+        id: `build_tower_${Date.now()}`,
+        type: 'build',
+        screen: 'farm',
+        target: 'tower',
+        duration: 1,
+        energyCost: 5,
+        goldCost: 0,
+        prerequisites: [],
+        description: 'Build the seed catching tower',
+        expectedRewards: {
+          items: ['tower_access']
+        }
+      })
+      console.log('🏗️ TOWER BUILD: Tower building action available on farm')
     }
 
+    // ALWAYS evaluate manual actions for AI decision making
+    // (Automation settings are for different use case)
+    
+    // Evaluate harvest actions (PRIORITY: Get energy from ready crops)
+    const harvestActions = this.evaluateHarvestActions(state, parameters, context)
+    actions.push(...harvestActions)
+
     // Evaluate planting actions
-    if (parameters.automation?.autoPlant && context.availableEnergy > 10) {
+    if (context.availableEnergy > 5) { // Lower threshold for planting
       const plantingActions = this.evaluatePlantingActions(state, parameters, context)
       actions.push(...plantingActions)
     }
 
     // Evaluate watering actions
-    if (parameters.automation?.autoWater && state.resources.water.current > 0) {
+    if (state.resources.water.current > 0) {
       const wateringActions = this.evaluateWateringActions(state, parameters, context)
       actions.push(...wateringActions)
-    }
-
-    // Evaluate harvest actions
-    if (parameters.automation?.autoHarvest) {
-      const harvestActions = this.evaluateHarvestActions(state, parameters, context)
-      actions.push(...harvestActions)
     }
 
     // Evaluate pump actions if water is low
@@ -227,6 +242,8 @@ export class FarmSystem {
           return this.executeHarvestAction(action, state)
         case 'pump':
           return this.executePumpAction(action, state)
+        case 'build':
+          return this.executeBuildAction(action, state)
         default:
           return createFailureResult(`Unknown farm action type: ${action.type}`)
       }
@@ -382,8 +399,12 @@ export class FarmSystem {
     
     const dryCrops = this.getCriticallyDryCrops(state)
     const wateringThreshold = parameters.priorities?.wateringThreshold || 0.3
+    const waterAvailable = state.resources.water.current
+    
+    console.log(`💧 WATERING CHECK: ${dryCrops.length} dry crops (threshold: ${wateringThreshold}), water available: ${waterAvailable}`)
 
-    if (dryCrops.length > 0 && state.resources.water.current > 0) {
+    if (dryCrops.length > 0 && waterAvailable > 0) {
+      console.log(`💧 WATERING ACTION: Generating watering action for ${dryCrops.length} dry crops`)
       actions.push({
         id: `water_crops_${Date.now()}`,
         type: 'water',
@@ -396,6 +417,8 @@ export class FarmSystem {
         expectedRewards: {},
         score: 400 + (dryCrops.length * 100) // High priority for watering
       })
+    } else if (dryCrops.length > 0 && waterAvailable <= 0) {
+      console.log(`🚫 WATERING BLOCKED: ${dryCrops.length} dry crops but no water available`)
     }
 
     return actions
@@ -412,8 +435,17 @@ export class FarmSystem {
     const actions: GameAction[] = []
     
     const readyCrops = this.getReadyToHarvestCrops(state)
+    console.log(`🌾 HARVEST CHECK: ${readyCrops.length} ready crops out of ${state.processes.crops.length} total`)
+    
+    // Log crop status for debugging
+    if (state.processes.crops.length > 0) {
+      state.processes.crops.forEach((crop, index) => {
+        console.log(`🌱 Crop ${index + 1}: ${crop.cropId} - Progress: ${(crop.growthProgress * 100).toFixed(1)}%, Water: ${(crop.waterLevel * 100).toFixed(1)}%, Ready: ${crop.readyToHarvest}`)
+      })
+    }
 
     if (readyCrops.length > 0) {
+      console.log(`🌾 HARVEST ACTION: Generating harvest action for ${readyCrops.length} ready crops`)
       actions.push({
         id: `harvest_crops_${Date.now()}`,
         type: 'harvest',
@@ -613,6 +645,52 @@ export class FarmSystem {
       {
         'resources.water.current': state.resources.water.current
         // NOTE: energy not included since it's not changed
+      }
+    )
+  }
+
+  /**
+   * Execute build action (tower construction)
+   */
+  private static executeBuildAction(action: GameAction, state: GameState): ActionResult {
+    if (action.target !== 'tower') {
+      return createFailureResult(`Unknown build target: ${action.target}`)
+    }
+
+    // Check if hero has the blueprint
+    if (!state.tower.blueprintsOwned.includes('tower_reach_1')) {
+      return createFailureResult('Tower blueprint not owned')
+    }
+
+    // Check if tower is already built
+    if (state.tower.isBuilt) {
+      return createFailureResult('Tower is already built')
+    }
+
+    // Check energy cost
+    if (state.resources.energy.current < action.energyCost) {
+      return createFailureResult(`Not enough energy (need ${action.energyCost}, have ${state.resources.energy.current})`)
+    }
+
+    // Build the tower
+    state.tower.isBuilt = true
+    state.tower.currentReach = 1 // Start with reach 1
+    state.resources.energy.current -= action.energyCost
+    
+    // Unlock tower area for navigation
+    if (!state.progression.unlockedAreas.includes('tower')) {
+      state.progression.unlockedAreas.push('tower')
+    }
+
+    console.log('🏗️ TOWER BUILT: Tower construction completed! Tower area unlocked.')
+
+    return createSuccessResult(
+      `Built tower for ${action.energyCost} energy`,
+      {
+        'tower.isBuilt': state.tower.isBuilt,
+        'tower.currentReach': state.tower.currentReach,
+        'resources.energy.current': state.resources.energy.current,
+        'progression.unlockedAreas': state.progression.unlockedAreas
       }
     )
   }

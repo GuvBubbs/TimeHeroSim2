@@ -13,7 +13,8 @@ import type {
   HelperState,
   LocationState,
   AutomationState,
-  PriorityState
+  PriorityState,
+  TowerState
 } from '@/types'
 
 /**
@@ -165,7 +166,8 @@ export class ConfigurationManager {
       helpers: ConfigurationManager.initializeHelperState(),
       location: ConfigurationManager.initializeLocationState(),
       automation: ConfigurationManager.initializeAutomationState(),
-      priorities: ConfigurationManager.initializePriorityState()
+      priorities: ConfigurationManager.initializePriorityState(),
+      tower: ConfigurationManager.initializeTowerState()
     }
   }
 
@@ -185,7 +187,7 @@ export class ConfigurationManager {
     /**
    * Initialize resources state - Correct starting conditions per starting-conditions.md
    */
-  static initializeResourcesState(): ResourcesState {
+  static initializeResourcesState(): ResourceState {
     return {
       energy: { current: 3, max: 100, regenerationRate: 0 }, // Starting energy: 3 (gain through harvesting)
       gold: 75, // Enough for Sword I & Tower Reach 1 blueprints
@@ -212,7 +214,7 @@ export class ConfigurationManager {
       completedAdventures: [],
       completedCleanups: new Set(),
       unlockedUpgrades: [],
-      unlockedAreas: ['farm', 'tower'], // FIXED: Added 'tower' for seed catching in tutorial
+      unlockedAreas: ['farm', 'town'], // Tower must be built before access
       builtStructures: new Set(['farm']),
       victoryConditionsMet: false
     }
@@ -233,6 +235,19 @@ export class ConfigurationManager {
   }
 
   /**
+   * Initialize tower state - starts unbuilt
+   */
+  static initializeTowerState(): TowerState {
+    return {
+      isBuilt: false,           // CRITICAL: Tower starts unbuilt
+      currentReach: 0,          // No reach until built
+      blueprintsOwned: [],      // No blueprints initially
+      autoCatcherTier: 0,       // No auto-catcher until built
+      seedsCatching: null       // No catching process initially
+    }
+  }
+
+  /**
    * Initialize process state
    */
   static initializeProcessState(): ProcessState {
@@ -240,8 +255,8 @@ export class ConfigurationManager {
       crops: [],
       adventure: null,
       crafting: [],
-      mining: null,
-      seedCatching: null
+      mining: null
+      // Note: seedCatching moved to tower.seedsCatching
     }
   }
 

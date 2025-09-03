@@ -7,7 +7,9 @@ import type {
   DecisionResult, 
   UrgencyLevel, 
   DecisionReasoning,
-  SystemRegistry 
+  SystemRegistry,
+  ScoredAction,
+  ScoreFactor
 } from './types/DecisionTypes'
 
 import { PersonaStrategyFactory } from './PersonaStrategy'
@@ -18,6 +20,7 @@ import { SeedSystem } from '../systems/support/SeedSystem'
 // Import existing systems
 import { TowerSystem } from '../systems/core/TowerSystem'
 import { TownSystem } from '../systems/core/TownSystem'
+import { FarmSystem } from '../systems/core/FarmSystem'
 import { AdventureSystem } from '../systems/core/AdventureSystem'
 import { ForgeSystem } from '../systems/core/ForgeSystem'
 import { HelperSystem } from '../systems/core/HelperSystem'
@@ -96,18 +99,48 @@ export class DecisionEngine implements IDecisionEngine {
     // Sort by score and select top actions
     scoredActions.sort((a, b) => b.score - a.score)
     
-    // Return top 3 actions (don't overwhelm the system)
-    const topActions = scoredActions.slice(0, 3)
+    // INTELLIGENT ACTION SELECTION: Don't execute multiple purchase actions
+    let topActions: ScoredAction[]
+    
+    if (scoredActions.length > 0) {
+      const topAction = scoredActions[0]
+      
+      // If top action is a high-priority purchase (score > 800), only do that
+      if (topAction.type === 'purchase' && topAction.score > 800) {
+        topActions = [topAction] // Only execute the critical purchase
+        console.log(`🎯 CRITICAL PURCHASE: Only executing top purchase action (${topAction.target}, score: ${topAction.score})`)
+      }
+      // If top action is harvest (very high priority), prioritize it but allow one more
+      else if (topAction.type === 'harvest' && topAction.score > 900) {
+        topActions = scoredActions.slice(0, 2) // Harvest + one more action
+        console.log(`🎯 HARVEST PRIORITY: Limiting to harvest + one action`)
+      }
+      // Otherwise, allow up to 3 actions but avoid multiple purchases
+      else {
+        const purchases = scoredActions.filter(a => a.type === 'purchase')
+        const nonPurchases = scoredActions.filter(a => a.type !== 'purchase')
+        
+        if (purchases.length > 1) {
+          // Only take the top purchase + non-purchases
+          topActions = [purchases[0], ...nonPurchases].slice(0, 3)
+          console.log(`🎯 PURCHASE FILTER: Limited to 1 purchase + other actions`)
+        } else {
+          topActions = scoredActions.slice(0, 3) // Normal case
+        }
+      }
+    } else {
+      topActions = []
+    }
     
     // Calculate urgency level
-    const urgency = this.calculateUrgencyLevel(topActions, gameState)
+    const urgency = this.calculateUrgencyLevel(topActions as GameAction[], gameState)
     
     // Generate reasoning
     const reasoning: DecisionReasoning[] = topActions.map((action, index) => ({
       action: `${action.type} (${action.target || action.id})`,
       score: action.score,
       reason: action.reasoning,
-      factors: action.factors.map(f => `${f.name}: ${f.reason}`)
+      factors: action.factors.map((f: ScoreFactor) => `${f.name}: ${f.reason}`)
     }))
 
     console.log(`🎯 DECISION ENGINE RESULTS: ${validActions.length} valid actions, top 3:`)
@@ -117,7 +150,7 @@ export class DecisionEngine implements IDecisionEngine {
     }
 
     return {
-      actions: topActions,
+      actions: topActions as GameAction[],
       urgency,
       reasoning,
       shouldAct: true
@@ -151,8 +184,12 @@ export class DecisionEngine implements IDecisionEngine {
       if (seedMetrics.totalSeeds < criticalThreshold) {
         console.log(`🚨 EMERGENCY: Critical seed shortage (${seedMetrics.totalSeeds} < ${criticalThreshold})`)
         
-        // Emergency navigation to tower if not there
-        if (gameState.location.currentScreen !== 'tower') {
+        // CRITICAL FIX: Check if tower is built before navigation
+        if (!gameState.tower.isBuilt) {
+          console.log(`🚫 EMERGENCY BLOCKED: Tower not built - cannot navigate for seeds`)
+          // Don't add tower navigation action - will fall through to other systems
+        } else if (gameState.location.currentScreen !== 'tower') {
+          // Emergency navigation to tower if not there
           actions.push({
             id: `emergency_tower_nav_${Date.now()}`,
             type: 'move',
@@ -190,7 +227,7 @@ export class DecisionEngine implements IDecisionEngine {
           type: 'pump',
           screen: gameState.location.currentScreen,
           duration: 2,
-          energyCost: 5,
+          energyCost: 0, // CRITICAL FIX: Pump actions must be FREE
           goldCost: 0,
           prerequisites: [],
           expectedRewards: { water: 20 }
@@ -249,22 +286,46 @@ export class DecisionEngine implements IDecisionEngine {
     const screen = gameState.location.currentScreen
     console.log(`🎯 SCREEN ACTIONS: Evaluating actions for screen: ${screen}`)
     
+    let actions: GameAction[] = []
+    
+    // Always evaluate farm actions (crops need attention regardless of location)
+    const farmContext = { 
+      urgency: 0.5, 
+      availableEnergy: gameState.resources.energy.current,
+      availableTime: 60, 
+      currentPriorities: ['harvest', 'water', 'plant']
+    }
+    const farmActions = FarmSystem.evaluateActions(gameState, parameters, farmContext)
+    actions.push(...farmActions)
+    
+    // Add screen-specific actions
     switch (screen) {
       case 'farm':
-        return this.evaluateFarmActions(gameState, parameters, gameDataStore)
+        // Farm actions already added above
+        break
       case 'tower':
-        return TowerSystem.evaluateActions(gameState, parameters, gameDataStore)
+        const towerActions = TowerSystem.evaluateActions(gameState, parameters, gameDataStore)
+        actions.push(...towerActions)
+        break
       case 'town':
-        return TownSystem.evaluateActions(gameState, parameters, gameDataStore)
+        const townActions = TownSystem.evaluateActions(gameState, parameters, gameDataStore)
+        actions.push(...townActions)
+        break
       case 'adventure':
-        return AdventureSystem.evaluateActions(gameState, parameters, gameDataStore)
+        const adventureActions = AdventureSystem.evaluateActions(gameState, parameters, gameDataStore)
+        actions.push(...adventureActions)
+        break
       case 'forge':
-        return ForgeSystem.evaluateActions(gameState, parameters, gameDataStore)
+        const forgeActions = ForgeSystem.evaluateActions(gameState, parameters, gameDataStore)
+        actions.push(...forgeActions)
+        break
       case 'mine':
-        return this.evaluateMineActions(gameState, parameters, gameDataStore)
-      default:
-        return []
+        const mineActions = this.evaluateMineActions(gameState, parameters, gameDataStore)
+        actions.push(...mineActions)
+        break
     }
+    
+    return actions
   }
 
   private evaluateHelperActions(gameState: GameState, parameters: AllParameters, gameDataStore: any): GameAction[] {
@@ -346,7 +407,7 @@ export class DecisionEngine implements IDecisionEngine {
         screen: currentScreen,
         target: needsWatering[0].plotId,
         duration: 1,
-        energyCost: 2,
+        energyCost: 0, // CRITICAL FIX: Basic farm actions must be FREE
         goldCost: 0,
         prerequisites: [],
         expectedRewards: {}
@@ -357,7 +418,7 @@ export class DecisionEngine implements IDecisionEngine {
     const emptyPlots = gameState.progression.farmPlots - gameState.processes.crops.length
     const totalSeeds = Array.from(gameState.resources.seeds.values()).reduce((sum: number, count: number) => sum + count, 0)
     
-    if (emptyPlots > 0 && (totalSeeds as number) > 0 && gameState.resources.energy.current > 20) {
+    if (emptyPlots > 0 && (totalSeeds as number) > 0) {
       // Select best seed to plant
       const bestSeed = this.selectCropToPlant(gameState, gameDataStore)
       if (bestSeed) {
@@ -367,7 +428,7 @@ export class DecisionEngine implements IDecisionEngine {
           screen: currentScreen,
           target: bestSeed,
           duration: 2,
-          energyCost: 8,
+          energyCost: 0, // CRITICAL FIX: Basic farm actions must be FREE
           goldCost: 0,
           prerequisites: [],
           expectedRewards: {}
@@ -382,7 +443,7 @@ export class DecisionEngine implements IDecisionEngine {
         type: 'pump',
         screen: currentScreen,
         duration: 2,
-        energyCost: 5,
+        energyCost: 0, // CRITICAL FIX: Pump actions must be FREE
         goldCost: 0,
         prerequisites: [],
         expectedRewards: { water: 20 }
@@ -431,6 +492,11 @@ export class DecisionEngine implements IDecisionEngine {
   private getNavigationReason(screen: string, gameState: GameState): { reason: string; score: number } {
     switch (screen) {
       case 'tower':
+        // CRITICAL FIX: Check if tower is built before considering navigation
+        if (!gameState.tower.isBuilt) {
+          return { reason: 'Tower not built', score: 0 }
+        }
+        
         const seedMetrics = SeedSystem.getSeedMetrics(gameState)
         const farmPlots = gameState.progression.farmPlots || 3
         if (seedMetrics.totalSeeds < farmPlots * 2) {

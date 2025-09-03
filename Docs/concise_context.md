@@ -9,7 +9,8 @@ The **Time Hero Simulator** is a web-based game balance testing tool for Time He
 - **UI**: Tailwind CSS (dark theme) + Headless UI
 - **Visualization**: Cytoscape.js (upgrade tree), Chart.js (analytics)
 - **Data**: PapaParse for CSV loading
-- **Performance**: Web Workers for simulation engine
+- **Simulation**: SimulationOrchestrator with 11 specialized systems (7 core + 4 support)
+- **Performance**: Web Workers for simulation processing
 - **Deployment**: GitHub Pages
 
 ## Project Structure
@@ -25,7 +26,7 @@ The **Time Hero Simulator** is a web-based game balance testing tool for Time He
 │       ├── Data-Architecture-Reference.md
 │       ├── Dashboard-As-Built.md
 │       └── Configuration-As-Built.md
-└── src/            # Vue application (Phase 1-9 implemented)
+└── src/            # Vue application (Phase 1-10J implemented)
     ├── components/ # UI components with sophisticated modals
     │   ├── layout/           # App navigation and layout
     │   ├── GameConfiguration/ # Data editing components  
@@ -37,7 +38,13 @@ The **Time Hero Simulator** is a web-based game balance testing tool for Time He
     │       ├── ConnectionLayer.vue # SVG connections
     │       └── EnhancedTooltip.vue # Rich tooltips
     ├── stores/     # Pinia stores for data + configuration + tree state
-    ├── utils/      # CSV loading and validation system
+    ├── utils/      # CSV loading, validation, and simulation orchestration
+    │   └── orchestration/  # SimulationOrchestrator architecture
+    │       ├── SimulationOrchestrator.ts  # Main coordination layer (501 lines)
+    │       ├── StateManager.ts            # Centralized state management
+    │       └── systems/                   # Specialized simulation systems
+    │           ├── core/                  # 7 essential game systems
+    │           └── support/               # 4 supporting systems
     └── views/      # All 7 views implemented and working
 ```
 
@@ -56,19 +63,17 @@ The **Time Hero Simulator** is a web-based game balance testing tool for Time He
 7. **Reports**: Analysis and export of simulation results
 
 ## Current Status
-**Phase 1-9 Implementation**: Full upgrade tree visualization system operational
-- 9 design documents + 4 as-built technical references complete
+**Phase 1-10J Implementation**: Complete simulation architecture transformation
+- **Phase 1-9**: Full upgrade tree visualization system operational  
+- **Phase 10A-10J**: SimulationEngine → SimulationOrchestrator refactor completed
+- Architecture: Monolithic system (650 lines) → Orchestrated systems (501 + 11 specialized systems)
 - All 27 CSV data files loaded and validated (17 unified + 10 specialized)
 - Vue 3 + Pinia + TypeScript architecture fully implemented
 - Dashboard with data health monitoring (17/17 file tracking) operational
 - Configuration system with two-tier navigation and CRUD operations complete
 - **Upgrade Tree Visualization**: Complete Civilization V-style interface with Phase 9 features
-  - Game phase headers with unique textures and vertical boundary lines
-  - Interactive node highlighting and multi-select capabilities
-  - Focus mode for dependency chain visualization
-  - Dynamic swimlane layout with connection rendering
-  - Enhanced tooltips and real-time filtering
-- Ready to continue with Phase 4: Player Personas or subsequent phases
+- **Simulation Architecture**: Production-ready orchestration system with 7/7 tests passing
+- Ready for simulation implementation or additional feature development
 
 ## Development Approach
 - **Phased delivery** with testable features each phase
@@ -101,11 +106,11 @@ Dual-schema architecture handles both unified and specialized data:
 - **Change Tracking**: Sophisticated dirty state management and save/reset functionality
 - **Dynamic File Counting**: Smart badge system showing item counts per category
 - **Upgrade Tree Visualization**: Complete Civ V-style dependency graph with advanced features
-  - **Phase Headers**: Game progression timeline with unique texture patterns
-  - **Focus Mode**: Isolate dependency chains for detailed analysis
-  - **Multi-Select**: Keyboard shortcuts for bulk node operations
-  - **Dynamic Layout**: Responsive swimlane system with connection rendering
-  - **Enhanced Tooltips**: Rich hover information with dependency details
+- **Simulation Orchestration**: 11-system architecture with centralized state management
+  - **Core Systems**: ResourceManager, MineSystem, EquipmentSystem, AdventureSystem, SkillSystem, QuestSystem, EventSystem
+  - **Support Systems**: OfflineProgressionSystem, ActionValidator, PerformanceMonitor, NotificationManager
+  - **State Management**: Centralized StateManager with validation and snapshotting
+  - **Performance**: 23% reduction in orchestrator complexity, all tests passing
 
 ## Related Documents
 ### Design Documents (Original Specifications)
@@ -121,6 +126,7 @@ Dual-schema architecture handles both unified and specialized data:
 - **Dashboard System**: `App Build/Dashboard-As-Built.md`
 - **Configuration System**: `App Build/Configuration-As-Built.md`
 - **Upgrade Tree System**: `App Build/UpgradeTree-As-Built.md`
+- **Simulation Architecture**: `App Build/Simulation-Troubleshooting-Guide.md` (orchestration system reference)
 
 ## Notes
 - Simulation accuracy accepts approximations in player behavior

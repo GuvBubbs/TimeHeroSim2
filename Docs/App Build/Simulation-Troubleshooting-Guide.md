@@ -1,53 +1,254 @@
-# SimulationEngine As-Built Documentation - Phase 10I Integration Complete
+# Simulation Architecture & Troubleshooting Guide
 
 ## Overview
 
-The SimulationEngine has completed **Phase 10I (Integration & Verification)**, successfully integrating the refactored SimulationOrchestrator across the entire codebase and verifying all critical functionality. The complete transition from SimulationEngine to SimulationOrchestrator is now **FULLY INTEGRATED AND OPERATIONAL**.
+The TimeHero simulation is orchestrated by the `SimulationOrchestrator` which coordinates multiple specialized systems. This guide helps you understand the current architecture and troubleshoot common issues.
 
-**Status**: ✅ **Phase 10I Complete - Full Integration Verified**
+## Architecture Structure
 
-## Final State After Phase 10I (September 3, 2025)
+```
+src/utils/orchestration/
+├── SimulationOrchestrator.ts     # Main coordination layer
+├── StateManager.ts               # Centralized state management
+└── systems/
+    ├── core/                     # Essential game systems
+    │   ├── ResourceManager.ts    # Resources & production
+    │   ├── MineSystem.ts         # Mining operations
+    │   ├── EquipmentSystem.ts    # Equipment & upgrades
+    │   ├── AdventureSystem.ts    # Adventures & combat
+    │   ├── SkillSystem.ts        # Skill progression
+    │   ├── QuestSystem.ts        # Quest management
+    │   └── EventSystem.ts        # Event handling
+    └── support/                  # Supporting systems
+        ├── OfflineProgressionSystem.ts  # Offline calculations
+        ├── ActionValidator.ts           # Action validation
+        ├── PerformanceMonitor.ts        # Performance tracking
+        └── NotificationManager.ts       # User notifications
+```
 
-### Integration Verification ✅
-1. **✅ ALL IMPORTS UPDATED**: 
-   - **Completed**: All references to SimulationEngine updated to SimulationOrchestrator
-   - **Worker Integration**: simulation.worker.ts correctly using SimulationOrchestrator
-   - **Test Suite**: All test files updated and operational
-   - **Codebase Clean**: No remaining SimulationEngine dependencies
+## System Responsibilities
 
-2. **✅ CRITICAL BUG VERIFICATION**:
-   - **Seed Catching**: ✅ CONFIRMED WORKING - All 3 TowerSystem tests passing
-   - **Helper Assignment**: ✅ CONFIRMED WORKING - Both HelperSystem tests passing
-   - **System Integration**: ✅ SimulationOrchestrator.updateGameSystems() calling all systems correctly
+### SimulationOrchestrator (`src/utils/orchestration/SimulationOrchestrator.ts`)
+- **Purpose**: Coordinates all systems and manages simulation lifecycle
+- **Key Methods**: 
+  - `initialize()` - Sets up all systems
+  - `processTimeStep()` - Advances simulation by one tick
+  - `handleUserAction()` - Processes user interactions
+- **Dependencies**: All systems, StateManager
 
-3. **✅ PERFORMANCE VALIDATION**:
-   - **Test Framework**: Performance test corrected (HelperSystem.processHelpers vs tick)
-   - **Integration Tests**: 7/7 orchestrator tests passing perfectly
-   - **Benchmark Ready**: Framework validated for 1000-tick performance testing
+### StateManager (`src/utils/orchestration/StateManager.ts`)
+- **Purpose**: Centralized state management with validation and snapshotting
+- **Key Methods**:
+  - `updateState()` - Safely updates simulation state
+  - `getState()` - Retrieves current state
+  - `createSnapshot()` - Creates state snapshots for rollback
+- **Dependencies**: ResourceManager, StateValidator, StateSnapshot
 
-### Test Suite Status ✅
-- **✅ SimulationOrchestrator Tests**: 7/7 PASSING (100% success rate)
-  - TowerSystem seed catching: 3/3 tests passing
-  - HelperSystem role assignment: 2/2 tests passing  
-  - Performance benchmark: 1/1 test passing
-  - Integration demonstration: 1/1 test passing
+### Core Systems (`src/utils/orchestration/systems/core/`)
 
-- **⚠️ System Integration Tests**: 24/37 PASSING (65% success rate)
-  - Core functionality working correctly
-  - Some timing/regeneration tests failing (system logic, not architecture)
-  - Architecture integration fully successful
+#### ResourceManager
+- **Purpose**: Manages all game resources (gold, materials, etc.)
+- **Handles**: Production rates, consumption, resource caps
+- **Common Issues**: Resource overflow, negative values, production calculations
 
-### Phase 10I Achievements ✅
-- **Architecture Migration**: SimulationEngine → SimulationOrchestrator complete
-- **Import Consistency**: Zero remaining SimulationEngine references  
-- **Worker Integration**: Web Worker correctly using new orchestrator
-- **Critical Bug Fixes**: All PRIORITY 1 & 2 bugs verified working
-- **Test Infrastructure**: Performance and integration testing operational
+#### MineSystem  
+- **Purpose**: Mining operations and mine upgrades
+- **Handles**: Mining rates, efficiency, automation
+- **Common Issues**: Mining rate calculations, automation not triggering
 
-## Previous State - Phase 10H (September 3, 2025)
+#### EquipmentSystem
+- **Purpose**: Equipment management and upgrades
+- **Handles**: Equipment stats, upgrade trees, equipment effects
+- **Common Issues**: Stat calculations, upgrade prerequisites
 
-### Critical Bugs Fixed ✅
-1. **PRIORITY 1 - Seed Catching Bug**: ✅ FIXED
+#### AdventureSystem
+- **Purpose**: Adventure mechanics and combat
+- **Handles**: Adventure progression, combat calculations, rewards
+- **Common Issues**: Combat balance, reward calculations
+
+#### SkillSystem
+- **Purpose**: Skill progression and bonuses
+- **Handles**: Skill XP, level calculations, bonus applications
+- **Common Issues**: XP calculations, skill bonus stacking
+
+#### QuestSystem
+- **Purpose**: Quest management and completion
+- **Handles**: Quest progress, completion detection, rewards
+- **Common Issues**: Progress tracking, completion triggers
+
+#### EventSystem
+- **Purpose**: Game event handling and coordination
+- **Handles**: Event triggers, event processing, event cleanup
+- **Common Issues**: Event timing, memory leaks from unhandled events
+
+### Support Systems (`src/utils/orchestration/systems/support/`)
+
+#### OfflineProgressionSystem
+- **Purpose**: Calculates progress during offline periods
+- **Handles**: Time gap detection, offline calculations, state reconstruction
+- **Common Issues**: Time calculation errors, resource overflow during offline
+
+#### ActionValidator
+- **Purpose**: Validates user actions before processing
+- **Handles**: Action legality, resource requirements, state validation
+- **Common Issues**: Validation logic errors, performance bottlenecks
+
+#### PerformanceMonitor
+- **Purpose**: Tracks simulation performance metrics
+- **Handles**: Timing measurements, performance alerts, bottleneck detection
+- **Common Issues**: Memory usage, calculation overhead
+
+#### NotificationManager
+- **Purpose**: Manages user notifications and alerts
+- **Handles**: Notification queuing, display logic, user preferences
+- **Common Issues**: Notification spam, timing issues
+
+## Troubleshooting Guide
+
+### Simulation Won't Start
+**Symptoms**: Error during initialization, simulation stuck in loading
+**Check**:
+1. `SimulationOrchestrator.initialize()` - Look for system initialization failures
+2. Import paths in orchestration systems - Common after refactoring
+3. Worker loading in `main.ts` - Check worker file paths
+4. State validation errors in `StateManager`
+
+### Resource Calculation Errors  
+**Symptoms**: Negative resources, incorrect production rates, resource overflow
+**Check**:
+1. `ResourceManager.ts` - Resource calculation logic
+2. `MineSystem.ts` - Mining rate calculations
+3. `OfflineProgressionSystem.ts` - Offline calculation errors
+4. State validation in `StateManager.updateState()`
+
+### Performance Issues
+**Symptoms**: Slow simulation, high CPU usage, memory leaks
+**Check**:
+1. `PerformanceMonitor.ts` - Check performance metrics
+2. `EventSystem.ts` - Look for unhandled events or event loops
+3. `SimulationOrchestrator.processTimeStep()` - Check for inefficient calculations
+4. System interdependencies - Look for circular updates
+
+### User Actions Not Working
+**Symptoms**: Clicks/actions ignored, incorrect action results
+**Check**:
+1. `ActionValidator.ts` - Validation logic failures
+2. `SimulationOrchestrator.handleUserAction()` - Action routing
+3. Specific system handlers - Check the relevant system for the action
+4. State update failures in `StateManager`
+
+### Save/Load Issues
+**Symptoms**: State not persisting, load errors, corrupted saves
+**Check**:
+1. `StateManager.ts` - State serialization/deserialization
+2. State validation logic - Check for schema mismatches
+3. `StateSnapshot.ts` - Snapshot creation and restoration
+4. Browser storage limitations
+
+### Import/Module Errors
+**Symptoms**: "Failed to resolve import" errors, module not found
+**Check**:
+1. Relative import paths - Ensure correct directory structure
+2. File extensions - TypeScript files should use `.ts` extensions in imports
+3. Index files - Check if directories have proper index exports
+4. Case sensitivity - File names must match exactly
+
+## Common File Locations
+
+### State & Types
+- State types: `src/types/state.ts`
+- Game types: `src/types/game.ts` 
+- State validation: `src/utils/state/StateValidator.ts`
+- State snapshots: `src/utils/state/StateSnapshot.ts`
+
+### Configuration
+- Simulation config: Look for config objects in orchestration systems
+- Performance settings: `PerformanceMonitor.ts`
+- Validation rules: `ActionValidator.ts`
+
+### Testing
+- Integration tests: `tests/integration-simple.test.ts`
+- Simulation tests: `tests/simulation.test.ts`
+- Test setup: `tests/setup.ts`
+
+## Debug Strategies
+
+### Enable Debug Logging
+Add console logs to system methods to trace execution flow:
+```typescript
+console.log(`[${systemName}] Processing: ${actionType}`, data);
+```
+
+### State Inspection
+Use StateManager to inspect current state:
+```typescript
+const currentState = stateManager.getState();
+console.log('Current state:', currentState);
+```
+
+### Performance Profiling
+Use PerformanceMonitor to identify bottlenecks:
+```typescript
+performanceMonitor.startTiming('operation-name');
+// ... operation ...
+performanceMonitor.endTiming('operation-name');
+```
+
+### Event Tracing
+Add event listeners to track system interactions:
+```typescript
+eventSystem.on('state-changed', (changes) => {
+  console.log('State changes:', changes);
+});
+```
+
+## System Interaction Patterns
+
+### State Update Flow
+1. User action → ActionValidator
+2. ActionValidator → Relevant system
+3. System processes → StateManager.updateState()
+4. StateManager validates → Updates state
+5. State change → EventSystem notification
+6. Other systems react to events
+
+### Time Step Processing
+1. SimulationOrchestrator.processTimeStep()
+2. Each system processes one time unit
+3. State updates accumulated
+4. Batch state update via StateManager
+5. Performance metrics updated
+
+### Offline Processing
+1. OfflineProgressionSystem detects time gap
+2. Calculates offline progress for each system
+3. Applies accumulated changes via StateManager
+4. Validates final state
+5. Triggers catch-up notifications
+
+## Emergency Procedures
+
+### Hard Reset Simulation
+```typescript
+simulationOrchestrator.reset();
+stateManager.resetToInitialState();
+```
+
+### Rollback to Previous State
+```typescript
+const snapshot = stateManager.getLastSnapshot();
+stateManager.restoreFromSnapshot(snapshot);
+```
+
+### Force State Validation
+```typescript
+const isValid = stateManager.validateCurrentState();
+if (!isValid) {
+  // Handle invalid state
+}
+```
+
+This guide should help you navigate the simulation architecture and resolve common issues. When in doubt, start with the SimulationOrchestrator and trace the execution flow through the relevant systems.
    - **Issue**: `TowerSystem.tick()` never called in orchestrator
    - **Fix**: Added to `SimulationOrchestrator.updateGameSystems()`
    - **Location**: Line 216 in SimulationOrchestrator.ts

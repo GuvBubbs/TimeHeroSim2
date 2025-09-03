@@ -3,9 +3,9 @@
 // Includes CraftingSystem functionality (merged from separate file)
 
 import type { GameState, GameAction, AllParameters, CraftingState, ToolState, WeaponState } from '@/types'
-import type { ActionResult } from './GameSystem'
-import { CSVDataParser } from '../CSVDataParser'
-import { PrerequisiteSystem } from './PrerequisiteSystem'
+import type { ActionResult } from '../GameSystem'
+import { CSVDataParser } from '../../CSVDataParser'
+import { PrerequisiteSystem } from '../support/PrerequisiteSystem'
 
 /**
  * Forge system for crafting and heat management

@@ -14,7 +14,7 @@ import type {
   ProcessEvent,
   CraftingProcessData
 } from '../types/ProcessTypes'
-import { ForgeSystem } from '../../systems/ForgeSystem'
+import { ForgeSystem } from '../../systems/core/ForgeSystem'
 
 export class CraftingHandler implements IProcessHandler {
   

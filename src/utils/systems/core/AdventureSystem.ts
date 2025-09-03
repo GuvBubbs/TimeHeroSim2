@@ -4,10 +4,10 @@
 // Includes CombatSystem functionality (merged from separate file)
 
 import type { GameState, GameAction, AllParameters } from '@/types'
-import type { ActionResult } from './GameSystem'
-import { CSVDataParser } from '../CSVDataParser'
-import { BossQuirkHandler, type BossPenalties } from '../combat/BossQuirks'
-import { ArmorEffectHandler, type ArmorEffectResult } from '../combat/ArmorEffects'
+import type { ActionResult } from '../GameSystem'
+import { CSVDataParser } from '../../CSVDataParser'
+import { BossQuirkHandler, type BossPenalties } from '../../combat/BossQuirks'
+import { ArmorEffectHandler, type ArmorEffectResult } from '../../combat/ArmorEffects'
 
 // ============================================================================
 // COMBAT SYSTEM INTERFACES (from CombatSystem.ts)

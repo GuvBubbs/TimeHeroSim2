@@ -13,7 +13,7 @@ import type {
   SystemEffects, 
   SystemModifier 
 } from '@/types'
-import { CSVDataParser } from '../CSVDataParser'
+import { CSVDataParser } from '../../CSVDataParser'
 
 export class PrerequisiteSystem {
   // =============================================================================

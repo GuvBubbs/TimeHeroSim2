@@ -2,7 +2,7 @@
 // Tower navigation, seed catching, and reach upgrade system implementing GameSystem interface
 
 import type { GameState, GameAction, AllParameters, SimulationConfig } from '@/types'
-import { SeedSystem, MANUAL_CATCHING, AUTO_CATCHERS } from './SeedSystem'
+import { SeedSystem, MANUAL_CATCHING, AUTO_CATCHERS } from '../support/SeedSystem'
 import { 
   type ActionResult, 
   type SystemTickResult, 
@@ -11,7 +11,7 @@ import {
   createSuccessResult,
   createFailureResult,
   createTickResult
-} from './GameSystem'
+} from '../GameSystem'
 
 /**
  * Tower system for seed catching and reach upgrades - implements GameSystem contract

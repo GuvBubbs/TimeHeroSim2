@@ -2,16 +2,16 @@
 // Pure orchestration layer under 500 lines - ONLY coordination logic
 
 import { ConfigurationManager } from './ConfigurationManager'
-import { ActionRouter } from './ActionRouter'
-import { StateManager } from './state'
-import { DecisionEngine } from './ai/DecisionEngine'
-import { ProcessManager } from './processes'
-import { SupportSystemManager } from './systems/SupportSystemManager'
-import { FarmSystem } from './systems/FarmSystem'
-import { TowerSystem } from './systems/TowerSystem'
-import { SeedSystem } from './systems/SeedSystem'
-import { eventBus, type IEventBus } from './events'
-import { validationService } from './validation'
+import { ActionRouter } from '../ActionRouter'
+import { StateManager } from '../state'
+import { DecisionEngine } from '../ai/DecisionEngine'
+import { ProcessManager } from '../processes'
+import { SupportSystemManager } from '../systems/support/SupportSystemManager'
+import { FarmSystem } from '../systems/core/FarmSystem'
+import { TowerSystem } from '../systems/core/TowerSystem'
+import { SeedSystem } from '../systems/support/SeedSystem'
+import { eventBus, type IEventBus } from '../events'
+import { validationService } from '../validation'
 import type { 
   SimulationConfig, 
   AllParameters,

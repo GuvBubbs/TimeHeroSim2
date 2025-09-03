@@ -1,16 +1,16 @@
 // systemRegistry.ts - Phase 10A System Registry
 // Central registry for all simulation systems after consolidation
 
-import { FarmSystem } from './FarmSystem'
-import { TowerSystem } from './TowerSystem'
-import { TownSystem } from './TownSystem'
-import { AdventureSystem } from './AdventureSystem'
-import { MineSystem } from './MineSystem'
-import { ForgeSystem } from './ForgeSystem'
-import { HelperSystem } from './HelperSystem'
-import { OfflineProgressionSystem } from './OfflineProgressionSystem'
-import { PrerequisiteSystem } from './PrerequisiteSystem'
-import { SeedSystem } from './SeedSystem'
+import { FarmSystem } from './core/FarmSystem'
+import { TowerSystem } from './core/TowerSystem'
+import { TownSystem } from './core/TownSystem'
+import { AdventureSystem } from './core/AdventureSystem'
+import { MineSystem } from './core/MineSystem'
+import { ForgeSystem } from './core/ForgeSystem'
+import { HelperSystem } from './core/HelperSystem'
+import { OfflineProgressionSystem } from './support/OfflineProgressionSystem'
+import { PrerequisiteSystem } from './support/PrerequisiteSystem'
+import { SeedSystem } from './support/SeedSystem'
 
 /**
  * Core game systems - main gameplay mechanics

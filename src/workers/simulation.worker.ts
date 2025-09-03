@@ -1,7 +1,7 @@
 // Simulation Web Worker - Phase 6B
 // Runs the simulation engine in a separate thread
 
-import { SimulationOrchestrator } from '../utils/SimulationOrchestrator'
+import { SimulationOrchestrator } from '../utils/orchestration/SimulationOrchestrator'
 import { MapSerializer } from '../utils/MapSerializer'
 import type { 
   WorkerInputMessage,

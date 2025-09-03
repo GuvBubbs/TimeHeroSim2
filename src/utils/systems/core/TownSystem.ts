@@ -2,7 +2,7 @@
 // Town vendor interactions, blueprint purchases, and material trading implementing GameSystem interface
 
 import type { GameState, GameAction, AllParameters, SimulationConfig } from '@/types'
-import { SeedSystem } from './SeedSystem'
+import { SeedSystem } from '../support/SeedSystem'
 import { 
   type ActionResult, 
   type SystemTickResult, 
@@ -11,7 +11,7 @@ import {
   createSuccessResult,
   createFailureResult,
   createTickResult
-} from './GameSystem'
+} from '../GameSystem'
 
 /**
  * Town system for vendor interactions and blueprint purchases - implements GameSystem contract

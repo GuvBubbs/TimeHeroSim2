@@ -10,10 +10,10 @@
  */
 
 import { PrerequisiteValidator } from '../validators/PrerequisiteValidator'
-import { MineSystem } from '../systems/MineSystem'
-import { OfflineProgressionSystem } from '../systems/OfflineProgressionSystem'
-import { AdventureSystem } from '../systems/AdventureSystem'
-import { SimulationOrchestrator } from '../SimulationOrchestrator'
+import { MineSystem } from '../systems/core/MineSystem'
+import { OfflineProgressionSystem } from '../systems/support/OfflineProgressionSystem'
+import { AdventureSystem } from '../systems/core/AdventureSystem'
+import { SimulationOrchestrator } from '../orchestration/SimulationOrchestrator'
 import type { GameState, GameDataItem, SimulationConfig } from '@/types'
 
 interface TestResult {

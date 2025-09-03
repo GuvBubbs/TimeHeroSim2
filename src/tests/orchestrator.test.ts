@@ -3,9 +3,9 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { GameState, GameAction, SimulationConfig } from '@/types'
-import { TowerSystem } from '@/utils/systems/TowerSystem'
-import { AdventureSystem } from '@/utils/systems/AdventureSystem'
-import { HelperSystem } from '@/utils/systems/HelperSystem'
+import { TowerSystem } from '@/utils/systems/core/TowerSystem'
+import { AdventureSystem } from '@/utils/systems/core/AdventureSystem'
+import { HelperSystem } from '@/utils/systems/core/HelperSystem'
 
 // Create minimal test game state
 function createTestGameState(): GameState {

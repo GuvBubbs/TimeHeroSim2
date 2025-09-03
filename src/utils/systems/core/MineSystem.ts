@@ -9,9 +9,9 @@
  * - Tool sharpening and temporary efficiency boosts
  */
 
-import { CSVDataParser } from '../CSVDataParser'
+import { CSVDataParser } from '../../CSVDataParser'
 import type { GameState, GameAction, MiningState } from '@/types'
-import type { ActionResult } from './GameSystem'
+import type { ActionResult } from '../GameSystem'
 
 export class MineSystem {
   /**

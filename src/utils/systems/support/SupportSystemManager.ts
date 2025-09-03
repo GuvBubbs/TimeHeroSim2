@@ -12,7 +12,7 @@ import type {
   SystemEffects, 
   SystemModifier 
 } from '@/types'
-import { HelperSystem } from './HelperSystem'
+import { HelperSystem } from '../core/HelperSystem'
 import { OfflineProgressionSystem } from './OfflineProgressionSystem'
 import { PrerequisiteSystem } from './PrerequisiteSystem'
 

@@ -14,7 +14,7 @@ import type {
   ProcessEvent,
   CropProcessData
 } from '../types/ProcessTypes'
-import { FarmSystem } from '../../systems/FarmSystem'
+import { FarmSystem } from '../../systems/core/FarmSystem'
 
 export class CropGrowthHandler implements IProcessHandler {
   

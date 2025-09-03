@@ -11,7 +11,7 @@ import {
   createSuccessResult,
   createFailureResult,
   createTickResult
-} from './GameSystem'
+} from '../GameSystem'
 
 /**
  * Water retention upgrade configuration

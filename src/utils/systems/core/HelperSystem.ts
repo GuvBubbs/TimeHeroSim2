@@ -11,8 +11,8 @@ import type {
   GameAction,
   HelperEfficiency 
 } from '@/types'
-import type { ActionResult } from './GameSystem'
-import { SeedSystem } from './SeedSystem'
+import type { ActionResult } from '../GameSystem'
+import { SeedSystem } from '../support/SeedSystem'
 import { FarmSystem } from './FarmSystem'
 
 export interface HelperScaling {

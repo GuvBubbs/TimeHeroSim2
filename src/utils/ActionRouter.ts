@@ -2,17 +2,17 @@
 // Clean routing pattern that dispatches actions to appropriate systems
 
 import type { GameAction, GameState } from '@/types'
-import type { ActionResult } from './systems/GameSystem'
+import type { ActionResult } from './systems/core/GameSystem'
 import type { SystemType } from './systems/systemRegistry'
 
 // Import all systems
-import { FarmSystem } from './systems/FarmSystem'
-import { TowerSystem } from './systems/TowerSystem'
-import { TownSystem } from './systems/TownSystem'
-import { AdventureSystem } from './systems/AdventureSystem'
-import { ForgeSystem } from './systems/ForgeSystem'
-import { MineSystem } from './systems/MineSystem'
-import { HelperSystem } from './systems/HelperSystem'
+import { FarmSystem } from './systems/core/FarmSystem'
+import { TowerSystem } from './systems/core/TowerSystem'
+import { TownSystem } from './systems/core/TownSystem'
+import { AdventureSystem } from './systems/core/AdventureSystem'
+import { ForgeSystem } from './systems/core/ForgeSystem'
+import { MineSystem } from './systems/core/MineSystem'
+import { HelperSystem } from './systems/core/HelperSystem'
 
 /**
  * Action types that can be routed to systems

@@ -14,7 +14,7 @@ import type {
   ProcessEvent,
   MiningProcessData
 } from '../types/ProcessTypes'
-import { MineSystem } from '../../systems/MineSystem'
+import { MineSystem } from '../../systems/core/MineSystem'
 
 export class MiningHandler implements IProcessHandler {
   

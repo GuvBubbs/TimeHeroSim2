@@ -3,6 +3,7 @@
 // Includes CraftingSystem functionality (merged from separate file)
 
 import type { GameState, GameAction, AllParameters, CraftingState, ToolState, WeaponState } from '@/types'
+import type { ActionResult } from './GameSystem'
 import { CSVDataParser } from '../CSVDataParser'
 import { PrerequisiteSystem } from './PrerequisiteSystem'
 
@@ -636,5 +637,82 @@ export class ForgeSystem {
     }
 
     return false
+  }
+
+  /**
+   * Standard execute method for ActionRouter integration
+   */
+  static execute(action: GameAction, state: GameState): ActionResult {
+    try {
+      if (action.type === 'craft') {
+        // Start crafting process
+        const craftingProcess: CraftingState = {
+          itemId: action.target || 'unknown',
+          startedAt: state.time.totalMinutes,
+          duration: action.duration || 60,
+          progress: 0,
+          isComplete: false,
+          heat: 100 // Starting heat
+        }
+
+        if (!state.processes.crafting) {
+          state.processes.crafting = []
+        }
+        state.processes.crafting.push(craftingProcess)
+
+        return {
+          success: true,
+          stateChanges: {
+            'resources.energy.current': state.resources.energy.current - (action.energyCost || 15)
+          },
+          events: [{
+            type: 'crafting',
+            description: `Started crafting: ${action.target}`,
+            importance: 'medium' as const
+          }]
+        }
+      }
+
+      if (action.type === 'stoke') {
+        // Stoke the forge to increase heat
+        const energyCost = action.energyCost || 10
+        if (state.resources.energy.current < energyCost) {
+          return {
+            success: false,
+            stateChanges: {},
+            events: [],
+            error: 'Not enough energy to stoke forge'
+          }
+        }
+
+        const stokeResult = ForgeSystem.stokeForgeAdvanced(state, energyCost)
+        
+        return {
+          success: stokeResult,
+          stateChanges: {
+            'resources.energy.current': state.resources.energy.current - energyCost
+          },
+          events: [{
+            type: 'stoke',
+            description: 'Stoked the forge',
+            importance: 'low' as const
+          }]
+        }
+      }
+
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `ForgeSystem cannot handle action type: ${action.type}`
+      }
+    } catch (error) {
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `Forge execution failed: ${error instanceof Error ? error.message : String(error)}`
+      }
+    }
   }
 }

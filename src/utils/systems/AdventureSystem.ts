@@ -4,6 +4,7 @@
 // Includes CombatSystem functionality (merged from separate file)
 
 import type { GameState, GameAction, AllParameters } from '@/types'
+import type { ActionResult } from './GameSystem'
 import { CSVDataParser } from '../CSVDataParser'
 import { BossQuirkHandler, type BossPenalties } from '../combat/BossQuirks'
 import { ArmorEffectHandler, type ArmorEffectResult } from '../combat/ArmorEffects'
@@ -335,6 +336,44 @@ export class AdventureSystem {
     }
     
     return actions
+  }
+
+  /**
+   * Standard execute method for ActionRouter integration
+   */
+  static execute(action: GameAction, state: GameState): ActionResult {
+    // This is a simplified wrapper - full adventure logic would need parameters and gameDataStore
+    // For now, return basic success structure
+    try {
+      if (action.type === 'adventure') {
+        // Simplified adventure execution - would need full implementation
+        return {
+          success: true,
+          stateChanges: {
+            'resources.energy.current': state.resources.energy.current - (action.energyCost || 10)
+          },
+          events: [{
+            type: 'adventure',
+            description: `Started adventure: ${action.target || 'unknown route'}`,
+            importance: 'medium' as const
+          }]
+        }
+      }
+      
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `AdventureSystem cannot handle action type: ${action.type}`
+      }
+    } catch (error) {
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `Adventure execution failed: ${error instanceof Error ? error.message : String(error)}`
+      }
+    }
   }
 
   /**

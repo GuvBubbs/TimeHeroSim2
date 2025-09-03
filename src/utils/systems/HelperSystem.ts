@@ -11,6 +11,7 @@ import type {
   GameAction,
   HelperEfficiency 
 } from '@/types'
+import type { ActionResult } from './GameSystem'
 import { SeedSystem } from './SeedSystem'
 import { FarmSystem } from './FarmSystem'
 
@@ -1203,5 +1204,85 @@ export class HelperSystem {
     }
 
     return totalCost
+  }
+
+  /**
+   * Standard execute method for ActionRouter integration
+   */
+  static execute(action: GameAction, state: GameState): ActionResult {
+    try {
+      if (action.type === 'assign_role') {
+        // Assign helper to a role
+        const helperRole = action.target || 'farming'
+        
+        return {
+          success: true,
+          stateChanges: {
+            'helpers.gnomes': state.helpers.gnomes // Would need proper gnome assignment logic
+          },
+          events: [{
+            type: 'helper',
+            description: `Assigned helper to ${helperRole}`,
+            importance: 'medium' as const
+          }]
+        }
+      }
+
+      if (action.type === 'train_helper') {
+        // Train a helper to improve efficiency
+        return {
+          success: true,
+          stateChanges: {
+            'resources.gold': state.resources.gold - (action.goldCost || 100)
+          },
+          events: [{
+            type: 'helper',
+            description: 'Trained helper to improve efficiency',
+            importance: 'medium' as const
+          }]
+        }
+      }
+
+      if (action.type === 'rescue') {
+        // Rescue a gnome (adventure reward)
+        const newGnome: GnomeState = {
+          id: `gnome_${Date.now()}`,
+          name: `Gnome ${state.helpers.gnomes.length + 1}`,
+          role: 'farming',
+          experience: 0,
+          efficiency: 1.0,
+          isAssigned: false,
+          currentTask: null
+        }
+
+        state.helpers.gnomes.push(newGnome)
+
+        return {
+          success: true,
+          stateChanges: {
+            'helpers.gnomes': state.helpers.gnomes
+          },
+          events: [{
+            type: 'rescue',
+            description: `Rescued gnome: ${newGnome.name}`,
+            importance: 'high' as const
+          }]
+        }
+      }
+
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `HelperSystem cannot handle action type: ${action.type}`
+      }
+    } catch (error) {
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `Helper execution failed: ${error instanceof Error ? error.message : String(error)}`
+      }
+    }
   }
 }

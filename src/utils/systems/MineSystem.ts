@@ -10,7 +10,8 @@
  */
 
 import { CSVDataParser } from '../CSVDataParser'
-import type { GameState, MiningState } from '@/types'
+import type { GameState, GameAction, MiningState } from '@/types'
+import type { ActionResult } from './GameSystem'
 
 export class MineSystem {
   /**
@@ -333,5 +334,56 @@ export class MineSystem {
     const depthTier = Math.floor(depth / 500) + 1
     const baseEnergyDrain = Math.pow(2, depthTier - 1)
     return baseEnergyDrain * (1 - pickaxeEfficiency)
+  }
+
+  /**
+   * Standard execute method for ActionRouter integration
+   */
+  static execute(action: GameAction, state: GameState): ActionResult {
+    try {
+      if (action.type === 'mine') {
+        // Start mining process
+        if (!state.processes.mining) {
+          state.processes.mining = {
+            depth: 0,
+            energyDrain: 0,
+            isActive: false,
+            timeAtDepth: 0
+          }
+        }
+
+        // Activate mining
+        state.processes.mining.isActive = true
+        state.processes.mining.depth = 0
+        state.processes.mining.timeAtDepth = 0
+
+        return {
+          success: true,
+          stateChanges: {
+            'processes.mining.isActive': true,
+            'processes.mining.depth': 0
+          },
+          events: [{
+            type: 'mining',
+            description: 'Started mining operation',
+            importance: 'medium' as const
+          }]
+        }
+      }
+
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `MineSystem cannot handle action type: ${action.type}`
+      }
+    } catch (error) {
+      return {
+        success: false,
+        stateChanges: {},
+        events: [],
+        error: `Mining execution failed: ${error instanceof Error ? error.message : String(error)}`
+      }
+    }
   }
 }

@@ -3,7 +3,7 @@
 
 import type { GameAction, GameState } from '../../types'
 import type { ValidationResult, ExecutionContext } from './types/ActionResult'
-import { PrerequisiteSystem } from '../systems/PrerequisiteSystem'
+import { PrerequisiteSystem } from '../systems/support/PrerequisiteSystem'
 import { validationService } from '../validation'
 import { CSVDataParser } from '../CSVDataParser'
 

@@ -1,7 +1,21 @@
 // BossQuirks - Phase 8M Simplified Boss Challenge System
 // Implements straightforward penalties/bonuses instead of complex combat simulations
 
-import type { WeaponType, ArmorData, BossType } from '../systems/CombatSystem'
+// Local type definitions for combat-related types
+export type WeaponType = 'sword' | 'axe' | 'bow' | 'staff' | 'dagger' | 'spear' | 'wand'
+export type BossType = 
+  | 'Giant Slime'
+  | 'Beetle Lord'
+  | 'Alpha Wolf'
+  | 'Sky Serpent'
+  | 'Crystal Spider'
+  | 'Frost Wyrm'
+  | 'Lava Titan'
+
+export interface ArmorData {
+  defense: number
+  effect?: string
+}
 
 export interface BossChallenge {
   description: string

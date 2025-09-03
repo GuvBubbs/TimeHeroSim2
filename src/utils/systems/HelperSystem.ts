@@ -1213,16 +1213,49 @@ export class HelperSystem {
     try {
       if (action.type === 'assign_role') {
         // Assign helper to a role
-        const helperRole = action.target || 'farming'
+        const gnomeId = action.target
+        const helperRole = (action as any).role || 'farming'
+        
+        // Find the gnome to assign
+        const gnome = state.helpers.gnomes.find(g => g.id === gnomeId)
+        if (!gnome) {
+          return {
+            success: false,
+            stateChanges: {},
+            events: [{
+              type: 'error',
+              description: `Gnome with ID ${gnomeId} not found`,
+              importance: 'high' as const
+            }]
+          }
+        }
+        
+        // Check if gnome can be assigned (is housed)
+        if (!this.canAssignRole(gnome, state)) {
+          return {
+            success: false,
+            stateChanges: {},
+            events: [{
+              type: 'error',
+              description: 'Gnome must be housed before assignment',
+              importance: 'medium' as const
+            }]
+          }
+        }
+        
+        // Assign the role
+        gnome.role = helperRole
+        gnome.isAssigned = true
+        gnome.currentTask = `working_${helperRole}`
         
         return {
           success: true,
           stateChanges: {
-            'helpers.gnomes': state.helpers.gnomes // Would need proper gnome assignment logic
+            'helpers.gnomes': state.helpers.gnomes
           },
           events: [{
             type: 'helper',
-            description: `Assigned helper to ${helperRole}`,
+            description: `Assigned ${gnome.name} to ${helperRole} role`,
             importance: 'medium' as const
           }]
         }

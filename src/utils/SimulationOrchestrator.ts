@@ -213,7 +213,14 @@ export class SimulationOrchestrator {
     }
 
     try {
-      // Tower and seed system coordination
+      // Tower system tick - CRITICAL: Process manual seed catching
+      TowerSystem.tick(deltaTime, this.gameState)
+    } catch (error) {
+      console.error('Error in TowerSystem.tick:', error)
+    }
+
+    try {
+      // Tower and seed system coordination - Auto-catcher processing
       const towerReach = TowerSystem.getCurrentTowerReach(this.gameState)
       SeedSystem.processAutoCatcher(this.gameState, deltaTime, towerReach)
     } catch (error) {

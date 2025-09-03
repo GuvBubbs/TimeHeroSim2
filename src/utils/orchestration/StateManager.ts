@@ -10,16 +10,16 @@ import type {
   UpdateMode,
   ResourceChangeRequest,
   StateEvent
-} from './types/StateTypes'
+} from '../state/types/StateTypes'
 import type { 
   TransactionHandle, 
   TransactionResult, 
   TransactionConfig, 
   TransactionContext 
-} from './types/TransactionTypes'
-import { ResourceManager } from './ResourceManager'
-import { StateValidator } from './StateValidator'
-import { StateSnapshot } from './StateSnapshot'
+} from '../state/types/TransactionTypes'
+import { ResourceManager } from '../state/ResourceManager'
+import { StateValidator } from '../state/StateValidator'
+import { StateSnapshot } from '../state/StateSnapshot'
 
 /**
  * Default transaction configuration

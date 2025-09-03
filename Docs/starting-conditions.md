@@ -11,7 +11,7 @@
 - **Plots**: 3 (leaves 1 empty plot, encouraging seed collection)
 
 ### Tower Access
-- **Tower Reach 1**: FREE (0 gold)
+- **Tower Reach 1**: 25 gold
   - Unlocks Ground Level (Seed Level 0)
   - Provides access to Carrot and Radish seeds
 - **Tower Reach 2**: 100 gold
@@ -23,9 +23,13 @@
 2. Plants initial seeds, has 1 empty plot
 3. Pumps water (free action)
 4. Harvests crops for energy
-5. Can immediately catch more seeds at tower (Reach 1 is free)
-6. Uses 50 starting gold to buy Sword I blueprint
-7. Saves up 100 gold for Tower Reach 2 to access better seeds
+5. Goes to town to buy the blueprint for tower reach 1.
+6. Goes back to the farm, spends 5 energy to build the tower
+7. Can catch more seeds at tower (Reach 1)
+8. Plants seeds to gain energy.
+9. Uses 50 starting gold to buy Sword I blueprint in town.
+10. Use forge to craft sword.
+11. Goes on adventures with sword. 
 
 ### Design Philosophy
 - Players always have a viable action (no deadlock states)

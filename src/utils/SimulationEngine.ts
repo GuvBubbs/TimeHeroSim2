@@ -378,16 +378,10 @@ export class SimulationEngine {
   }
 
   /**
-   * Initialize starting materials
+   * Initialize starting materials (empty per starting-conditions.md)
    */
   private initializeMaterials(): Map<string, number> {
-    return new Map([
-      ['wood', 25],
-      ['stone', 18], 
-      ['iron', 7],
-      ['copper', 12],
-      ['silver', 2]
-    ])
+    return new Map()
   }
 
   // =============================================================================
